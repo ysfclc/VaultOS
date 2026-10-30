@@ -10,6 +10,7 @@ import android.text.InputType
 import android.view.Gravity
 import android.view.View
 import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputMethodManager
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -107,16 +108,22 @@ class VaultKeyboardService : InputMethodService() {
         return root
     }
 
-    private fun languageKeys(): List<String> = when (currentInputMethodSubtype?.locale?.substringBefore('_')?.lowercase()) {
+    /** Reads the selected IME subtype from InputMethodManager (the service itself
+     * does not expose currentInputMethodSubtype as a member). */
+    private fun currentInputLocaleTag(): String {
+        val manager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        val subtypeLocale = manager.currentInputMethodSubtype?.locale
+        return subtypeLocale?.takeIf { it.isNotBlank() }
+            ?: resources.configuration.locales[0].toLanguageTag()
+    }
+
+    private fun languageKeys(): List<String> = when (currentInputLocaleTag().substringBefore('_').substringBefore('-').lowercase(Locale.ROOT)) {
         "pl" -> listOf("ą", "ć", "ę", "ł", "ń", "ó", "ś", "ź", "ż")
         "tr" -> listOf("ğ", "ı", "ü", "ş", "ö", "ç")
         else -> emptyList()
     }
 
-    private fun inputLocale(): Locale {
-        val languageTag = currentInputMethodSubtype?.locale.orEmpty().replace('_', '-')
-        return Locale.forLanguageTag(languageTag.ifBlank { "en" })
-    }
+    private fun inputLocale(): Locale = Locale.forLanguageTag(currentInputLocaleTag().replace('_', '-'))
 
     private fun handleKey(key: String) {
         when (key) {

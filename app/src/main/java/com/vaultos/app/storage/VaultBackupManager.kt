@@ -79,7 +79,7 @@ object VaultBackupManager {
         return ResultSummary(count, bytes, records.length())
     }
 
-    fun restore(context: Context, treeUri: Uri): ResultSummary {
+    suspend fun restore(context: Context, treeUri: Uri): ResultSummary {
         require(treeUri.authority != "${context.packageName}.documents") { "Choose a backup source outside the VaultOS archive" }
         val selectedRoot = DocumentFile.fromTreeUri(context, treeUri)
             ?: throw IllegalStateException("The selected backup folder is unavailable")

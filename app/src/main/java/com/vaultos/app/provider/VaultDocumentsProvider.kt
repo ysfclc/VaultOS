@@ -34,7 +34,9 @@ class VaultDocumentsProvider : DocumentsProvider() {
         val columns = projection ?: DEFAULT_ROOT_PROJECTION
         val cursor = MatrixCursor(columns)
         val row = cursor.newRow()
-        fun put(column: String, value: Any?) { val index = cursor.getColumnIndex(column); if (index >= 0) row.add(index, value) }
+        fun put(column: String, value: Any?) {
+            if (cursor.getColumnIndex(column) >= 0) row.add(column, value)
+        }
         put(Root.COLUMN_ROOT_ID, ROOT_ID)
         put(Root.COLUMN_DOCUMENT_ID, ROOT_ID)
         put(Root.COLUMN_TITLE, "VaultOS")
@@ -141,7 +143,9 @@ class VaultDocumentsProvider : DocumentsProvider() {
         val flags = if (isDirectory) Document.FLAG_DIR_SUPPORTS_CREATE or Document.FLAG_SUPPORTS_DELETE or Document.FLAG_SUPPORTS_RENAME
         else Document.FLAG_SUPPORTS_WRITE or Document.FLAG_SUPPORTS_DELETE or Document.FLAG_SUPPORTS_RENAME
         val row = cursor.newRow()
-        fun put(column: String, value: Any?) { val index = cursor.getColumnIndex(column); if (index >= 0) row.add(index, value) }
+        fun put(column: String, value: Any?) {
+            if (cursor.getColumnIndex(column) >= 0) row.add(column, value)
+        }
         put(Document.COLUMN_DOCUMENT_ID, idForFile(file))
         put(Document.COLUMN_DISPLAY_NAME, if (file == vaultRoot) "VaultOS" else file.name)
         put(Document.COLUMN_MIME_TYPE, if (isDirectory) Document.MIME_TYPE_DIR else getDocumentType(idForFile(file)))

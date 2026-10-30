@@ -10,6 +10,8 @@ on:
       - "*.gradle.kts"
       - "gradle.properties"
       - "settings.gradle.kts"
+      - ".github/workflows/android-build.yml"
+      - "android-build.yml"
   pull_request:
   workflow_dispatch:
 
@@ -67,10 +69,6 @@ jobs:
             --exclude='docs/updates/' \
             --exclude='.github/workflows/android-build.yml' \
             "$PROJECT_DIR/" ./
-          if [ -f android-build.yml ]; then
-            mkdir -p .github/workflows
-            cp android-build.yml .github/workflows/android-build.yml
-          fi
           printf '%s\n' "$ZIP_SHA" > .vaultos/last-source-zip.sha256
           mkdir -p docs/updates
           cat > "docs/updates/zip-import-${GITHUB_RUN_NUMBER}.md" <<NOTE
@@ -90,6 +88,11 @@ jobs:
           git add -A
           if ! git diff --cached --quiet; then
             git commit -m "Import VaultOS source ZIP ${GITHUB_RUN_NUMBER}"
+            # Persist the extracted repository and import note on the branch.
+            # A push made with GITHUB_TOKEN does not recursively trigger workflows.
+            if [ "${GITHUB_REF_TYPE}" = "branch" ]; then
+              git push origin "HEAD:${GITHUB_REF_NAME}"
+            fi
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "changed=false" >> "$GITHUB_OUTPUT"
@@ -104,6 +107,9 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # The legacy "tools" SDK package was removed from Google's repository.
+          packages: platform-tools
 
       - name: Install Android SDK packages
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"

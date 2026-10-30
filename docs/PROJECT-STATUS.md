@@ -45,3 +45,13 @@ VaultOS is a local-first Android file manager and personal content library. It c
 ## Release acceptance criteria
 
 A release is considered device-verified only after the complete Actions workflow succeeds and the device test plan passes. In particular, test large shares, full clipboard capture with VaultOS selected as the IME, file-provider interoperability, Xiaomi background scheduling and external backup/restore.
+
+## CI build diagnosis — 2026-10-30, run 5
+
+The Android SDK setup fix worked: the latest run installed the SDK, configured Gradle 8.9, and reached Kotlin compilation. The build then exposed three source-level issues, now corrected:
+
+- The optional keyboard read the active input subtype from `InputMethodService`; that property belongs to `InputMethodManager`. Locale selection now queries the manager and falls back to the device locale.
+- The DocumentsProvider used an index-based `MatrixCursor.RowBuilder.add` overload that does not exist. Rows now add values by column name, so arbitrary requested projections remain supported.
+- Backup restore called Room and repository suspend functions from a non-suspending function. `VaultBackupManager.restore` is now suspending; the existing caller already invokes it inside `withContext(Dispatchers.IO)`.
+
+These are compile fixes only. A fresh Actions run is still required to confirm the complete test, lint, and APK build. Physical-device behavior remains unverified.

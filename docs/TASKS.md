@@ -59,3 +59,11 @@ Tasks are grouped by delivery phase. A checked item means implemented in source;
 - [ ] Test clipboard behavior across Chrome, ChatGPT, WhatsApp, Notes and password fields.
 - [ ] Test Android 13/14/15 behavior and permission flows.
 - [ ] Motion, accessibility, large-font and landscape polish.
+
+## Build gate — source compile correction
+
+- [x] Fix IME locale lookup to use `InputMethodManager`.
+- [x] Fix DocumentsProvider `MatrixCursor.RowBuilder` column writes.
+- [x] Make backup restore suspend-safe for Room and full-text reindexing.
+- [ ] Confirm the next GitHub Actions run completes unit tests, lint, and APK assembly.
+- [ ] Install and exercise the resulting APK on the Redmi Note 12 Pro 5G.
