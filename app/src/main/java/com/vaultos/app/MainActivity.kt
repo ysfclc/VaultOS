@@ -443,9 +443,11 @@ private fun HomePage(count: Int, bytes: Long, available: Long, recent: List<Vaul
                 if (queuedFile != null) TextButton(onClick = { pasteQueued() }) { Text(if (queuedCut) "Move here" else "Paste here") }
                 IconButton(onClick = { dialogName = ""; showNewFolder = true }) { Icon(Icons.Default.CreateNewFolder, "New folder") }
             }
-            val children by produceState(initialValue = emptyList<File>(), current.absolutePath, refresh) {
-                value = withContext(Dispatchers.IO) {
-                    current.listFiles()?.filter { it.canRead() && !it.name.startsWith(".") }
+            var children by remember(current.absolutePath) { mutableStateOf(emptyList<File>()) }
+            LaunchedEffect(current.absolutePath, refresh) {
+                val directory = current
+                children = withContext(Dispatchers.IO) {
+                    directory.listFiles()?.filter { it.canRead() && !it.name.startsWith(".") }
                         ?.sortedWith(compareBy<File> { !it.isDirectory }.thenBy { it.name.lowercase() }).orEmpty()
                 }
             }
