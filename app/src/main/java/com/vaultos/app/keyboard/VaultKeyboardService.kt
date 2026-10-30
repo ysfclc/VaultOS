@@ -72,13 +72,10 @@ class VaultKeyboardService : InputMethodService() {
         toolbar.addView(actionButton("Capture", Color.rgb(32, 91, 69)) { captureClipboard(showToast = true) }, weightParams(1f))
         toolbar.addView(actionButton("Paste saved", Color.rgb(39, 78, 66)) { pasteLatestText() }, weightParams(1.15f))
         toolbar.addView(actionButton("Vault", Color.rgb(39, 55, 75)) { openVault() }, weightParams(0.7f))
+        // Use the system picker on every supported API level. It avoids the API-28-only
+        // switchToNextInputMethod call and lets the user explicitly choose Gboard or VaultOS.
         toolbar.addView(actionButton("Switch", Color.rgb(55, 60, 69)) {
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
-                switchToNextInputMethod(false)
-            } else {
-                // API 26–27 do not expose switchToNextInputMethod; show the system picker.
-                (getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager).showInputMethodPicker()
-            }
+            (getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager).showInputMethodPicker()
         }, weightParams(0.75f))
         toolbar.addView(actionButton("Hide", Color.rgb(55, 60, 69)) { requestHideSelf(0) }, weightParams(0.6f))
         root.addView(toolbar, LinearLayout.LayoutParams(-1, dp(43)))
