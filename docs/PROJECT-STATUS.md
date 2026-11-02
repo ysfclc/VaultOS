@@ -55,3 +55,26 @@ The Android SDK setup fix worked: the latest run installed the SDK, configured G
 - Backup restore called Room and repository suspend functions from a non-suspending function. `VaultBackupManager.restore` is now suspending; the existing caller already invokes it inside `withContext(Dispatchers.IO)`.
 
 These are compile fixes only. A fresh Actions run is still required to confirm the complete test, lint, and APK build. Physical-device behavior remains unverified.
+
+
+## CI build diagnosis — 2026-11-02, run 10
+
+The latest Android Actions run reached Android resource linking and failed with AAPT: resource style/Theme (aka com.vaultos.app:style/Theme) not found.
+
+Cause: values/styles.xml defined Theme.VaultOS with the explicit parent android:style/Theme.Material.Light.NoActionBar, but the values-v27/styles.xml variant redeclared the same style without a parent. Android therefore inferred the nonexistent @style/Theme parent for the API-27+ variant. The qualified variant also needed to preserve the base theme items because Android selects the qualified style resource as a whole.
+
+Correction in this source:
+- values-v27/styles.xml now declares the same explicit Android parent as the base style.
+- It repeats every base theme item and retains android:windowLightNavigationBar=false.
+- Both workflow copies preflight the uploaded ZIP before import and validate the checked-out XML after import. They reject a missing/wrong parent, missing base items, or missing navigation override.
+- ZIP import excludes both workflow YAML copies so a stale archive cannot overwrite either the authoritative workflow or its root mirror.
+
+The resource XML and workflow checks are verified locally. A clean Gradle build was then completed successfully using JDK 17, Gradle 8.9, Android SDK Platform 35, and Build Tools 35.0.0:
+
+- gradle --no-daemon clean testDebugUnitTest lintDebug assembleDebug — BUILD SUCCESSFUL.
+- Unit tests: 4 passed, 0 failed.
+- lintDebug passed.
+- assembleDebug produced app/build/outputs/apk/debug/app-debug.apk (17 MB).
+- APK SHA-256: fdd641a3d4bd2ed9711c22f418c0342f54468313325c4eccb66f6c6730640042.
+
+GitHub-hosted Actions confirmation and physical Redmi Note 12 Pro 5G verification remain pending.

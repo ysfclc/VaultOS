@@ -67,3 +67,14 @@ Tasks are grouped by delivery phase. A checked item means implemented in source;
 - [x] Make backup restore suspend-safe for Room and full-text reindexing.
 - [ ] Confirm the next GitHub Actions run completes unit tests, lint, and APK assembly.
 - [ ] Install and exercise the resulting APK on the Redmi Note 12 Pro 5G.
+
+
+## Build gate — Android resource linking correction (2026-11-02)
+
+- [x] Give values-v27/Theme.VaultOS the same explicit parent as the base theme.
+- [x] Preserve every base theme item in the API-27+ style and keep the light-navigation-bar override.
+- [x] Reject source ZIPs that omit or regress the qualified theme parent/items before importing them.
+- [x] Keep both workflow YAML copies protected and synchronized during ZIP imports.
+- [x] Run unit tests, lint, and APK assembly with JDK 17, Gradle 8.9, Android SDK 35 (local verification).
+- [ ] Run GitHub Actions with the corrected ZIP and confirm the hosted CI result.
+- [ ] Install and exercise the resulting APK on the Redmi Note 12 Pro 5G.
