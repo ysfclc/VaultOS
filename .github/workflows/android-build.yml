@@ -72,12 +72,34 @@ jobs:
             exit 1
           fi
 
+          # Reject a ZIP whose API-qualified theme loses the base theme parent/items.
+          python3 - "$PROJECT_DIR/app/src/main/res/values/styles.xml" "$PROJECT_DIR/app/src/main/res/values-v27/styles.xml" <<'PYTHEME'
+          import sys
+          import xml.etree.ElementTree as ET
+          base_root, v27_root = (ET.parse(path).getroot() for path in sys.argv[1:])
+          def theme(root):
+              matches = [node for node in root.findall("style") if node.get("name") == "Theme.VaultOS"]
+              if len(matches) != 1:
+                  raise SystemExit("Expected exactly one Theme.VaultOS style.")
+              node = matches[0]
+              return node, {item.get("name"): (item.text or "").strip() for item in node.findall("item")}
+          base, base_items = theme(base_root)
+          qualified, qualified_items = theme(v27_root)
+          if qualified.get("parent") != base.get("parent"):
+              raise SystemExit("values-v27 Theme.VaultOS must declare the same explicit parent as values/styles.xml.")
+          missing = [name for name, value in base_items.items() if qualified_items.get(name) != value]
+          if missing:
+              raise SystemExit("values-v27 Theme.VaultOS is missing base theme items: " + ", ".join(missing))
+          if qualified_items.get("android:windowLightNavigationBar") != "false":
+              raise SystemExit("values-v27 Theme.VaultOS must set android:windowLightNavigationBar=false.")
+          PYTHEME
           rsync -a --delete \
             --exclude='.git/' \
             --exclude='incoming/' \
             --exclude='.vaultos/' \
             --exclude='docs/updates/' \
             --exclude='.github/workflows/android-build.yml' \
+            --exclude='android-build.yml' \
             "$PROJECT_DIR/" ./
 
           mkdir -p .vaultos
@@ -130,8 +152,29 @@ jobs:
             exit 1
           fi
           test -f "$V27_STYLES"
+          python3 - "$BASE_STYLES" "$V27_STYLES" <<'PYTHEME'
+          import sys
+          import xml.etree.ElementTree as ET
+          base_root, v27_root = (ET.parse(path).getroot() for path in sys.argv[1:])
+          def theme(root):
+              matches = [node for node in root.findall("style") if node.get("name") == "Theme.VaultOS"]
+              if len(matches) != 1:
+                  raise SystemExit("Expected exactly one Theme.VaultOS style.")
+              node = matches[0]
+              return node, {item.get("name"): (item.text or "").strip() for item in node.findall("item")}
+          base, base_items = theme(base_root)
+          qualified, qualified_items = theme(v27_root)
+          if qualified.get("parent") != base.get("parent"):
+              raise SystemExit("values-v27 Theme.VaultOS must declare the same explicit parent as values/styles.xml.")
+          missing = [name for name, value in base_items.items() if qualified_items.get(name) != value]
+          if missing:
+              raise SystemExit("values-v27 Theme.VaultOS is missing base theme items: " + ", ".join(missing))
+          if qualified_items.get("android:windowLightNavigationBar") != "false":
+              raise SystemExit("values-v27 Theme.VaultOS must set android:windowLightNavigationBar=false.")
+          print("Theme.VaultOS base parent, inherited theme items, and API-27 navigation override verified.")
+          PYTHEME
           grep -q 'tools:ignore="QueryAllPackagesPermission"' "$MANIFEST"
-          echo "All four previously reported lint fixes are present."
+          echo "All previously reported lint and resource fixes are present."
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
