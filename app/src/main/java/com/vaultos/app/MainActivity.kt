@@ -23,6 +23,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -44,6 +45,8 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.lifecycle.lifecycleScope
@@ -223,7 +226,7 @@ private fun VaultApp(activity: MainActivity, repository: VaultRepository, resume
             containerColor = Color(0xFF0B0D10),
             snackbarHost = { SnackbarHost(snackbar) }
         ) { padding ->
-            Column(Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp)) {
+            Column(Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp).animateContentSize()) {
                 if (searchMode) {
                     OutlinedTextField(
                         value = query, onValueChange = { query = it }, modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
@@ -1194,7 +1197,12 @@ private fun loadAppCatalogue(activity: MainActivity, archivedItems: List<VaultIt
     var autoCapture by remember { mutableStateOf(prefs.getBoolean(VaultKeyboardService.KEY_AUTO_CAPTURE, true)) }
     var busy by remember { mutableStateOf(false) }
     val backupTree = prefs.getString("backup_tree", null)
-    Column(Modifier.fillMaxSize().padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(
+        Modifier.fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(top = 12.dp, bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
         Text("Settings & permissions", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF151A20))) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1220,9 +1228,34 @@ private fun loadAppCatalogue(activity: MainActivity, archivedItems: List<VaultIt
                 Text("Enable and select VaultOS Capture Keyboard in Android settings. While it is active, clipboard changes can be captured automatically. Gboard cannot be monitored by a separate background app; switch back to Gboard at any time.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) { Text("Automatically save clipboard content"); Text("On when VaultOS is the active keyboard. Captures text and shared clipboard attachments; sensitive clips and password fields are skipped when detectable.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                    Switch(checked = autoCapture, onCheckedChange = { autoCapture = it; prefs.edit().putBoolean(VaultKeyboardService.KEY_AUTO_CAPTURE, it).apply() })
+                    Switch(
+                        modifier = Modifier.semantics { contentDescription = "Automatically save clipboard content" },
+                        checked = autoCapture,
+                        onCheckedChange = { autoCapture = it; prefs.edit().putBoolean(VaultKeyboardService.KEY_AUTO_CAPTURE, it).apply() }
+                    )
                 }
                 OutlinedButton(onClick = { activity.startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)) }) { Text("Manage keyboards") }
+            }
+        }
+        Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF151A20))) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Xiaomi background settings", fontWeight = FontWeight.SemiBold)
+                Text(
+                    "MIUI and HyperOS may stop background work to save battery. If new downloads are not picked up while VaultOS is closed, review these settings. Menu names vary by system version.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text("1. Open VaultOS app info. Enable Autostart if your device shows it, then set Battery saver to No restrictions.", style = MaterialTheme.typography.bodySmall)
+                Text("2. In Recent apps, you can lock VaultOS if your system offers that option. This is optional and may use more battery.", style = MaterialTheme.typography.bodySmall)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedButton(onClick = { openAppDetailsSettings(activity) }) { Text("Open app info") }
+                    OutlinedButton(onClick = { openBatteryOptimizationSettings(activity) }) { Text("Battery settings") }
+                }
+                Text(
+                    "These are Android settings shortcuts, not a guarantee that Xiaomi will keep the app alive. WorkManager remains best-effort and is not an exact timer.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
         Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF151A20))) {
@@ -1268,7 +1301,7 @@ private fun loadAppCatalogue(activity: MainActivity, archivedItems: List<VaultIt
                 }) { Text("Scan storage now") }
             }
         }
-        Text("VaultOS 0.1.0 · Local-first · No account required", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("VaultOS 0.5.0 · Local-first · No account required", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -1363,6 +1396,18 @@ private fun openStorageSettings(activity: MainActivity) {
     } else {
         activity.requestPermissions(arrayOf(android.Manifest.permission.READ_EXTERNAL_STORAGE, android.Manifest.permission.WRITE_EXTERNAL_STORAGE), 701)
     }
+}
+
+private fun openAppDetailsSettings(activity: MainActivity) {
+    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${activity.packageName}"))
+    runCatching { activity.startActivity(intent) }
+        .onFailure { activity.startActivity(Intent(Settings.ACTION_SETTINGS)) }
+}
+
+private fun openBatteryOptimizationSettings(activity: MainActivity) {
+    val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+    runCatching { activity.startActivity(intent) }
+        .onFailure { openAppDetailsSettings(activity) }
 }
 
 private fun storageAvailable(): Long = runCatching { StatFs(Environment.getDataDirectory().path).availableBytes }.getOrDefault(0L)

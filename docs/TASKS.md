@@ -58,10 +58,12 @@ Phase 2 implementation is in release line 0.2.0. The Room 1→2 migration adds r
 
 - [x] Share-sheet target and IME registration.
 - [x] MediaStore observer and periodic catch-up scan.
-- [ ] Xiaomi autostart/battery optimization onboarding.
+- [x] Xiaomi autostart/battery optimization onboarding with Android settings shortcuts and manual vendor-specific steps.
 - [ ] Test clipboard behavior across Chrome, ChatGPT, WhatsApp, Notes and password fields.
 - [ ] Test Android 13/14/15 behavior and permission flows.
-- [ ] Motion, accessibility, large-font and landscape polish.
+- [x] Make Settings independently scrollable for short displays and enlarged system text; keep the app orientation-flexible.
+- [x] Add a subtle page-content size transition and an explicit screen-reader label to the automatic clipboard-capture switch.
+- [ ] Complete motion, screen-reader, large-font and landscape acceptance review on physical devices.
 
 ## Build gate — source compile correction
 
@@ -114,3 +116,14 @@ Phase 2 implementation is in release line 0.2.0. The Room 1→2 migration adds r
 - [x] Validate migration DDL with SQLite, including uniqueness, foreign-key integrity and cascades.
 - [ ] Configure and validate an on-device embedding engine before enabling semantic indexing.
 - [ ] Run GitHub Actions and complete physical Redmi Note 12 Pro 5G acceptance testing.
+
+
+## Phase 5 implementation gate (2026-11-03)
+
+- [x] Add MIUI/HyperOS background-work guidance without relying on undocumented Xiaomi activities or silently changing system settings.
+- [x] Provide safe Android shortcuts to VaultOS app info and the battery-optimization app list.
+- [x] Make Settings content vertically scrollable and add bottom breathing room for gesture navigation.
+- [x] Bump version to 0.5.0 / versionCode 5 while retaining application ID and stable sideload signing identity.
+- [x] Run unit tests (13 passed), lint (0 errors / 16 warnings), debug/release assembly and verify both APK signatures against the preserved certificate.
+- [ ] Verify the GitHub-hosted workflow after updating both protected YAML copies.
+- [ ] Run the Redmi Note 12 Pro 5G device test plan, including Chrome, ChatGPT, WhatsApp, Notes, password fields, Android permissions and Xiaomi background restrictions.

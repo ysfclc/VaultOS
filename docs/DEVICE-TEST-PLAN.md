@@ -35,3 +35,35 @@ Run on the actual phone after installing the debug APK. Record Android/MIUI vers
 16. **Progress/cancel:** run a large copy, move, archive, ZIP and extraction; observe progress and cancel each. Confirm temporary `.partial` outputs are cleaned and original data remains intact.
 17. **Previews:** inspect image thumbnails and image/PDF/video/audio previews; scroll a large folder and confirm the UI remains responsive and thumbnails do not exhaust memory.
 18. **Trash backup:** back up a vault containing a trashed item, restore to a clean app install, and confirm the item remains in Recycle Bin and can be restored to its original relative path.
+
+
+## Phase 5 acceptance matrix — still requires physical-device execution
+
+Record the exact MIUI/HyperOS build, Android API level, font/display scaling and test result for every row. Do not mark a row passed based on emulator-only behavior.
+
+### Clipboard compatibility
+
+- **Chrome:** copy ordinary page text and a URL; confirm one capture per distinct clip and no duplicate record on repeated callbacks.
+- **ChatGPT:** copy ordinary prompt and response text; verify full text is preserved and the app remains usable while VaultOS is the selected IME.
+- **WhatsApp:** copy a normal message and a multi-line message; verify text capture. Do not use private conversations as test data.
+- **Notes:** copy multi-line text and a long note; verify line breaks and the complete end of the content.
+- **Password fields:** focus password, visible-password, web-password and numeric-password inputs; copy test strings and verify the clipboard listener does not archive them while those fields are active.
+- **IME boundary:** switch to Gboard and copy ordinary text; verify VaultOS does not claim to monitor or capture Gboard's clipboard. Switch back to VaultOS only when deliberately testing its IME capture feature.
+- **Sensitive clip:** where the source app marks clipboard data sensitive, verify VaultOS skips it.
+
+### Android permission compatibility
+
+Run on Android 13 (API 33), Android 14 (API 34) and Android 15 (API 35):
+
+- Fresh install: deny all-files access, open every tab, and verify the app remains usable without crashing or claiming device-wide access.
+- Grant all-files access from the app's settings shortcut; return to VaultOS and verify the permission state refreshes and storage browsing/scanning works.
+- Revoke all-files access while VaultOS is installed; reopen the app and verify restricted screens show the permission action rather than failing.
+- Confirm app-info and battery-settings shortcuts open the correct Android settings surfaces on each version.
+- On Android 14/15, verify any partial photo/media access state does not get mistaken for all-files access.
+
+### Xiaomi, accessibility and layout
+
+- Follow the Xiaomi background settings guide: Autostart (if present), Battery saver / No restrictions, and optional Recents lock. Test a download while the app is closed and record actual catch-up behavior; do not expect exact scheduling.
+- Increase system font size and display size; visit every Settings card and confirm buttons and descriptions remain reachable without horizontal clipping.
+- Test portrait and landscape on Home, Files, Collections, Apps and Settings; confirm content remains scrollable and no controls disappear behind system bars.
+- With TalkBack enabled, navigate the top actions, bottom navigation, Settings shortcuts, switches and backup controls; confirm each actionable control has a useful spoken label and logical focus order.

@@ -1,6 +1,6 @@
 # VaultOS — project status
 
-**Release line:** 0.4.0 · **Application ID:** `com.vaultos.app` · **Target:** Redmi Note 12 Pro 5G
+**Release line:** 0.5.0 · **Application ID:** `com.vaultos.app` · **Target:** Redmi Note 12 Pro 5G
 
 ## Product contract
 
@@ -128,3 +128,14 @@ GitHub-hosted Actions confirmation and physical Redmi Note 12 Pro 5G verificatio
 ### Phase 4 boundaries
 
 On-device semantic indexing is not included in this release. It remains disabled until an embedding runtime and model are explicitly selected and validated for the supported phone class. No model is downloaded and no content is sent to a service. GitHub-hosted Actions and physical Redmi Note 12 Pro 5G verification remain pending.
+
+
+## Implemented in 0.5.0 — device integration and polish
+
+- Settings includes a Xiaomi MIUI/HyperOS background-work guide with explicit Autostart, No restrictions and optional Recents-lock instructions. Vendor menu names vary by OS build.
+- Added safe Android intents for the app details screen and the system battery-optimization app list. VaultOS does not silently modify device settings or request exemption from battery optimization.
+- Settings content now scrolls independently, with bottom spacing for gesture navigation and access to controls on shorter screens / at larger system font sizes. Main page content has a subtle size transition, and the auto-capture switch has an explicit screen-reader label.
+- Version is 0.5.0 / versionCode 5; application ID and stable signing key remain unchanged.
+- Local verification: 13 unit tests passed; lint reports 0 errors / 16 warnings; debug and release APKs assembled; both signatures verify with the preserved SHA-256 certificate digest c5b0c6c49ff6ca525558c2fecfa11dff54fba50f9083482cd869af4759e78b23.
+- APK metadata verified: com.vaultos.app, versionCode 5, versionName 0.5.0, minSdk 26, targetSdk 35.
+- Physical clipboard compatibility, Xiaomi background execution, Android 13/14/15 permission behavior, and full accessibility/landscape review are still unverified and remain acceptance gates.

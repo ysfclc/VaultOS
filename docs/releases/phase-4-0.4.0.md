@@ -17,6 +17,10 @@
 
 On-device semantic indexing remains disabled until a specific embedding runtime/model is selected and tested on the target device class. No model download, network processing or cloud service is introduced. Physical Xiaomi behavior and Android-version acceptance testing remain part of Phase 5 / 1.0.0.
 
+## Workflow correction — 2026-11-03
+
+The GitHub Actions artifact-preparation step now invokes Android Build Tools 35.0.0 `apksigner` through its absolute path under `ANDROID_HOME` (falling back to `ANDROID_SDK_ROOT`). It checks that the executable exists and prints installed Build Tools locations if not. This avoids relying on the versioned Build Tools directory being present on the runner `PATH`. Both workflow copies are kept identical. The corrected signature command was exercised locally against both 0.4.0 APK variants; both verified with the retained VaultOS signing certificate.
+
 ## Verification — 2026-11-03
 
 - Clean Gradle build: `clean` completed, followed by `testDebugUnitTest`, `lintDebug`, `assembleDebug` and `assembleRelease`; all tasks passed.

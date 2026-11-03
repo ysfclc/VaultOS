@@ -16,6 +16,10 @@ Signed sideloadable debug/release APKs with a persistent signing identity, insta
 
 User-defined collections and tags, related-item and SHA-256 duplicate groups, saved searches, user-triggered local metadata extraction, and backup manifest v2. Optional local semantic search remains gated on selecting and validating an on-device embedding runtime/model.
 
+## 0.5.0 — device integration and polish
+
+Xiaomi MIUI/HyperOS background-work onboarding, app-info and battery-optimization shortcuts, and scrollable Settings for constrained screens and larger system text. Physical clipboard, Android-version, accessibility and landscape acceptance remains required.
+
 ## 1.0.0 — device-verified product
 
 Signed release process, migration/restore tests, accessibility and performance review, tested Xiaomi background behavior, and documented Android-version compatibility.
