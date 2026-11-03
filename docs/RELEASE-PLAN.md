@@ -8,7 +8,11 @@ Native Android app, share/import, private archive, baseline device index, increm
 
 Recycle bin, multi-select, batch move/copy, archive compression/extraction, previews/thumbnails, progress and cancellation, improved storage usage and error recovery.
 
-## 0.3.0 — smarter library
+## 0.3.0 — application and backup management
+
+Signed sideloadable debug/release APKs with a persistent signing identity, installed-versus-archived app version comparison, and base/split APK export guidance.
+
+## 0.4.0 — smarter library
 
 User-defined collections and tags, duplicate groups, richer metadata extraction, saved searches and optional local semantic search.
 

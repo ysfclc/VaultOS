@@ -11,12 +11,21 @@ import androidx.work.WorkManager
 import com.vaultos.app.storage.StorageScanWorker
 
 class VaultApplication : Application() {
+    private val scanHandler = Handler(Looper.getMainLooper())
+    private val enqueueScan = Runnable {
+        runCatching {
+            WorkManager.getInstance(this).enqueueUniqueWork(
+                "vaultos-storage-scan-now",
+                ExistingWorkPolicy.KEEP,
+                OneTimeWorkRequestBuilder<StorageScanWorker>().build()
+            )
+        }
+    }
     private var mediaObserver: ContentObserver? = null
 
     override fun onCreate() {
         super.onCreate()
-        val handler = Handler(Looper.getMainLooper())
-        mediaObserver = object : ContentObserver(handler) {
+        mediaObserver = object : ContentObserver(scanHandler) {
             override fun onChange(selfChange: Boolean) = scheduleScan()
             override fun onChange(selfChange: Boolean, uri: android.net.Uri?) = scheduleScan()
         }
@@ -28,17 +37,17 @@ class VaultApplication : Application() {
     }
 
     private fun scheduleScan() {
-        runCatching {
-            WorkManager.getInstance(this).enqueueUniqueWork(
-                "vaultos-storage-scan-now",
-                ExistingWorkPolicy.KEEP,
-                OneTimeWorkRequestBuilder<StorageScanWorker>().build()
-            )
-        }
+        scanHandler.removeCallbacks(enqueueScan)
+        scanHandler.postDelayed(enqueueScan, SCAN_DEBOUNCE_MILLIS)
     }
 
     override fun onTerminate() {
+        scanHandler.removeCallbacks(enqueueScan)
         mediaObserver?.let { runCatching { contentResolver.unregisterContentObserver(it) } }
         super.onTerminate()
+    }
+
+    private companion object {
+        const val SCAN_DEBOUNCE_MILLIS = 30_000L
     }
 }

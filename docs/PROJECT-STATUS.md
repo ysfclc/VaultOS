@@ -1,6 +1,6 @@
 # VaultOS — project status
 
-**Release line:** 0.2.0 · **Application ID:** `com.vaultos.app` · **Target:** Redmi Note 12 Pro 5G
+**Release line:** 0.3.0 · **Application ID:** `com.vaultos.app` · **Target:** Redmi Note 12 Pro 5G
 
 ## Product contract
 
@@ -102,3 +102,14 @@ GitHub-hosted Actions confirmation and physical Redmi Note 12 Pro 5G verificatio
 - Android lint: 0 errors, 15 warnings. Warnings include the intentional all-files permission policy warning and existing API/dependency deprecations; they do not fail the lint task.
 - Debug APK assembled at `app/build/outputs/apk/debug/app-debug.apk`.
 - GitHub Actions and physical-device behavior remain unverified.
+
+
+## Phase 3 and stability update — 2026-11-03
+
+- Version `0.3.0` / versionCode `3`; Room schema remains at v2 because this phase adds no persisted database fields. Existing app data is preserved by an in-place Android package update.
+- The stable signing certificate is the exact certificate used by the 0.2.0 APK (`C5:B0:C6:C4:9F:F6:CA:52:55:58:C2:FE:CF:A1:1D:FF:54:FB:A5:0F:90:83:48:2C:D8:69:AF:47:59:E7:8B:23`). Both debug and release variants use this key so they can update one another.
+- App catalogue package-manager queries now run on `Dispatchers.IO`; installed versions are compared against archived APK metadata, and the catalogue displays split APK component counts. Export archives the base APK and every installed split separately.
+- Stability changes: routine device scans no longer reconcile/hash the entire private archive; MediaStore observer requests are debounced; foreground-triggered scans are rate-limited; initial scans checkpoint every 10 directories, stop after 90 seconds per worker run, report progress every 50 files, and yield between batches; cancellation is no longer swallowed for individual files.
+- A bounded LRU cache prevents repeated preview decoding while scrolling.
+- Signing key is a local sideload key. Keep it private and backed up; never regenerate it or updates will fail to install over existing copies. It is not intended as a Google Play production signing identity.
+- GitHub Actions and physical-device performance remain unverified.

@@ -39,9 +39,9 @@ Phase 2 implementation is in release line 0.2.0. The Room 1→2 migration adds r
 - [x] Installed application catalogue.
 - [x] Archive base and split APK components exposed by PackageManager.
 - [x] Manual external backup and restore through SAF.
-- [ ] Add signed release build and key-management instructions.
+- [x] Add signed release build and key-management instructions.
 - [x] Add integrity verification for every restored archived payload.
-- [ ] Add app package version comparison and split-package export guidance.
+- [x] Add installed-versus-archived package version comparison and split-package export guidance.
 
 ## Phase 4 — intelligent organization
 
@@ -88,3 +88,13 @@ Phase 2 implementation is in release line 0.2.0. The Room 1→2 migration adds r
 - [x] Confirm lint completes with 0 errors (15 warnings remain; see `docs/PROJECT-STATUS.md`).
 - [ ] Run the GitHub Actions workflow against the delivered source ZIP.
 - [ ] Complete the Redmi Note 12 Pro 5G device test plan.
+
+
+## Phase 3 verification gate (2026-11-03)
+
+- [x] Stable signing certificate carried forward from the 0.2.0 APK for update installs.
+- [x] Debug and release APK variants signed with the same local sideload key.
+- [x] Installed-app catalogue queries moved off the main thread.
+- [x] Installed-versus-archived APK version comparison and split-component export guidance.
+- [x] Reduce redundant full-vault reconciliation during device-storage scans; debounce MediaStore scan requests and bound initial scan work.
+- [ ] GitHub Actions and physical Redmi validation.

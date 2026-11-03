@@ -11,6 +11,8 @@ import android.os.Environment
 import android.os.StatFs
 import android.provider.Settings
 import android.content.pm.PackageManager
+import android.content.pm.PackageInfo
+import android.util.LruCache
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
@@ -81,8 +83,14 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         resumeRevision++
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && Environment.isExternalStorageManager()) {
-            val request = OneTimeWorkRequestBuilder<StorageScanWorker>().build()
-            WorkManager.getInstance(this).enqueueUniqueWork("vaultos-storage-scan-now", ExistingWorkPolicy.KEEP, request)
+            val prefs = getSharedPreferences(StorageScanWorker.PREFS, Context.MODE_PRIVATE)
+            val now = System.currentTimeMillis()
+            val last = prefs.getLong("last_foreground_scan_request", 0L)
+            if (now - last >= TimeUnit.MINUTES.toMillis(15)) {
+                prefs.edit().putLong("last_foreground_scan_request", now).apply()
+                val request = OneTimeWorkRequestBuilder<StorageScanWorker>().build()
+                WorkManager.getInstance(this).enqueueUniqueWork("vaultos-storage-scan-now", ExistingWorkPolicy.KEEP, request)
+            }
         }
     }
 
@@ -723,9 +731,15 @@ private fun FileThumbnail(item: VaultItem) {
     Icon(icon, null, tint = Color(0xFF9AE6C1))
 }
 
+private val thumbnailCache = object : LruCache<String, Bitmap>((Runtime.getRuntime().maxMemory() / 1024L / 12L).toInt().coerceAtLeast(1024)) {
+    override fun sizeOf(key: String, value: Bitmap): Int = (value.byteCount / 1024).coerceAtLeast(1)
+}
+
 private fun decodeVaultThumbnail(file: File, maxDimension: Int): Bitmap? {
     if (!file.isFile || !file.canRead()) return null
-    return runCatching {
+    val key = "${file.absolutePath}:${file.length()}:${file.lastModified()}:$maxDimension"
+    thumbnailCache.get(key)?.let { return it }
+    val decoded = runCatching {
         when (file.extension.lowercase()) {
             "pdf" -> decodePdfFirstPage(file, maxDimension)
             "mp4", "m4v", "mov", "3gp", "mkv", "webm" -> decodeVideoFrame(file)
@@ -733,6 +747,8 @@ private fun decodeVaultThumbnail(file: File, maxDimension: Int): Bitmap? {
             else -> decodeSampledImage(file, maxDimension)
         }
     }.getOrNull()
+    if (decoded != null) thumbnailCache.put(key, decoded)
+    return decoded
 }
 
 private fun decodeSampledImage(file: File, maxDimension: Int): Bitmap? {
@@ -795,36 +811,107 @@ private fun decodeAudioArtwork(file: File, maxDimension: Int): Bitmap? {
     })
 }
 
+private data class AppCatalogueEntry(
+    val application: android.content.pm.ApplicationInfo,
+    val packageName: String,
+    val label: String,
+    val installedVersion: String,
+    val installedVersionCode: Long,
+    val splitCount: Int,
+    val archivedVersion: String?,
+    val archivedVersionCode: Long?,
+    val archivedComponentCount: Int
+)
+
+private fun packageVersionCode(info: PackageInfo): Long =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) info.longVersionCode else @Suppress("DEPRECATION") info.versionCode.toLong()
+
+@Suppress("DEPRECATION")
+private fun loadAppCatalogue(activity: MainActivity, archivedItems: List<VaultItem>): List<AppCatalogueEntry> {
+    val pm = activity.packageManager
+    val archivedByPackage = mutableMapOf<String, MutableList<PackageInfo>>()
+    archivedItems.asSequence().filter { it.archivedPath?.endsWith(".apk", true) == true }.forEach { item ->
+        val path = item.archivedPath ?: return@forEach
+        val archived = runCatching {
+            if (Build.VERSION.SDK_INT >= 33) pm.getPackageArchiveInfo(path, PackageManager.PackageInfoFlags.of(0L))
+            else pm.getPackageArchiveInfo(path, 0)
+        }.getOrNull() ?: return@forEach
+        val packageName = archived.packageName ?: return@forEach
+        archivedByPackage.getOrPut(packageName) { mutableListOf() }.add(archived)
+    }
+    return pm.getInstalledApplications(PackageManager.GET_META_DATA).mapNotNull { app ->
+        runCatching {
+            val installed = if (Build.VERSION.SDK_INT >= 33) pm.getPackageInfo(app.packageName, PackageManager.PackageInfoFlags.of(0L))
+                else pm.getPackageInfo(app.packageName, 0)
+            val archived = archivedByPackage[app.packageName].orEmpty().maxByOrNull(::packageVersionCode)
+            val installedCode = packageVersionCode(installed)
+            val archivedCode = archived?.let(::packageVersionCode)
+            AppCatalogueEntry(
+                application = app,
+                packageName = app.packageName,
+                label = pm.getApplicationLabel(app).toString(),
+                installedVersion = installed.versionName?.takeIf { it.isNotBlank() } ?: installedCode.toString(),
+                installedVersionCode = installedCode,
+                splitCount = app.splitSourceDirs?.size ?: 0,
+                archivedVersion = archived?.let { it.versionName?.takeIf(String::isNotBlank) ?: packageVersionCode(it).toString() },
+                archivedVersionCode = archivedCode,
+                archivedComponentCount = if (archivedCode == null) 0 else archivedByPackage[app.packageName].orEmpty().count { packageVersionCode(it) == archivedCode }
+            )
+        }.getOrNull()
+    }.sortedBy { it.label.lowercase() }
+}
+
 @Composable private fun AppsPage(activity: MainActivity, repository: VaultRepository, onMessage: (String) -> Unit) {
-    val apps = remember { runCatching { activity.packageManager.getInstalledApplications(PackageManager.GET_META_DATA).sortedBy { activity.packageManager.getApplicationLabel(it).toString().lowercase() } }.getOrDefault(emptyList()) }
+    val archivedItems by remember { VaultDatabase.get(activity).dao().observeCategory("Apps & APKs") }.collectAsState(initial = emptyList())
+    var apps by remember { mutableStateOf<List<AppCatalogueEntry>>(emptyList()) }
+    var loading by remember { mutableStateOf(true) }
+    LaunchedEffect(archivedItems.map { it.id to it.modifiedAt }) {
+        loading = true
+        apps = withContext(Dispatchers.IO) { runCatching { loadAppCatalogue(activity, archivedItems) }.getOrDefault(emptyList()) }
+        loading = false
+    }
     Column(Modifier.fillMaxSize().padding(top = 12.dp)) {
         Text("Installed applications", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-        Text("${apps.size} visible packages · Archive the base APK; split packages may need additional components.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("${apps.size} visible packages · Compare installed versions with APKs archived in VaultOS. Split APK sets are exported component by component.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
         LazyColumn(Modifier.weight(1f)) {
-            items(apps, key = { it.packageName }) { app ->
+            items(apps, key = { it.packageName }) { entry ->
+                val comparison = when {
+                    entry.archivedVersionCode == null -> "No archived APK"
+                    entry.archivedVersionCode < entry.installedVersionCode -> "Installed version is newer"
+                    entry.archivedVersionCode > entry.installedVersionCode -> "Archived version is newer"
+                    else -> "Versions match"
+                }
                 Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Android, null, tint = Color(0xFF9AE6C1), modifier = Modifier.size(38.dp))
                     Column(Modifier.weight(1f).padding(start = 10.dp)) {
-                        Text(activity.packageManager.getApplicationLabel(app).toString(), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(app.packageName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(entry.label, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(entry.packageName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text("Installed ${entry.installedVersion} · Vault ${entry.archivedVersion ?: "—"}", style = MaterialTheme.typography.bodySmall)
+                        Text("$comparison · ${entry.splitCount} installed split(s) · ${entry.archivedComponentCount} archived component(s)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    IconButton(onClick = { activity.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${app.packageName}"))) }) { Icon(Icons.Default.Info, "App details") }
+                    IconButton(onClick = { activity.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${entry.packageName}"))) }) { Icon(Icons.Default.Info, "App details") }
                     IconButton(onClick = {
                         activity.lifecycleScope.launch {
                             val packagePaths = buildList {
-                                app.sourceDir?.takeIf { it.isNotBlank() }?.let(::add)
-                                app.splitSourceDirs?.filter { it.isNotBlank() }?.let(::addAll)
+                                entry.application.sourceDir?.takeIf(String::isNotBlank)?.let(::add)
+                                entry.application.splitSourceDirs?.filter(String::isNotBlank)?.let(::addAll)
                             }.distinct()
                             if (packagePaths.isEmpty()) onMessage("APK source is unavailable")
-                            else runCatching {
-                                packagePaths.forEach { path ->
-                                    repository.archiveIncomingFile(File(path), "Installed application package · ${app.packageName}", force = true)
-                                        ?: throw IllegalStateException("Could not read APK component $path")
+                            else {
+                                val result = runCatching {
+                                    withContext(Dispatchers.IO) {
+                                        packagePaths.forEach { path ->
+                                            repository.archiveIncomingFile(File(path), "Installed application package · ${entry.packageName}", force = true)
+                                                ?: throw IllegalStateException("Could not read APK component $path")
+                                        }
+                                    }
                                 }
-                            }.onSuccess { onMessage("Archived ${packagePaths.size} APK component(s) for ${activity.packageManager.getApplicationLabel(app)}") }
-                                .onFailure { onMessage(it.message ?: "APK export failed") }
+                                result.onSuccess { onMessage("Archived ${packagePaths.size} APK component(s) for ${entry.label}. Keep the base APK and every split together when reinstalling.") }
+                                    .onFailure { onMessage(it.message ?: "APK export failed") }
+                            }
                         }
-                    }) { Icon(Icons.Default.Archive, "Archive APK") }
+                    }) { Icon(Icons.Default.Archive, "Archive base and split APKs") }
                 }
                 Divider(color = Color(0xFF252C34))
             }

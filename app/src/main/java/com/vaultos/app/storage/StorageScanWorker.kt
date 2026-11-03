@@ -10,6 +10,8 @@ import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import java.io.File
 import java.util.ArrayDeque
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -23,7 +25,6 @@ class StorageScanWorker(context: Context, params: WorkerParameters) : CoroutineW
 
     private suspend fun scanStorage(): Result {
         val repository = VaultRepository(applicationContext)
-        runCatching { repository.syncVaultContents() }
         val canScan = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             Environment.isExternalStorageManager()
         } else {
@@ -74,16 +75,23 @@ class StorageScanWorker(context: Context, params: WorkerParameters) : CoroutineW
                 if (child.isDirectory) {
                     if (!isExcludedDirectory(child)) queue.addLast(child)
                 } else if (child.isFile && child.canRead() && !child.name.endsWith(".part", true)) {
-                    runCatching {
+                    try {
                         if (!initialScanDone) repository.indexFile(child, "Existing device storage")
                         else repository.archiveIncomingFile(child, "Automatically captured from device storage")
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (_: Exception) {
+                        // A single unreadable or concurrently removed file must not abort the scan.
                     }
                     processed++
+                    if (processed % 50 == 0) {
+                        setProgress(workDataOf("processed" to processed, "queuedDirectories" to queue.size))
+                        delay(1)
+                    }
                 }
             }
             visitedDirs++
             if (visitedDirs % CHECKPOINT_EVERY_DIRS == 0) checkpoint()
-            if (processed % 200 == 0 && processed > 0) setProgress(workDataOf("processed" to processed, "queuedDirectories" to queue.size))
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -199,8 +207,8 @@ class StorageScanWorker(context: Context, params: WorkerParameters) : CoroutineW
         private const val KEY_LAST_GENERATION = "last_media_store_generation"
         private const val KEY_MEDIASTORE_VERSION = "media_store_version"
         private const val MEDIASTORE_OVERLAP_SECONDS = 3L
-        private const val MAX_RUN_MILLIS = 7 * 60 * 1000L
-        private const val CHECKPOINT_EVERY_DIRS = 25
+        private const val MAX_RUN_MILLIS = 90 * 1000L
+        private const val CHECKPOINT_EVERY_DIRS = 10
         private val PROCESS_SCAN_MUTEX = Mutex()
     }
 }
