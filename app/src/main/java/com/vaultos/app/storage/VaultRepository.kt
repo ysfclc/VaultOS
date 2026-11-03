@@ -236,6 +236,7 @@ class VaultRepository(private val context: Context) {
     suspend fun syncVaultContents() = withContext(Dispatchers.IO) {
         val archiveRoot = root.canonicalFile
         val archivedItems = dao.allNow().filter { item ->
+            if (item.isTrashed) return@filter false
             val path = item.archivedPath ?: return@filter false
             runCatching { File(path).canonicalFile.toPath().startsWith(archiveRoot.toPath()) }.getOrDefault(false)
         }
@@ -247,7 +248,7 @@ class VaultRepository(private val context: Context) {
         val claimedMissingIds = mutableSetOf<String>()
         val filesByHash = HashMap<String, File>()
 
-        root.walkTopDown().filter { file ->
+        root.walkTopDown().onEnter { directory -> directory.name != ".trash" }.filter { file ->
             file.isFile && !file.name.endsWith(".part", true) && !file.name.endsWith(".restore", true)
         }.forEach { file ->
             val path = file.absolutePath
@@ -335,6 +336,51 @@ class VaultRepository(private val context: Context) {
         // This removes the catalog entry only. The original file is never deleted.
         dao.delete(item.id)
         dao.deleteChunks(item.id)
+    }
+
+    suspend fun trashArchivedFile(file: File): Boolean = withContext(Dispatchers.IO) {
+        val canonical = file.canonicalFile
+        require(canonical.toPath().startsWith(root.canonicalFile.toPath())) { "Only managed VaultOS files can be moved to the recycle bin" }
+        val records = dao.findByArchivedPath(canonical.absolutePath)
+        if (records.isEmpty() || !canonical.exists()) return@withContext false
+        val trashDir = File(root, ".trash").apply { mkdirs() }
+        val destination = uniqueFile(trashDir, "${System.currentTimeMillis()}_${canonical.name}")
+        require(canonical.renameTo(destination)) { "Could not move ${canonical.name} to the recycle bin" }
+        dao.markPathTrashed(canonical.absolutePath, destination.absolutePath, System.currentTimeMillis())
+        true
+    }
+
+    suspend fun restoreFromTrash(item: VaultItem): Boolean = withContext(Dispatchers.IO) {
+        if (!item.isTrashed) return@withContext false
+        val trashed = item.archivedPath?.let(::File) ?: return@withContext false
+        if (!trashed.exists()) {
+            dao.delete(item.id)
+            dao.deleteChunks(item.id)
+            return@withContext false
+        }
+        val originalPath = item.trashOriginalPath?.let(::File)
+            ?: File(root, folderFor(item.category) + File.separator + item.name)
+        originalPath.parentFile?.mkdirs()
+        val destination = if (originalPath.exists()) uniqueFile(originalPath.parentFile ?: root, originalPath.name) else originalPath
+        require(trashed.renameTo(destination)) { "Could not restore ${item.name}" }
+        dao.restorePath(trashed.absolutePath, destination.absolutePath)
+        true
+    }
+
+    suspend fun permanentlyDeleteTrashedItem(item: VaultItem): Boolean = withContext(Dispatchers.IO) {
+        if (!item.isTrashed) return@withContext false
+        val path = item.archivedPath ?: return@withContext false
+        val related = dao.findByArchivedPath(path)
+        val file = File(path)
+        if (file.exists() && !file.deleteRecursively()) throw IllegalStateException("Could not permanently delete ${item.name}")
+        related.forEach { record -> dao.delete(record.id); dao.deleteChunks(record.id) }
+        true
+    }
+
+    suspend fun moveToTrash(item: VaultItem): Boolean = withContext(Dispatchers.IO) {
+        val path = item.archivedPath?.let(::File) ?: return@withContext false
+        if (!path.isFile || !path.canonicalFile.toPath().startsWith(root.canonicalFile.toPath())) return@withContext false
+        trashArchivedFile(path)
     }
 
     suspend fun readFullText(item: VaultItem): String? = withContext(Dispatchers.IO) {

@@ -83,3 +83,12 @@ app/src/main/java/com/vaultos/app/
   provider/VaultDocumentsProvider.kt Android Storage Access Framework provider
   util/FileClassifier.kt            Deterministic content classification
 ```
+
+
+## Phase 2 — hardened file manager (0.2.0)
+
+The file browser now supports checkbox multi-selection with batch copy, move, archive, ZIP creation, and delete/recycle-bin actions. ZIP files can be extracted in place. Long copy, move, archive, extraction, and delete operations expose progress and cancellation; temporary copy/ZIP/extraction outputs are cleaned up if cancelled. Same-filesystem moves use rename, while cross-volume moves commit a full copy before removing the source.
+
+Managed archive deletions go to the Recycle Bin rather than immediately removing data. Items can be restored or permanently deleted. The database is upgraded through a Room migration, and external backup manifests retain recycle-bin state. Image items show downsampled thumbnails and a larger item-detail preview; other categories retain type-specific previews/icons.
+
+ZIP extraction rejects path traversal, limits archives to 20,000 entries and caps expanded data at 2 GiB. See docs/TASKS.md and docs/DEVICE-TEST-PLAN.md for implementation and on-device validation status.

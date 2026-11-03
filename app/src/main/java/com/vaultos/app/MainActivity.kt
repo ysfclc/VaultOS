@@ -11,10 +11,17 @@ import android.os.Environment
 import android.os.StatFs
 import android.provider.Settings
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.pdf.PdfRenderer
+import android.media.MediaMetadataRetriever
+import android.os.ParcelFileDescriptor
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -28,6 +35,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -43,8 +52,12 @@ import com.vaultos.app.data.VaultItem
 import com.vaultos.app.keyboard.VaultKeyboardService
 import com.vaultos.app.storage.StorageScanWorker
 import com.vaultos.app.storage.VaultBackupManager
+import com.vaultos.app.storage.FileOperationProgress
+import com.vaultos.app.storage.FileOperations
 import com.vaultos.app.storage.VaultRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -122,6 +135,7 @@ private enum class Page(val label: String) { Home("Home"), Incoming("Incoming"),
 private fun VaultApp(activity: MainActivity, repository: VaultRepository, resumeRevision: Int) {
     val dao = remember { VaultDatabase.get(activity).dao() }
     val items by dao.observeAll().collectAsState(initial = emptyList())
+    val trashItems by dao.observeTrash().collectAsState(initial = emptyList())
     val count by dao.count().collectAsState(initial = 0)
     val bytes by dao.archivedBytes().collectAsState(initial = 0L)
     var page by remember { mutableStateOf(Page.Home) }
@@ -195,7 +209,7 @@ private fun VaultApp(activity: MainActivity, repository: VaultRepository, resume
                 when (page) {
                     Page.Home -> HomePage(count, bytes, storageAvailable(), items.take(8), onPage = { page = it }, onItem = { showItem = it }, onImport = { importLauncher.launch(arrayOf("*/*")) }, onCapture = { captureClipboard(activity, repository) { message = it } })
                     Page.Incoming -> ItemList(visible, onItem = { showItem = it }, onPin = { item, pinned -> activity.lifecycleScope.launch { repository.setPinned(item, pinned) } })
-                    Page.Files -> FilesPage(activity, repository, visible.filter { it.category != "Text" }, permissionGranted, onItem = { showItem = it }, onPermission = { openStorageSettings(activity) }, onMessage = { message = it })
+                    Page.Files -> FilesPage(activity, repository, visible.filter { it.category != "Text" }, trashItems, permissionGranted, onItem = { showItem = it }, onPermission = { openStorageSettings(activity) }, onMessage = { message = it })
                     Page.Collections -> CollectionsPage(items, onCategory = { query = it; searchMode = true; page = Page.Incoming })
                     Page.Apps -> AppsPage(activity, repository, onMessage = { message = it })
                     Page.Settings -> SettingsPage(activity, repository, permissionGranted, backupLauncher, onMessage = { message = it })
@@ -214,8 +228,9 @@ private fun VaultApp(activity: MainActivity, repository: VaultRepository, resume
                         Text("${item.category} · ${formatBytes(item.sizeBytes)} · ${if (item.isArchived) "Archived" else "Indexed"}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                         Text("Source: ${item.source}", style = MaterialTheme.typography.bodySmall)
                         Text(item.mimeType, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        if (item.category == "Images" || item.category == "Videos" || item.category == "Audio" || item.name.endsWith(".pdf", true)) ItemPreview(item, 320)
                         if (isText) Text(item.textContent?.take(3000).orEmpty().ifBlank { "Text content is preserved in the original file." }, maxLines = 16, overflow = TextOverflow.Ellipsis)
-                        else Text(item.archivedPath ?: item.originalUri ?: "Indexed item", maxLines = 3, overflow = TextOverflow.Ellipsis)
+                        else if (item.category != "Images") Text(item.archivedPath ?: item.originalUri ?: "Indexed item", maxLines = 3, overflow = TextOverflow.Ellipsis)
                         if (isText && item.sizeBytes > 3000) Text("The complete ${item.sizeBytes} byte original is preserved. Copy reads the full file only when requested.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 },
@@ -248,6 +263,14 @@ private fun VaultApp(activity: MainActivity, repository: VaultRepository, resume
                             activity.lifecycleScope.launch { repository.setPinned(item, !item.isPinned) }
                         }) { Text(if (item.isPinned) "Unpin" else "Pin") }
                         TextButton(onClick = { shareItem(activity, item, onMessage = { message = it }); showItem = null }) { Text("Share") }
+                        if (item.isArchived && !item.isTrashed) TextButton(onClick = {
+                            activity.lifecycleScope.launch {
+                                runCatching { repository.moveToTrash(item) }
+                                    .onSuccess { message = if (it) "Moved to Recycle Bin" else "Could not move item to Recycle Bin" }
+                                    .onFailure { message = it.message ?: "Recycle Bin action failed" }
+                            }
+                            showItem = null
+                        }) { Text("Move to trash") }
                         TextButton(onClick = { showItem = null }) { Text("Close") }
                     }
                 }
@@ -319,7 +342,7 @@ private fun HomePage(count: Int, bytes: Long, available: Long, recent: List<Vaul
     }
     Card(Modifier.fillMaxWidth().clickable(onClick = onClick), colors = CardDefaults.cardColors(containerColor = Color(0xFF151A20)), shape = RoundedCornerShape(14.dp)) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(11.dp)) {
-            Box(Modifier.size(42.dp).background(Color(0xFF222C35), RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) { Icon(icon, null, tint = Color(0xFF9AE6C1)) }
+            Box(Modifier.size(42.dp).background(Color(0xFF222C35), RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) { FileThumbnail(item) }
             Column(Modifier.weight(1f)) {
                 Text(item.name, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Medium)
                 Text("${item.category} · ${formatBytes(item.sizeBytes)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -346,29 +369,86 @@ private fun HomePage(count: Int, bytes: Long, available: Long, recent: List<Vaul
     }
 }
 
-@Composable private fun FilesPage(activity: MainActivity, repository: VaultRepository, indexed: List<VaultItem>, permissionGranted: Boolean, onItem: (VaultItem) -> Unit, onPermission: () -> Unit, onMessage: (String) -> Unit) {
-    var browse by remember { mutableStateOf(false) }
+@Composable private fun FilesPage(
+    activity: MainActivity, repository: VaultRepository, indexed: List<VaultItem>, trashItems: List<VaultItem>,
+    permissionGranted: Boolean, onItem: (VaultItem) -> Unit, onPermission: () -> Unit, onMessage: (String) -> Unit
+) {
+    var mode by remember { mutableStateOf("Library") }
     Column(Modifier.fillMaxSize()) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 6.dp)) {
-            FilterChip(selected = !browse, onClick = { browse = false }, label = { Text("Library") }, leadingIcon = { Icon(Icons.Default.Inventory2, null) })
-            FilterChip(selected = browse, onClick = { browse = true }, label = { Text("Device folders") }, leadingIcon = { Icon(Icons.Default.FolderOpen, null) })
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 6.dp)) {
+            FilterChip(selected = mode == "Library", onClick = { mode = "Library" }, label = { Text("Library") }, leadingIcon = { Icon(Icons.Default.Inventory2, null) })
+            FilterChip(selected = mode == "Folders", onClick = { mode = "Folders" }, label = { Text("Device folders") }, leadingIcon = { Icon(Icons.Default.FolderOpen, null) })
+            FilterChip(selected = mode == "Trash", onClick = { mode = "Trash" }, label = { Text("Recycle Bin") }, leadingIcon = { Icon(Icons.Default.DeleteOutline, null) })
         }
-        if (browse) FileBrowserPage(activity, repository, permissionGranted, onPermission, onMessage)
-        else ItemList(indexed, onItem = onItem, onPin = { item, pinned -> activity.lifecycleScope.launch { repository.setPinned(item, pinned) } })
+        when (mode) {
+            "Folders" -> FileBrowserPage(activity, repository, permissionGranted, onPermission, onMessage)
+            "Trash" -> TrashPage(activity, repository, trashItems, onMessage)
+            else -> ItemList(indexed, onItem = onItem, onPin = { item, pinned -> activity.lifecycleScope.launch { repository.setPinned(item, pinned) } })
+        }
     }
 }
 
-@Composable private fun FileBrowserPage(activity: MainActivity, repository: VaultRepository, permissionGranted: Boolean, onPermission: () -> Unit, onMessage: (String) -> Unit) {
+@Composable
+private fun TrashPage(activity: MainActivity, repository: VaultRepository, items: List<VaultItem>, onMessage: (String) -> Unit) {
+    var permanentTarget by remember { mutableStateOf<VaultItem?>(null) }
+    if (items.isEmpty()) EmptyState("Recycle Bin is empty", "Archived files you delete from the VaultOS library can be restored here.")
+    else LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(7.dp), contentPadding = PaddingValues(vertical = 12.dp)) {
+        items(items, key = { it.id }) { item ->
+            Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF151A20)), modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(10.dp)) {
+                    ItemRow(item.copy(isArchived = true), onClick = { onMessage(item.name + " is in the Recycle Bin") })
+                    Text("In Recycle Bin · " + formatBytes(item.sizeBytes), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        TextButton(onClick = {
+                            activity.lifecycleScope.launch {
+                                runCatching { repository.restoreFromTrash(item) }
+                                    .onSuccess { onMessage(if (it) "Restored " + item.name else "Original file was unavailable") }
+                                    .onFailure { onMessage(it.message ?: "Restore failed") }
+                            }
+                        }) { Text("Restore") }
+                        TextButton(onClick = { permanentTarget = item }) { Text("Delete permanently") }
+                    }
+                }
+            }
+        }
+    }
+    permanentTarget?.let { item ->
+        AlertDialog(
+            onDismissRequest = { permanentTarget = null },
+            title = { Text("Delete " + item.name + " permanently?") },
+            text = { Text("This removes the archived file and its library record. This cannot be undone.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    activity.lifecycleScope.launch {
+                        runCatching { repository.permanentlyDeleteTrashedItem(item) }
+                            .onSuccess { onMessage(if (it) "Permanently deleted " + item.name else "Could not delete item") }
+                            .onFailure { onMessage(it.message ?: "Permanent delete failed") }
+                    }
+                    permanentTarget = null
+                }) { Text("Delete permanently") }
+            },
+            dismissButton = { TextButton(onClick = { permanentTarget = null }) { Text("Cancel") } }
+        )
+    }
+}
+
+@Composable
+private fun FileBrowserPage(activity: MainActivity, repository: VaultRepository, permissionGranted: Boolean, onPermission: () -> Unit, onMessage: (String) -> Unit) {
     var vaultMode by remember { mutableStateOf(false) }
     var current by remember(vaultMode) { mutableStateOf(if (vaultMode) repository.root else Environment.getExternalStorageDirectory()) }
     var refresh by remember { mutableIntStateOf(0) }
     var menuFile by remember { mutableStateOf<File?>(null) }
     var renameTarget by remember { mutableStateOf<File?>(null) }
     var deleteTarget by remember { mutableStateOf<File?>(null) }
+    var batchDeleteTarget by remember { mutableStateOf<List<File>?>(null) }
     var showNewFolder by remember { mutableStateOf(false) }
     var dialogName by remember { mutableStateOf("") }
-    var queuedFile by remember { mutableStateOf<File?>(null) }
+    var queuedFiles by remember { mutableStateOf<List<File>>(emptyList()) }
     var queuedCut by remember { mutableStateOf(false) }
+    var selectedPaths by remember(current.absolutePath) { mutableStateOf(emptySet<String>()) }
+    var operationProgress by remember { mutableStateOf<FileOperationProgress?>(null) }
+    var operationLabel by remember { mutableStateOf("") }
+    var operationJob by remember { mutableStateOf<Job?>(null) }
 
     fun isInsideVault(file: File): Boolean = runCatching {
         file.canonicalFile.toPath().startsWith(repository.root.canonicalFile.toPath())
@@ -376,8 +456,7 @@ private fun HomePage(count: Int, bytes: Long, available: Long, recent: List<Vaul
 
     fun scheduleVaultSync() {
         val request = OneTimeWorkRequestBuilder<StorageScanWorker>()
-            .setInputData(androidx.work.workDataOf(StorageScanWorker.KEY_VAULT_ONLY to true))
-            .build()
+            .setInputData(androidx.work.workDataOf(StorageScanWorker.KEY_VAULT_ONLY to true)).build()
         WorkManager.getInstance(activity).enqueueUniqueWork("vaultos-vault-sync", ExistingWorkPolicy.APPEND_OR_REPLACE, request)
     }
 
@@ -386,45 +465,72 @@ private fun HomePage(count: Int, bytes: Long, available: Long, recent: List<Vaul
         var index = 1
         while (candidate.exists()) {
             val dot = name.lastIndexOf('.')
-            candidate = if (dot > 0) File(parent, "${name.substring(0, dot)}_$index${name.substring(dot)}") else File(parent, "${name}_$index")
+            candidate = if (dot > 0 && !name.startsWith(".")) File(parent, name.substring(0, dot) + "_" + index + name.substring(dot)) else File(parent, name + "_" + index)
             index++
         }
         return candidate
     }
 
+    fun runOperation(label: String, block: suspend ((FileOperationProgress) -> Unit) -> Unit) {
+        if (operationJob?.isActive == true) return
+        operationLabel = label
+        operationProgress = FileOperationProgress(0, 0, "Preparing…", 0, 0)
+        operationJob = activity.lifecycleScope.launch {
+            try {
+                block { update -> operationProgress = update }
+                operationProgress = null
+                operationJob = null
+                refresh++
+                onMessage(label + " complete")
+            } catch (cancelled: CancellationException) {
+                operationProgress = null
+                operationJob = null
+                refresh++
+                onMessage(label + " cancelled")
+            } catch (failure: Throwable) {
+                operationProgress = null
+                operationJob = null
+                refresh++
+                onMessage(failure.message ?: (label + " failed"))
+            }
+        }
+    }
+
+    fun archiveFiles(files: List<File>) {
+        val sources = files.filter { !isInsideVault(it) }
+        if (sources.isEmpty()) { onMessage("Selected items are already in the Vault archive"); return }
+        runOperation("Archive " + sources.size + " item(s)") { progress ->
+            val imports = File(repository.root, "Imports").apply { mkdirs() }
+            sources.forEach { source -> FileOperations.copy(source, uniqueTarget(imports, source.name), progress) }
+            repository.syncVaultContents()
+        }
+    }
+
     fun pasteQueued() {
-        val source = queuedFile ?: return
+        val sources = queuedFiles
+        if (sources.isEmpty()) return
         val destinationFolder = current
-        if (source.canonicalFile == destinationFolder.canonicalFile || (source.isDirectory && destinationFolder.canonicalPath.startsWith(source.canonicalPath + File.separator))) {
-            onMessage("Cannot paste a folder into itself")
-            return
+        if (sources.any { source -> source.canonicalFile == destinationFolder.canonicalFile ||
+            (source.isDirectory && destinationFolder.canonicalPath.startsWith(source.canonicalPath + File.separator)) }) {
+            onMessage("Cannot paste a folder into itself"); return
         }
         val cut = queuedCut
-        val touchesVault = isInsideVault(source) || isInsideVault(destinationFolder)
-        activity.lifecycleScope.launch {
-            runCatching {
-                withContext(Dispatchers.IO) {
-                    val destination = uniqueTarget(destinationFolder, source.name)
-                    if (cut && source.renameTo(destination)) Unit
-                    else {
-                        if (source.isDirectory) source.copyRecursively(destination, overwrite = false)
-                        else source.copyTo(destination, overwrite = false)
-                        if (cut && !source.deleteRecursively()) throw IllegalStateException("Copied, but could not remove the original")
-                    }
-                }
-            }.onSuccess {
-                queuedFile = null
-                if (touchesVault) scheduleVaultSync()
-                onMessage(if (cut) "Moved ${source.name}" else "Copied ${source.name}")
-                refresh++
-            }.onFailure { onMessage(it.message ?: "File operation failed") }
+        val touchesVault = sources.any(::isInsideVault) || isInsideVault(destinationFolder)
+        runOperation((if (cut) "Move " else "Copy ") + sources.size + " item(s)") { progress ->
+            sources.forEach { source ->
+                val destination = uniqueTarget(destinationFolder, source.name)
+                if (cut) FileOperations.move(source, destination, progress)
+                else FileOperations.copy(source, destination, progress)
+            }
+            if (touchesVault) repository.syncVaultContents()
         }
+        queuedFiles = emptyList()
     }
 
     Column(Modifier.fillMaxSize()) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 8.dp)) {
-            FilterChip(selected = !vaultMode, onClick = { vaultMode = false }, label = { Text("Phone storage") })
-            FilterChip(selected = vaultMode, onClick = { vaultMode = true }, label = { Text("Vault archive") })
+            FilterChip(selected = !vaultMode, onClick = { vaultMode = false; selectedPaths = emptySet() }, label = { Text("Phone storage") })
+            FilterChip(selected = vaultMode, onClick = { vaultMode = true; selectedPaths = emptySet() }, label = { Text("Vault archive") })
         }
         if (!vaultMode && !permissionGranted) {
             EmptyState("Allow file access", "Android requires explicit all-files access for full device browsing and background indexing.")
@@ -435,13 +541,41 @@ private fun HomePage(count: Int, bytes: Long, available: Long, recent: List<Vaul
                     val base = if (vaultMode) repository.root else Environment.getExternalStorageDirectory()
                     if (current.canonicalFile != base.canonicalFile) current = current.parentFile ?: base
                 }) { Icon(Icons.Default.ArrowUpward, "Parent folder") }
-                Text(
-                    current.absolutePath.removePrefix(Environment.getExternalStorageDirectory().absolutePath).ifBlank { if (vaultMode) "/VaultOS" else "/" },
-                    modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.labelMedium
-                )
-                if (queuedFile != null) TextButton(onClick = { pasteQueued() }) { Text(if (queuedCut) "Move here" else "Paste here") }
+                Text(current.absolutePath.removePrefix(Environment.getExternalStorageDirectory().absolutePath).ifBlank { if (vaultMode) "/VaultOS" else "/" }, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelMedium)
+                if (queuedFiles.isNotEmpty()) TextButton(onClick = { pasteQueued() }) { Text(if (queuedCut) "Move here" else "Paste here") }
                 IconButton(onClick = { dialogName = ""; showNewFolder = true }) { Icon(Icons.Default.CreateNewFolder, "New folder") }
+            }
+            if (selectedPaths.isNotEmpty()) {
+                val selectedFiles = selectedPaths.mapNotNull { path -> File(path).takeIf { it.exists() } }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(selectedFiles.size.toString() + " selected", style = MaterialTheme.typography.labelSmall, modifier = Modifier.weight(1f))
+                    TextButton(onClick = { queuedFiles = selectedFiles; queuedCut = false; selectedPaths = emptySet(); onMessage("Choose a destination and tap Paste here") }) { Text("Copy") }
+                    TextButton(onClick = { queuedFiles = selectedFiles; queuedCut = true; selectedPaths = emptySet(); onMessage("Choose a destination and tap Move here") }) { Text("Move") }
+                    TextButton(onClick = {
+                        runOperation("Create ZIP") { progress ->
+                            FileOperations.createZip(selectedFiles, uniqueTarget(current, "VaultOS-" + System.currentTimeMillis() + ".zip"), progress)
+                            if (vaultMode) repository.syncVaultContents()
+                        }
+                        selectedPaths = emptySet()
+                    }) { Text("ZIP") }
+                    TextButton(onClick = { archiveFiles(selectedFiles); selectedPaths = emptySet() }) { Text("Archive") }
+                    TextButton(onClick = { batchDeleteTarget = selectedFiles }) { Text("Delete") }
+                    TextButton(onClick = { selectedPaths = emptySet() }) { Text("Clear") }
+                }
+            }
+            operationProgress?.let { progress ->
+                Card(Modifier.fillMaxWidth().padding(vertical = 6.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF18251F))) {
+                    Column(Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(operationLabel, modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelLarge)
+                            TextButton(onClick = { operationJob?.cancel() }) { Text("Cancel") }
+                        }
+                        LinearProgressIndicator(progress = progress.fraction, modifier = Modifier.fillMaxWidth())
+                        Text(formatBytes(progress.completedBytes) + " / " + formatBytes(progress.totalBytes) + " · " +
+                            progress.completedFiles + "/" + progress.totalFiles + " files · " + progress.currentFile,
+                            style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                }
             }
             var children by remember(current.absolutePath) { mutableStateOf(emptyList<File>()) }
             LaunchedEffect(current.absolutePath, refresh) {
@@ -454,30 +588,34 @@ private fun HomePage(count: Int, bytes: Long, available: Long, recent: List<Vaul
             if (children.isEmpty()) EmptyState("Folder is empty", "New files detected in shared storage are indexed and incoming files are archived.")
             else LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 items(children, key = { it.absolutePath }) { file ->
+                    val selected = file.absolutePath in selectedPaths
                     Card(Modifier.fillMaxWidth().clickable {
-                        if (file.isDirectory) current = file else openDeviceFile(activity, file, onMessage)
-                    }, colors = CardDefaults.cardColors(containerColor = Color(0xFF151A20))) {
-                        Row(Modifier.padding(start = 10.dp, end = 4.dp, top = 6.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(if (file.isDirectory) Icons.Default.Folder else Icons.Default.InsertDriveFile, null, tint = Color(0xFF9AE6C1))
-                            Column(Modifier.weight(1f).padding(start = 10.dp)) {
+                        if (selectedPaths.isNotEmpty()) selectedPaths = if (selected) selectedPaths - file.absolutePath else selectedPaths + file.absolutePath
+                        else if (file.isDirectory) current = file else openDeviceFile(activity, file, onMessage)
+                    }, colors = CardDefaults.cardColors(containerColor = if (selected) Color(0xFF20372E) else Color(0xFF151A20))) {
+                        Row(Modifier.padding(start = 7.dp, end = 4.dp, top = 6.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(checked = selected, onCheckedChange = { checked -> selectedPaths = if (checked) selectedPaths + file.absolutePath else selectedPaths - file.absolutePath })
+                            Icon(if (file.isDirectory) Icons.Default.Folder else if (file.extension.equals("zip", true)) Icons.Default.FolderZip else Icons.Default.InsertDriveFile, null, tint = Color(0xFF9AE6C1))
+                            Column(Modifier.weight(1f).padding(start = 8.dp)) {
                                 Text(file.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                Text(if (file.isDirectory) "Folder" else "${formatBytes(file.length())} · ${file.extension.uppercase()}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(if (file.isDirectory) "Folder" else formatBytes(file.length()) + " · " + file.extension.uppercase(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
-                            if (file.isFile) IconButton(onClick = {
-                                activity.lifecycleScope.launch {
-                                    runCatching { repository.archiveIncomingFile(file, "Manually archived from file browser", force = true) }
-                                        .onSuccess { onMessage("Archived ${file.name}"); refresh++ }
-                                        .onFailure { onMessage(it.message ?: "Archive failed") }
-                                }
-                            }) { Icon(Icons.Default.Archive, "Archive a copy") }
+                            if (file.isFile) IconButton(onClick = { archiveFiles(listOf(file)) }) { Icon(Icons.Default.Archive, "Archive a copy") }
                             Box {
                                 IconButton(onClick = { menuFile = file }) { Icon(Icons.Default.MoreVert, "File actions") }
                                 DropdownMenu(expanded = menuFile == file, onDismissRequest = { menuFile = null }) {
                                     if (file.isFile) DropdownMenuItem(text = { Text("Share") }, leadingIcon = { Icon(Icons.Default.Share, null) }, onClick = { menuFile = null; shareDeviceFile(activity, file, onMessage) })
-                                    DropdownMenuItem(text = { Text("Copy") }, leadingIcon = { Icon(Icons.Default.ContentCopy, null) }, onClick = { queuedFile = file; queuedCut = false; menuFile = null; onMessage("${file.name} ready to paste") })
-                                    DropdownMenuItem(text = { Text("Cut") }, leadingIcon = { Icon(Icons.Default.ContentCut, null) }, onClick = { queuedFile = file; queuedCut = true; menuFile = null; onMessage("${file.name} ready to move") })
+                                    DropdownMenuItem(text = { Text("Copy") }, leadingIcon = { Icon(Icons.Default.ContentCopy, null) }, onClick = { queuedFiles = listOf(file); queuedCut = false; menuFile = null; onMessage(file.name + " ready to paste") })
+                                    DropdownMenuItem(text = { Text("Cut") }, leadingIcon = { Icon(Icons.Default.ContentCut, null) }, onClick = { queuedFiles = listOf(file); queuedCut = true; menuFile = null; onMessage(file.name + " ready to move") })
+                                    if (file.isFile && file.extension.equals("zip", true)) DropdownMenuItem(text = { Text("Extract here") }, leadingIcon = { Icon(Icons.Default.Unarchive, null) }, onClick = {
+                                        menuFile = null
+                                        runOperation("Extract " + file.name) { progress ->
+                                            FileOperations.extractZip(file, uniqueTarget(current, file.nameWithoutExtension.ifBlank { "Extracted" }), progress)
+                                            if (vaultMode) repository.syncVaultContents()
+                                        }
+                                    })
                                     DropdownMenuItem(text = { Text("Rename") }, leadingIcon = { Icon(Icons.Default.Edit, null) }, onClick = { renameTarget = file; dialogName = file.name; menuFile = null })
-                                    DropdownMenuItem(text = { Text("Delete") }, leadingIcon = { Icon(Icons.Default.Delete, null) }, onClick = { deleteTarget = file; menuFile = null })
+                                    DropdownMenuItem(text = { Text(if (vaultMode) "Move to Recycle Bin" else "Delete") }, leadingIcon = { Icon(Icons.Default.Delete, null) }, onClick = { deleteTarget = file; menuFile = null })
                                 }
                             }
                         }
@@ -507,19 +645,154 @@ private fun HomePage(count: Int, bytes: Long, available: Long, recent: List<Vaul
             val ok = safe.isNotBlank() && !destination.exists() && target.renameTo(destination)
             if (ok && vaultMode) scheduleVaultSync()
             renameTarget = null; refresh++
-            onMessage(if (ok) "Renamed to $safe" else "Could not rename file")
+            onMessage(if (ok) "Renamed to " + safe else "Could not rename file")
         }) { Text("Rename") } }, dismissButton = { TextButton(onClick = { renameTarget = null }) { Text("Cancel") } }
     ) }
-    deleteTarget?.let { target -> AlertDialog(
-        onDismissRequest = { deleteTarget = null }, title = { Text("Delete ${target.name}?") },
-        text = { Text("This permanently deletes the selected ${if (target.isDirectory) "folder and its contents" else "file"} from its original location. This cannot be undone.") },
-        confirmButton = { TextButton(onClick = {
-            val deleted = runCatching { if (target.isDirectory) target.deleteRecursively() else target.delete() }.getOrDefault(false)
-            if (deleted && vaultMode) scheduleVaultSync()
-            deleteTarget = null; refresh++
-            onMessage(if (deleted) "Deleted ${target.name}" else "Could not delete ${target.name}")
-        }) { Text("Delete") } }, dismissButton = { TextButton(onClick = { deleteTarget = null }) { Text("Cancel") } }
-    ) }
+    deleteTarget?.let { target ->
+        AlertDialog(
+            onDismissRequest = { deleteTarget = null }, title = { Text(if (vaultMode) "Move " + target.name + " to Recycle Bin?" else "Delete " + target.name + "?") },
+            text = { Text(if (vaultMode) "The managed archive file will be moved to the Recycle Bin and can be restored." else "This permanently deletes the selected file or folder from its original location.") },
+            confirmButton = { TextButton(onClick = {
+                val targetFile = target
+                deleteTarget = null
+                if (vaultMode && targetFile.isFile) {
+                    activity.lifecycleScope.launch {
+                        runCatching { repository.trashArchivedFile(targetFile) }
+                            .onSuccess { onMessage(if (it) "Moved to Recycle Bin" else "This file is not a managed archive item") }
+                            .onFailure { onMessage(it.message ?: "Could not move to Recycle Bin") }
+                        refresh++
+                    }
+                } else if (vaultMode) onMessage("Trash individual archived files; folders are not trashed as a group")
+                else runOperation("Delete " + targetFile.name) { progress -> FileOperations.delete(targetFile, progress) }
+            }) { Text(if (vaultMode) "Move to trash" else "Delete") } },
+            dismissButton = { TextButton(onClick = { deleteTarget = null }) { Text("Cancel") } }
+        )
+    }
+    batchDeleteTarget?.let { selected ->
+        AlertDialog(
+            onDismissRequest = { batchDeleteTarget = null },
+            title = { Text("Delete " + selected.size + " selected item(s)?") },
+            text = { Text(if (vaultMode) "Selected managed files will move to the Recycle Bin. Folders are skipped." else "Selected files and folders will be permanently deleted from their original locations.") },
+            confirmButton = { TextButton(onClick = {
+                batchDeleteTarget = null
+                runOperation(if (vaultMode) "Move to Recycle Bin" else "Delete selected items") { progress ->
+                    if (vaultMode) selected.filter { it.isFile }.forEach { repository.trashArchivedFile(it) }
+                    else selected.forEach { FileOperations.delete(it, progress) }
+                    if (vaultMode) repository.syncVaultContents()
+                }
+                selectedPaths = emptySet()
+            }) { Text("Confirm") } },
+            dismissButton = { TextButton(onClick = { batchDeleteTarget = null }) { Text("Cancel") } }
+        )
+    }
+}
+
+@Composable
+private fun ItemPreview(item: VaultItem, maxHeight: Int) {
+    val path = item.archivedPath ?: item.originalUri?.let { runCatching { Uri.parse(it).path }.getOrNull() }
+    var bitmap by remember(path) { mutableStateOf<Bitmap?>(null) }
+    LaunchedEffect(path) {
+        bitmap = null
+        if (!path.isNullOrBlank()) bitmap = withContext(Dispatchers.IO) { decodeVaultThumbnail(File(path), 640) }
+    }
+    if (bitmap != null) Image(bitmap!!.asImageBitmap(), contentDescription = item.name, modifier = Modifier.fillMaxWidth().heightIn(max = maxHeight.dp), contentScale = ContentScale.Fit)
+}
+
+@Composable
+private fun FileThumbnail(item: VaultItem) {
+    val path = item.archivedPath ?: item.originalUri?.let { runCatching { Uri.parse(it).path }.getOrNull() }
+    var bitmap by remember(path) { mutableStateOf<Bitmap?>(null) }
+    LaunchedEffect(path) {
+        bitmap = null
+        if (!path.isNullOrBlank()) bitmap = withContext(Dispatchers.IO) { decodeVaultThumbnail(File(path), 192) }
+    }
+    if (bitmap != null) {
+        Image(bitmap!!.asImageBitmap(), contentDescription = item.name, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        return
+    }
+    val icon = when (item.category) {
+        "Images" -> Icons.Default.Image
+        "Videos" -> Icons.Default.Movie
+        "Apps & APKs" -> Icons.Default.Android
+        "Text" -> Icons.Default.Notes
+        "Code" -> Icons.Default.Code
+        "Archives" -> Icons.Default.FolderZip
+        "Audio" -> Icons.Default.AudioFile
+        else -> Icons.Default.Description
+    }
+    Icon(icon, null, tint = Color(0xFF9AE6C1))
+}
+
+private fun decodeVaultThumbnail(file: File, maxDimension: Int): Bitmap? {
+    if (!file.isFile || !file.canRead()) return null
+    return runCatching {
+        when (file.extension.lowercase()) {
+            "pdf" -> decodePdfFirstPage(file, maxDimension)
+            "mp4", "m4v", "mov", "3gp", "mkv", "webm" -> decodeVideoFrame(file)
+            "mp3", "m4a", "aac", "flac", "ogg", "wav" -> decodeAudioArtwork(file, maxDimension)
+            else -> decodeSampledImage(file, maxDimension)
+        }
+    }.getOrNull()
+}
+
+private fun decodeSampledImage(file: File, maxDimension: Int): Bitmap? {
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeFile(file.absolutePath, bounds)
+    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+    var sample = 1
+    while (bounds.outWidth / sample > maxDimension * 2 || bounds.outHeight / sample > maxDimension * 2) sample *= 2
+    return BitmapFactory.decodeFile(file.absolutePath, BitmapFactory.Options().apply {
+        inSampleSize = sample
+        inPreferredConfig = Bitmap.Config.RGB_565
+    })
+}
+
+private fun decodePdfFirstPage(file: File, maxDimension: Int): Bitmap? {
+    val descriptor = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
+    return PdfRenderer(descriptor).use { renderer ->
+        if (renderer.pageCount == 0) return null
+        val page = renderer.openPage(0)
+        try {
+            val scale = minOf(1f, maxDimension.toFloat() / maxOf(page.width, page.height).toFloat())
+            val width = (page.width * scale).toInt().coerceAtLeast(1)
+            val height = (page.height * scale).toInt().coerceAtLeast(1)
+            val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+            Canvas(bitmap).drawColor(android.graphics.Color.WHITE)
+            page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+            bitmap
+        } finally {
+            page.close()
+        }
+    }
+}
+
+private fun decodeVideoFrame(file: File): Bitmap? {
+    val retriever = MediaMetadataRetriever()
+    return try {
+        retriever.setDataSource(file.absolutePath)
+        retriever.getFrameAtTime(1_000_000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+    } finally {
+        retriever.release()
+    }
+}
+
+private fun decodeAudioArtwork(file: File, maxDimension: Int): Bitmap? {
+    val retriever = MediaMetadataRetriever()
+    val bytes = try {
+        retriever.setDataSource(file.absolutePath)
+        retriever.embeddedPicture
+    } finally {
+        retriever.release()
+    } ?: return null
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+    var sample = 1
+    while (bounds.outWidth / sample > maxDimension * 2 || bounds.outHeight / sample > maxDimension * 2) sample *= 2
+    return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply {
+        inSampleSize = sample
+        inPreferredConfig = Bitmap.Config.RGB_565
+    })
 }
 
 @Composable private fun AppsPage(activity: MainActivity, repository: VaultRepository, onMessage: (String) -> Unit) {

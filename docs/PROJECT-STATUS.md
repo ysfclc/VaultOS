@@ -1,6 +1,6 @@
 # VaultOS — project status
 
-**Release line:** 0.1.0 · **Application ID:** `com.vaultos.app` · **Target:** Redmi Note 12 Pro 5G
+**Release line:** 0.2.0 · **Application ID:** `com.vaultos.app` · **Target:** Redmi Note 12 Pro 5G
 
 ## Product contract
 
@@ -78,3 +78,27 @@ The resource XML and workflow checks are verified locally. A clean Gradle build 
 - APK SHA-256: fdd641a3d4bd2ed9711c22f418c0342f54468313325c4eccb66f6c6730640042.
 
 GitHub-hosted Actions confirmation and physical Redmi Note 12 Pro 5G verification remain pending.
+
+
+## Implemented in 0.2.0 — Phase 2 file manager hardening
+
+- [x] Room 1→2 migration adds recycle-bin state and original-path metadata without clearing existing catalogue rows.
+- [x] Managed archive files can be moved to a private recycle-bin folder, restored to their prior location (with collision-safe naming), or permanently deleted.
+- [x] Recycle-bin entries are excluded from library/search/count/archived-size views and from archive reconciliation.
+- [x] Backup manifests preserve recycle-bin state and the original restore path.
+- [x] File operations use chunked I/O, temporary outputs, cooperative cancellation and progress callbacks.
+- [x] ZIP creation and extraction support selected files/folders, path-traversal rejection, a 20,000-entry limit, and a 2 GiB expanded-size limit.
+- [x] File browser supports multi-select and batch copy, move, archive, ZIP creation and delete/recycle-bin operations.
+- [x] ZIP files can be extracted to a collision-safe folder from the file browser.
+- [x] Image items show downsampled thumbnails in lists and a larger preview in item details; text previews and category-specific file icons remain available.
+- [x] Unit tests cover ZIP round-trip, Zip Slip rejection, copy integrity/progress, and cancellation cleanup.
+
+**Verification:** testDebugUnitTest, lintDebug, and assembleDebug pass in the clean Android build environment. Manual Redmi Note 12 Pro 5G testing is not claimed; follow DEVICE-TEST-PLAN.md.
+
+## Phase 2 verification — 2026-11-03
+
+- Clean local build passed with JDK 17, Gradle 8.9 and Android SDK 35: `clean testDebugUnitTest lintDebug assembleDebug`.
+- Unit tests: 9 passed, 0 failed (5 file-operation tests and 4 file-classifier tests).
+- Android lint: 0 errors, 15 warnings. Warnings include the intentional all-files permission policy warning and existing API/dependency deprecations; they do not fail the lint task.
+- Debug APK assembled at `app/build/outputs/apk/debug/app-debug.apk`.
+- GitHub Actions and physical-device behavior remain unverified.

@@ -57,6 +57,13 @@ object VaultBackupManager {
                     root.canonicalFile.toPath().relativize(archived.toPath()).toString()
                 }.getOrNull()
             }
+            val trashOriginalRelative = item.trashOriginalPath?.let { originalPath ->
+                runCatching {
+                    val original = File(originalPath).canonicalFile
+                    require(original.toPath().startsWith(root.canonicalFile.toPath()))
+                    root.canonicalFile.toPath().relativize(original.toPath()).toString()
+                }.getOrNull()
+            }
             records.put(JSONObject().apply {
                 put("id", item.id); put("name", item.name); put("mimeType", item.mimeType); put("category", item.category)
                 put("source", item.source); put("originalUri", item.originalUri)
@@ -64,6 +71,8 @@ object VaultBackupManager {
                 put("isArchived", item.isArchived && relative != null)
                 put("sizeBytes", item.sizeBytes); put("sha256", item.sha256); put("createdAt", item.createdAt)
                 put("modifiedAt", item.modifiedAt); put("isPinned", item.isPinned); put("textContent", item.textContent)
+                put("isTrashed", item.isTrashed); put("trashedAt", item.trashedAt ?: JSONObject.NULL)
+                put("trashOriginalRelativePath", trashOriginalRelative?.let { it } ?: JSONObject.NULL)
             })
         }
         val manifest = JSONObject().apply {
@@ -203,7 +212,8 @@ object VaultBackupManager {
                             category = row.optString("category", "Other"), source = "Restored index reference",
                             originalUri = originalUri, archivedPath = null, sizeBytes = row.optLong("sizeBytes"), sha256 = hash,
                             createdAt = row.optLong("createdAt", System.currentTimeMillis()), modifiedAt = row.optLong("modifiedAt"),
-                            isArchived = false, isPinned = row.optBoolean("isPinned"), textContent = preview
+                            isArchived = false, isPinned = row.optBoolean("isPinned"), textContent = preview,
+                            isTrashed = false
                         )
                         dao.upsert(item)
                         val sourceFile = originalUri?.takeIf { it.startsWith("file:") }?.let { Uri.parse(it).path?.let(::File) }
@@ -222,7 +232,10 @@ object VaultBackupManager {
                         category = row.optString("category", "Other"), source = "Restored from VaultOS backup",
                         originalUri = originalUri, archivedPath = file.absolutePath, sizeBytes = file.length(), sha256 = hash,
                         createdAt = row.optLong("createdAt", System.currentTimeMillis()), modifiedAt = file.lastModified(),
-                        isArchived = true, isPinned = row.optBoolean("isPinned"), textContent = preview
+                        isArchived = true, isPinned = row.optBoolean("isPinned"), textContent = preview,
+                        isTrashed = row.optBoolean("isTrashed"),
+                        trashedAt = if (row.isNull("trashedAt")) null else row.optLong("trashedAt"),
+                        trashOriginalPath = row.optString("trashOriginalRelativePath").takeIf { it.isNotBlank() && it != "null" }?.let { File(vault, it).absolutePath }
                     )
                     dao.upsert(item)
                     if (item.category == "Text" || item.category == "Code") repository.reindexText(item.id, file)

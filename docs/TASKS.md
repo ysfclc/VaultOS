@@ -26,11 +26,13 @@ Tasks are grouped by delivery phase. A checked item means implemented in source;
 - [x] Copy, cut/move, rename, delete and folder creation.
 - [x] Open and share archived/device files.
 - [x] Native DocumentsProvider integration.
-- [ ] Add recycle bin for managed archive deletions.
-- [ ] Add robust progress/cancel UI for large file operations.
-- [ ] Add thumbnail loading and file-type previews.
-- [ ] Add multi-select and batch operations.
-- [ ] Add archive extraction and creation.
+- [x] Add recycle bin for managed archive deletions.
+- [x] Add robust progress/cancel UI for large file operations.
+- [x] Add thumbnail loading and file-type previews.
+- [x] Add multi-select and batch operations.
+- [x] Add archive extraction and creation.
+
+Phase 2 implementation is in release line 0.2.0. The Room 1→2 migration adds recycle-bin metadata; managed archive files are moved under the private .trash directory and are restorable. ZIP extraction rejects path traversal and caps expanded data at 2 GiB / 20,000 entries. Operation cancellation cleans temporary outputs. Unit tests cover ZIP round-trip, Zip Slip rejection, copy integrity/progress, and cancellation safety. Physical Redmi validation remains in DEVICE-TEST-PLAN.md.
 
 ## Phase 3 — application and backup management
 
@@ -78,3 +80,11 @@ Tasks are grouped by delivery phase. A checked item means implemented in source;
 - [x] Run unit tests, lint, and APK assembly with JDK 17, Gradle 8.9, Android SDK 35 (local verification).
 - [ ] Run GitHub Actions with the corrected ZIP and confirm the hosted CI result.
 - [ ] Install and exercise the resulting APK on the Redmi Note 12 Pro 5G.
+
+## Phase 2 verification gate (2026-11-03)
+
+- [x] Run a clean local Gradle test, lint and debug APK build with JDK 17 / Gradle 8.9 / Android SDK 35.
+- [x] Confirm all 9 unit tests pass (0 failures).
+- [x] Confirm lint completes with 0 errors (15 warnings remain; see `docs/PROJECT-STATUS.md`).
+- [ ] Run the GitHub Actions workflow against the delivered source ZIP.
+- [ ] Complete the Redmi Note 12 Pro 5G device test plan.

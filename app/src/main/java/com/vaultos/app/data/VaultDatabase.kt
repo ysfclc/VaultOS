@@ -11,6 +11,8 @@ import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.Transaction
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import android.content.Context
 import kotlinx.coroutines.flow.Flow
 
@@ -33,7 +35,10 @@ data class VaultItem(
     val isArchived: Boolean,
     val isPinned: Boolean = false,
     /** A small preview only. The complete body is always kept in archivedPath. */
-    val textContent: String? = null
+    val textContent: String? = null,
+    val isTrashed: Boolean = false,
+    val trashedAt: Long? = null,
+    val trashOriginalPath: String? = null
 )
 
 @Entity(tableName = "search_chunks", indices = [Index("itemId")])
@@ -46,20 +51,25 @@ data class SearchChunk(
 
 @Dao
 interface VaultDao {
-    @Query("SELECT * FROM items ORDER BY isPinned DESC, createdAt DESC")
+    @Query("SELECT * FROM items WHERE isTrashed = 0 ORDER BY isPinned DESC, createdAt DESC")
     fun observeAll(): Flow<List<VaultItem>>
 
-    @Query("SELECT * FROM items WHERE category = :category ORDER BY createdAt DESC")
+    @Query("SELECT * FROM items WHERE isTrashed = 1 GROUP BY archivedPath ORDER BY trashedAt DESC")
+    fun observeTrash(): Flow<List<VaultItem>>
+
+    @Query("SELECT * FROM items WHERE category = :category AND isTrashed = 0 ORDER BY createdAt DESC")
     fun observeCategory(category: String): Flow<List<VaultItem>>
 
     @Transaction
     @Query("""
         SELECT DISTINCT items.* FROM items
         LEFT JOIN search_chunks ON search_chunks.itemId = items.id
-        WHERE items.name LIKE '%' || :query || '%'
+        WHERE items.isTrashed = 0 AND (
+              items.name LIKE '%' || :query || '%'
            OR items.textContent LIKE '%' || :query || '%'
            OR items.category LIKE '%' || :query || '%'
            OR search_chunks.content LIKE '%' || :query || '%'
+        )
         ORDER BY items.isPinned DESC, items.createdAt DESC
     """)
     fun search(query: String): Flow<List<VaultItem>>
@@ -85,10 +95,22 @@ interface VaultDao {
     @Query("DELETE FROM items WHERE id = :id")
     suspend fun delete(id: String)
 
-    @Query("SELECT COUNT(*) FROM items")
+    @Query("SELECT * FROM items WHERE archivedPath = :path")
+    suspend fun findByArchivedPath(path: String): List<VaultItem>
+
+    @Query("UPDATE items SET isTrashed = 1, trashedAt = :trashedAt, archivedPath = :trashedPath, trashOriginalPath = :originalPath WHERE archivedPath = :originalPath")
+    suspend fun markPathTrashed(originalPath: String, trashedPath: String, trashedAt: Long)
+
+    @Query("UPDATE items SET isTrashed = 0, trashedAt = NULL, archivedPath = :restoredPath, trashOriginalPath = NULL WHERE archivedPath = :trashedPath AND isTrashed = 1")
+    suspend fun restorePath(trashedPath: String, restoredPath: String)
+
+    @Query("SELECT COUNT(*) FROM items WHERE isTrashed = 1")
+    fun trashCount(): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM items WHERE isTrashed = 0")
     fun count(): Flow<Int>
 
-    @Query("SELECT COALESCE(SUM(sizeBytes),0) FROM items WHERE isArchived = 1")
+    @Query("SELECT COALESCE(SUM(sizeBytes),0) FROM items WHERE isArchived = 1 AND isTrashed = 0")
     fun archivedBytes(): Flow<Long>
 
     @Query("SELECT * FROM items WHERE id = :id LIMIT 1")
@@ -97,15 +119,23 @@ interface VaultDao {
     @Query("SELECT * FROM items ORDER BY createdAt DESC")
     suspend fun allNow(): List<VaultItem>
 
-    @Query("SELECT * FROM items WHERE category IN ('Text','Code') ORDER BY createdAt DESC LIMIT 1")
+    @Query("SELECT * FROM items WHERE isTrashed = 0 AND category IN ('Text','Code') ORDER BY createdAt DESC LIMIT 1")
     suspend fun latestTextItem(): VaultItem?
 }
 
-@Database(entities = [VaultItem::class, SearchChunk::class], version = 1, exportSchema = false)
+@Database(entities = [VaultItem::class, SearchChunk::class], version = 2, exportSchema = false)
 abstract class VaultDatabase : RoomDatabase() {
     abstract fun dao(): VaultDao
 
     companion object {
+        private val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE items ADD COLUMN isTrashed INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE items ADD COLUMN trashedAt INTEGER")
+                db.execSQL("ALTER TABLE items ADD COLUMN trashOriginalPath TEXT")
+            }
+        }
+
         @Volatile private var INSTANCE: VaultDatabase? = null
 
         fun get(context: Context): VaultDatabase = INSTANCE ?: synchronized(this) {
@@ -113,7 +143,7 @@ abstract class VaultDatabase : RoomDatabase() {
                 context.applicationContext,
                 VaultDatabase::class.java,
                 "vaultos.db"
-            ).build().also { INSTANCE = it }
+            ).addMigrations(MIGRATION_1_2).build().also { INSTANCE = it }
         }
     }
 }
