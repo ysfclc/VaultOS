@@ -1,6 +1,6 @@
 # VaultOS — project status
 
-**Release line:** 0.5.0 · **Application ID:** `com.vaultos.app` · **Target:** Redmi Note 12 Pro 5G
+**Release line:** 0.6.0 · **Application ID:** `com.vaultos.app` · **Target:** Redmi Note 12 Pro 5G
 
 ## Product contract
 
@@ -139,3 +139,14 @@ On-device semantic indexing is not included in this release. It remains disabled
 - Local verification: 13 unit tests passed; lint reports 0 errors / 16 warnings; debug and release APKs assembled; both signatures verify with the preserved SHA-256 certificate digest c5b0c6c49ff6ca525558c2fecfa11dff54fba50f9083482cd869af4759e78b23.
 - APK metadata verified: com.vaultos.app, versionCode 5, versionName 0.5.0, minSdk 26, targetSdk 35.
 - Physical clipboard compatibility, Xiaomi background execution, Android 13/14/15 permission behavior, and full accessibility/landscape review are still unverified and remain acceptance gates.
+
+
+## Implemented in 0.6.0 — filesystem safety hardening
+
+- Recursive copy, move, ZIP creation and deletion refuse symbolic links. This prevents file operations from following linked files/directories outside the selected tree.
+- Directory checks use NOFOLLOW_LINKS; recursive statistics reject symlinks and non-regular filesystem entries.
+- ZIP creation now calculates each selected source's statistics once and reuses the result for progress totals.
+- Regression coverage: deleting a directory symlink leaves its external target intact; copying and moving folders containing linked files is rejected; deletion preflights nested links before removing sibling files; creating an archive from a linked root is rejected.
+- Local verification: 18 unit tests passed (0 failures); lint 0 errors / 16 warnings; debug and release APKs assembled; both APK signatures match the preserved certificate SHA-256 digest c5b0c6c49ff6ca525558c2fecfa11dff54fba50f9083482cd869af4759e78b23.
+- APK metadata: com.vaultos.app, versionCode 6, versionName 0.6.0, minSdk 26, targetSdk 35.
+- GitHub Actions and all physical-device acceptance remain outstanding.

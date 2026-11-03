@@ -20,9 +20,13 @@ User-defined collections and tags, related-item and SHA-256 duplicate groups, sa
 
 Xiaomi MIUI/HyperOS background-work onboarding, app-info and battery-optimization shortcuts, and scrollable Settings for constrained screens and larger system text. Physical clipboard, Android-version, accessibility and landscape acceptance remains required.
 
+## 0.6.0 — filesystem safety hardening
+
+Reject symbolic links in recursive copy, move, ZIP creation and delete operations; use no-follow directory checks; avoid repeated archive-stat traversals; add regression tests proving linked targets outside a selected tree remain untouched.
+
 ## 1.0.0 — device-verified product
 
-Signed release process, migration/restore tests, accessibility and performance review, tested Xiaomi background behavior, and documented Android-version compatibility.
+Signed release process, GitHub-hosted CI verification, migration/restore tests, accessibility and performance review, measured Xiaomi background behavior, and documented Android-version compatibility. See docs/RELEASE-1.0-GATE.md; 1.0.0 is not complete until physical-device checks pass.
 
 ## Compatibility baseline
 

@@ -127,3 +127,14 @@ Phase 2 implementation is in release line 0.2.0. The Room 1→2 migration adds r
 - [x] Run unit tests (13 passed), lint (0 errors / 16 warnings), debug/release assembly and verify both APK signatures against the preserved certificate.
 - [ ] Verify the GitHub-hosted workflow after updating both protected YAML copies.
 - [ ] Run the Redmi Note 12 Pro 5G device test plan, including Chrome, ChatGPT, WhatsApp, Notes, password fields, Android permissions and Xiaomi background restrictions.
+
+
+## Phase 6 — filesystem safety hardening (0.6.0)
+
+- [x] Refuse symbolic links in selected copy, move, archive and delete trees.
+- [x] Use no-follow filesystem checks during recursive copy, ZIP creation and deletion.
+- [x] Avoid repeated source-tree statistics when creating ZIP archives.
+- [x] Add regression tests for deleting a directory symlink, copying a nested file symlink, moving a linked directory, refusing partial deletion when a nested symlink is present, and creating a ZIP from a symlink root.
+- [x] Run unit tests, lint and signed debug/release assembly; verify both APK certificates.
+- [ ] Run the GitHub-hosted workflow for 0.6.0.
+- [ ] Complete all physical-device acceptance items before 1.0.0.

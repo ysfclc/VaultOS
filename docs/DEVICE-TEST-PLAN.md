@@ -1,6 +1,6 @@
 # Redmi Note 12 Pro 5G device test plan
 
-Run on the actual phone after installing the debug APK. Record Android/MIUI version and results.
+Run on the actual phone after installing the VaultOS-release-APK artifact from GitHub Actions. It is signed with the preserved update key. Record Android/API and MIUI/HyperOS versions and results.
 
 1. **Cold start:** launch app, grant all-files access, start initial scan, verify existing files appear as Indexed and have no archive copy.
 2. **New download:** download a PDF and an APK to public Downloads, wait for the download event or scan, verify each appears once and has an internal archive copy; confirm the source files remain in Downloads.
@@ -67,3 +67,27 @@ Run on Android 13 (API 33), Android 14 (API 34) and Android 15 (API 35):
 - Increase system font size and display size; visit every Settings card and confirm buttons and descriptions remain reachable without horizontal clipping.
 - Test portrait and landscape on Home, Files, Collections, Apps and Settings; confirm content remains scrollable and no controls disappear behind system bars.
 - With TalkBack enabled, navigate the top actions, bottom navigation, Settings shortcuts, switches and backup controls; confirm each actionable control has a useful spoken label and logical focus order.
+
+
+## Phase 6 filesystem safety regression
+
+These cases are covered by local JVM tests and should also be spot-checked on-device if the selected storage provider exposes symbolic links:
+
+- Select a directory containing a symbolic link to a file outside it; copy must refuse the operation and leave the external file unchanged.
+- Select a directory symlink pointing to an external directory; delete must refuse the operation and leave all external contents unchanged.
+- Select a symbolic link as a ZIP source; archive creation must refuse it and leave the target untouched.
+
+
+## Release 1.0.0 acceptance gate
+
+Do not mark 1.0.0 device-verified until every required group below has an observed result on the actual Redmi Note 12 Pro 5G.
+
+1. **Update install and data retention:** install the 0.6.0 release artifact over the existing 0.5.0 installation without uninstalling. Confirm the package updates in place and existing vault items, tags, collections, saved searches and keyboard settings remain.
+2. **Backup compatibility:** create a fresh external backup; restore it into a clean test installation; verify archived payload hashes, index-only references, recycle-bin entries, tags, collections, metadata and saved searches. Also restore a known v1 backup and a v2 backup if available.
+3. **Clipboard and IME:** complete steps 6–7 above in Chrome, ChatGPT, WhatsApp and Notes; test ordinary, long, sensitive and password-field clipboard cases; confirm the Gboard switch works.
+4. **Android permissions:** complete the permission matrix on the device's installed Android version, including deny/grant/revoke and returning from Settings.
+5. **Xiaomi background behavior:** test with default battery settings and again after following the optional Autostart / No restrictions guide. Record observed catch-up time; do not infer an exact schedule.
+6. **Accessibility and layout:** test TalkBack, enlarged font/display size, portrait, landscape, gesture navigation and all Settings controls.
+7. **Performance and stability:** cold start, large initial scan, incremental scan, large-file import, 100,000+ character text, thumbnail scrolling, batch operations, backup/restore and repeated app relaunch. Record crashes, ANRs, lost items and unusual battery use.
+
+Record these device facts with the results: model, Android version/API, MIUI/HyperOS version, VaultOS version, free storage before testing, and whether the test used internal storage, SD/USB, or another SAF provider. Use synthetic/private-safe test content, not real passwords or private conversations.

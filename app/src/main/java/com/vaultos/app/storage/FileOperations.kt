@@ -9,6 +9,8 @@ import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.nio.file.Files
+import java.nio.file.LinkOption
 import java.util.UUID
 import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
@@ -52,13 +54,15 @@ object FileOperations {
         try {
             suspend fun copyNode(from: File, to: File) {
                 currentCoroutineContext().ensureActive()
-                if (from.isDirectory) {
+                require(!Files.isSymbolicLink(from.toPath())) { "Refusing to copy through a symbolic link: " + from.name }
+                if (Files.isDirectory(from.toPath(), LinkOption.NOFOLLOW_LINKS)) {
                     require(to.mkdirs() || to.isDirectory) { "Cannot create folder ${to.name}" }
                     from.listFiles()?.sortedBy { it.name.lowercase() }?.forEach { child ->
                         currentCoroutineContext().ensureActive()
                         copyNode(child, File(to, child.name))
                     } ?: throw IllegalStateException("Cannot read folder ${from.name}")
                 } else {
+                    require(Files.isRegularFile(from.toPath(), LinkOption.NOFOLLOW_LINKS)) { "Unsupported filesystem entry: " + from.name }
                     to.parentFile?.let { require(it.exists() || it.mkdirs()) { "Cannot create folder" } }
                     FileInputStream(from).use { input ->
                         FileOutputStream(to).use { output ->
@@ -125,6 +129,9 @@ object FileOperations {
     ) = withContext(Dispatchers.IO) {
         require(sources.isNotEmpty()) { "Select at least one file" }
         require(!destination.exists()) { "Archive already exists" }
+        require(sources.none { Files.isSymbolicLink(it.toPath()) }) {
+            "Symbolic links cannot be selected for archive creation"
+        }
         val canonicalSources = sources.map { it.canonicalFile }
         require(canonicalSources.all { it.exists() && it.canRead() }) { "A selected item is no longer readable" }
         require(canonicalSources.none { it == destination.canonicalFile || (it.isDirectory && destination.canonicalPath.startsWith(it.canonicalPath + File.separator)) }) {
@@ -132,8 +139,9 @@ object FileOperations {
         }
         destination.parentFile?.let { require(it.exists() || it.mkdirs()) { "Cannot create archive folder" } }
         val temp = File(destination.parentFile, ".${destination.name}.${UUID.randomUUID()}.partial")
-        val total = canonicalSources.sumOf { stats(it).first }
-        val totalFiles = canonicalSources.sumOf { stats(it).second }
+        val sourceStats = canonicalSources.map(::stats)
+        val total = sourceStats.sumOf { it.first }
+        val totalFiles = sourceStats.sumOf { it.second }
         var written = 0L
         var done = 0
         val usedNames = mutableSetOf<String>()
@@ -141,7 +149,8 @@ object FileOperations {
             ZipOutputStream(BufferedOutputStream(FileOutputStream(temp))).use { zip ->
                 suspend fun addNode(source: File, entryName: String) {
                     currentCoroutineContext().ensureActive()
-                    if (source.isDirectory) {
+                    require(!Files.isSymbolicLink(source.toPath())) { "Refusing to archive through a symbolic link: " + source.name }
+                    if (Files.isDirectory(source.toPath(), LinkOption.NOFOLLOW_LINKS)) {
                         val dirName = entryName.trimEnd('/') + "/"
                         if (usedNames.add(dirName)) {
                             zip.putNextEntry(ZipEntry(dirName))
@@ -151,6 +160,7 @@ object FileOperations {
                             addNode(child, "$dirName${child.name}")
                         } ?: throw IllegalStateException("Cannot read folder ${source.name}")
                     } else {
+                        require(Files.isRegularFile(source.toPath(), LinkOption.NOFOLLOW_LINKS)) { "Unsupported filesystem entry: " + source.name }
                         val safeName = uniqueEntry(entryName, usedNames)
                         zip.putNextEntry(ZipEntry(safeName).apply { time = source.lastModified() })
                         FileInputStream(source).use { input ->
@@ -253,12 +263,14 @@ object FileOperations {
         var removedBytes = 0L
         suspend fun deleteNode(file: File) {
             currentCoroutineContext().ensureActive()
-            if (file.isDirectory) {
+            require(!Files.isSymbolicLink(file.toPath())) { "Refusing to delete through symbolic link: " + file.name }
+            val isDirectory = Files.isDirectory(file.toPath(), LinkOption.NOFOLLOW_LINKS)
+            if (isDirectory) {
                 file.listFiles()?.forEach { child -> deleteNode(child) }
             }
-            val fileBytes = if (file.isFile) file.length() else 0L
-            require(file.delete()) { "Could not delete ${file.name}" }
-            if (!file.isDirectory) {
+            val fileBytes = if (!isDirectory && Files.isRegularFile(file.toPath(), LinkOption.NOFOLLOW_LINKS)) file.length() else 0L
+            require(file.delete()) { "Could not delete " + file.name }
+            if (!isDirectory) {
                 removedFiles++
                 removedBytes += fileBytes
             }
@@ -281,13 +293,25 @@ object FileOperations {
     }
 
     private fun stats(file: File): Pair<Long, Int> {
-        if (file.isFile) return file.length() to 1
         var bytes = 0L
         var files = 0
-        file.walkTopDown().filter { it.isFile }.forEach {
-            bytes += it.length()
-            files++
+        fun visit(node: File) {
+            require(!Files.isSymbolicLink(node.toPath())) {
+                "Symbolic links are not supported for file operations: " + node.name
+            }
+            if (Files.isDirectory(node.toPath(), LinkOption.NOFOLLOW_LINKS)) {
+                val children = node.listFiles()
+                    ?: throw IllegalStateException("Cannot read folder " + node.name)
+                children.forEach(::visit)
+            } else {
+                require(Files.isRegularFile(node.toPath(), LinkOption.NOFOLLOW_LINKS)) {
+                    "Unsupported filesystem entry: " + node.name
+                }
+                bytes += node.length()
+                files++
+            }
         }
+        visit(file)
         return bytes to files
     }
 }

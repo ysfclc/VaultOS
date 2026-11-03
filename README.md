@@ -1,6 +1,6 @@
 # VaultOS for Android
 
-**A local-first Android file library and manager (release 0.5.0).** This repository contains a native Kotlin/Jetpack Compose application, an optional capture keyboard, a DocumentsProvider, a private archive, local indexing, and manual external backup/restore.
+**A local-first Android file library and manager (release 0.6.0).** This repository contains a native Kotlin/Jetpack Compose application, an optional capture keyboard, a DocumentsProvider, a private archive, local indexing, and manual external backup/restore.
 
 ## What is implemented
 
@@ -61,7 +61,7 @@ The supplied workflow is available in both places:
 - standalone copy: `android-build.yml`
 - GitHub Actions location: `.github/workflows/android-build.yml`
 
-For the Memo-style ZIP update flow, first add the standalone YAML at .github/workflows/android-build.yml (this alone does not start a build). Then create an incoming/ folder and upload the archive as incoming/VaultOS-source.zip. The workflow validates the archive, extracts the complete project over the repository, creates an import note under docs/updates/, commits and pushes the imported files to the current branch, then tests and builds them. Both workflow copies (.github/workflows/android-build.yml and the root android-build.yml mirror) are kept authoritative during ZIP imports so an older archive cannot roll back a newer build fix. Keep both copies synchronized; the import excludes both. Keep the filename stable; replacing the ZIP with new contents is detected by SHA-256. When a release changes the workflow YAML itself, replace both YAML copies separately before uploading the source ZIP; the importer intentionally excludes these protected workflow files. The 0.5.0 source package includes the matching updated copies. Alternatively, upload/extract the source ZIP yourself and run **Actions → VaultOS Android Build → Run workflow**. The workflow runs unit tests and lint before building both signed variants. It publishes `VaultOS-release-APK` (recommended for normal installation/update), `VaultOS-debug-APK`, and a `VaultOS-build-metadata` artifact containing checksums and build information. GitHub packages each uploaded artifact in a ZIP.
+For the Memo-style ZIP update flow, first add the standalone YAML at .github/workflows/android-build.yml (this alone does not start a build). Then create an incoming/ folder and upload the archive as incoming/VaultOS-source.zip. The workflow validates the archive, extracts the complete project over the repository, creates an import note under docs/updates/, commits and pushes the imported files to the current branch, then tests and builds them. Both workflow copies (.github/workflows/android-build.yml and the root android-build.yml mirror) are kept authoritative during ZIP imports so an older archive cannot roll back a newer build fix. Keep both copies synchronized; the import excludes both. Keep the filename stable; replacing the ZIP with new contents is detected by SHA-256. When a release changes the workflow YAML itself, replace both YAML copies separately before uploading the source ZIP; the importer intentionally excludes these protected workflow files. The 0.6.0 source package includes the matching updated copies. Alternatively, upload/extract the source ZIP yourself and run **Actions → VaultOS Android Build → Run workflow**. The workflow runs unit tests and lint before building both signed variants. It publishes `VaultOS-release-APK` (recommended for normal installation/update), `VaultOS-debug-APK`, and a `VaultOS-build-metadata` artifact containing checksums and build information. GitHub packages each uploaded artifact in a ZIP.
 
 ## Data and backup notes
 
@@ -108,3 +108,13 @@ Semantic indexing is not enabled in 0.4.0. It remains gated until an on-device e
 VaultOS 0.5.0 adds Xiaomi MIUI/HyperOS background-work onboarding in Settings. The guide links to Android app-info and battery-optimization settings and explains the optional Autostart, No restrictions and Recents-lock steps without pretending those vendor controls can be changed silently. Settings now scrolls independently so lower controls remain reachable on short displays and with enlarged system text.
 
 The app remains orientation-flexible. Phase 5 still requires physical verification of clipboard behavior in Chrome, ChatGPT, WhatsApp, Notes and password fields, plus Android 13/14/15 permission and large-font/landscape acceptance checks. WorkManager scheduling is best-effort; Xiaomi battery settings cannot guarantee exact background execution.
+
+
+## Phase 6 — filesystem safety hardening (0.6.0)
+
+File operations now refuse symbolic links rather than following them. This protects copy, move, ZIP creation and recursive delete from traversing outside the selected tree through a linked file or directory. Directory traversal uses no-follow filesystem checks; archive statistics are collected once per selected source. Regression tests cover directory-link deletion, nested file-link copying and ZIP creation from a linked root.
+
+The 1.0.0 device-verification gate remains open: physical clipboard/IME, Android 13–15 permissions, Xiaomi background behavior, backup/restore on external storage, accessibility and landscape acceptance still require the actual phone.
+
+
+The 1.0.0 device acceptance checklist is in docs/RELEASE-1.0-GATE.md. Until those real-device checks pass, 0.6.0 is the latest locally verified release and device verification remains pending.
