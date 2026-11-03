@@ -1,6 +1,6 @@
 # VaultOS for Android
 
-**A local-first Android file library and manager (release 0.3.0).** This repository contains a native Kotlin/Jetpack Compose application, an optional capture keyboard, a DocumentsProvider, a private archive, local indexing, and manual external backup/restore.
+**A local-first Android file library and manager (release 0.4.0).** This repository contains a native Kotlin/Jetpack Compose application, an optional capture keyboard, a DocumentsProvider, a private archive, local indexing, and manual external backup/restore.
 
 ## What is implemented
 
@@ -12,6 +12,8 @@ See `docs/PROJECT-STATUS.md`, `docs/TASKS.md`, and `docs/RELEASE-PLAN.md` for th
 - **Existing-storage index:** after the user grants all-files access, the first scan records accessible existing files without copying them. Later discoveries are copied into the archive; originals remain in their existing folders.
 - **Resumable scanning:** the initial device-library baseline scans readable shared storage in bounded batches and stores its pending directory queue. Routine catch-up uses MediaStore generation numbers on Android 11+ (and modification timestamps on older versions) rather than repeatedly walking every folder. MediaStore notifications and supported DownloadManager completion events request a scan; a 15-minute periodic job is the catch-up mechanism.
 - **Unified library:** categories, full-text search, pinned items, recent items, archive status, file details, and device/vault folder browsing.
+- **Personal organization:** create tags and collections, assign them to items, surface related files, inspect duplicate groups using existing SHA-256 hashes, and save/reopen searches.
+- **Local metadata:** on request, extract available metadata from images, PDFs, DOCX/ODT, audio/video, APKs and text. Extraction runs on-device and does not alter source files.
 - **Long text:** complete UTF-8 text is stored as a file. Search uses chunked text indexing; the Room row only holds a small preview. The capture keyboard has a **Paste saved** action which inserts the complete most-recent saved text directly into the focused input connection, bypassing the normal clipboard preview/history UI.
 - **File operations:** browse, open, share, archive a copy, create folders, copy, cut/move, rename and permanently delete files in accessible shared storage or the private vault.
 - **Application catalog:** list visible installed packages and archive the base APK plus any split APK components exposed by Android. This preserves the package payload but does not include another app's private data, sessions, or databases; a split package is not necessarily installable by opening one component on its own.
@@ -32,7 +34,7 @@ Android intentionally does not allow an ordinary background application to inter
 
 ## Redmi Note 12 Pro 5G setup
 
-1. Install the debug APK from the GitHub Actions artifact (or build it locally).
+1. Install the **VaultOS-release-APK** from the GitHub Actions workflow artifact. Keep using this workflow-built release APK for later updates; it is signed with the persistent VaultOS certificate.
 2. Open VaultOS → **Settings & permissions** → **Grant all-files access**. In Android's special app access screen, enable *Allow access to manage all files* for VaultOS.
 3. Return to VaultOS and use **Scan storage now**. The first scan indexes existing accessible storage; it does not duplicate it into the archive. It can take time on a device with many files and continues in resumable background batches.
 4. For automatic clipboard capture, open **Manage keyboards**, enable **VaultOS Capture Keyboard**, then select it as the active keyboard. This replaces Gboard while selected. Android will show its normal security warning for third-party keyboards. Enable **Automatically save copied text** only when you are comfortable with that behavior. Gboard remains installed and can be selected again at any time.
@@ -45,7 +47,7 @@ Android intentionally does not allow an ordinary background application to inter
 Requirements: JDK 17, Android SDK Platform 35, Build Tools 35.0.0, and Gradle 8.9. The GitHub Actions workflow installs these dependencies for you.
 
 ```bash
-gradle --no-daemon clean testDebugUnitTest lintDebug assembleDebug
+gradle --no-daemon clean testDebugUnitTest lintDebug assembleDebug assembleRelease
 ```
 
 APK output:
@@ -59,7 +61,7 @@ The supplied workflow is available in both places:
 - standalone copy: `android-build.yml`
 - GitHub Actions location: `.github/workflows/android-build.yml`
 
-For the Memo-style ZIP update flow, first add the standalone YAML at .github/workflows/android-build.yml (this alone does not start a build). Then create an incoming/ folder and upload the archive as incoming/VaultOS-source.zip. The workflow validates the archive, extracts the complete project over the repository, creates an import note under docs/updates/, commits and pushes the imported files to the current branch, then tests and builds them. Both workflow copies (.github/workflows/android-build.yml and the root android-build.yml mirror) are kept authoritative during ZIP imports so an older archive cannot roll back a newer build fix. Keep both copies synchronized; the import excludes both. Keep the filename stable; replacing the ZIP with new contents is detected by SHA-256. Alternatively, upload/extract the source ZIP yourself and run **Actions → VaultOS Android Build → Run workflow**. The workflow runs unit tests and lint before building and publishing the debug APK as a downloadable Actions artifact (GitHub packages uploaded artifacts in a ZIP). It also publishes the SHA-256 checksum and build metadata.
+For the Memo-style ZIP update flow, first add the standalone YAML at .github/workflows/android-build.yml (this alone does not start a build). Then create an incoming/ folder and upload the archive as incoming/VaultOS-source.zip. The workflow validates the archive, extracts the complete project over the repository, creates an import note under docs/updates/, commits and pushes the imported files to the current branch, then tests and builds them. Both workflow copies (.github/workflows/android-build.yml and the root android-build.yml mirror) are kept authoritative during ZIP imports so an older archive cannot roll back a newer build fix. Keep both copies synchronized; the import excludes both. Keep the filename stable; replacing the ZIP with new contents is detected by SHA-256. When a release changes the workflow YAML itself, replace both YAML copies separately before uploading the source ZIP; the importer intentionally excludes these protected workflow files. The 0.4.0 source package includes the matching updated copies. Alternatively, upload/extract the source ZIP yourself and run **Actions → VaultOS Android Build → Run workflow**. The workflow runs unit tests and lint before building both signed variants. It publishes `VaultOS-release-APK` (recommended for normal installation/update), `VaultOS-debug-APK`, and a `VaultOS-build-metadata` artifact containing checksums and build information. GitHub packages each uploaded artifact in a ZIP.
 
 ## Data and backup notes
 
@@ -92,3 +94,10 @@ The file browser now supports checkbox multi-selection with batch copy, move, ar
 Managed archive deletions go to the Recycle Bin rather than immediately removing data. Items can be restored or permanently deleted. The database is upgraded through a Room migration, and external backup manifests retain recycle-bin state. Image items show downsampled thumbnails and a larger item-detail preview; other categories retain type-specific previews/icons.
 
 ZIP extraction rejects path traversal, limits archives to 20,000 entries and caps expanded data at 2 GiB. See docs/TASKS.md and docs/DEVICE-TEST-PLAN.md for implementation and on-device validation status.
+
+
+## Phase 4 — smarter library (0.4.0)
+
+VaultOS 0.4.0 adds user-defined tags and collections, related-item navigation, SHA-256 duplicate groups, saved searches, optional-on-request local metadata extraction, and backup manifest v2. Version 2 backups preserve these organization records; the restore path continues to accept version 1 manifests.
+
+Semantic indexing is not enabled in 0.4.0. It remains gated until an on-device embedding runtime/model is selected and tested; the app does not download a model or send content to a service.

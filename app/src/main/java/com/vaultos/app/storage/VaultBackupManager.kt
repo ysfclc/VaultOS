@@ -6,6 +6,12 @@ import android.webkit.MimeTypeMap
 import androidx.documentfile.provider.DocumentFile
 import com.vaultos.app.data.VaultDatabase
 import com.vaultos.app.data.VaultItem
+import com.vaultos.app.data.UserTag
+import com.vaultos.app.data.ItemTagCrossRef
+import com.vaultos.app.data.UserCollection
+import com.vaultos.app.data.CollectionItemCrossRef
+import com.vaultos.app.data.SavedSearch
+import com.vaultos.app.data.ItemMetadata
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -45,7 +51,14 @@ object VaultBackupManager {
         }
 
         if (root.exists()) copyDirectory(root, backupFolder)
-        val items = kotlinx.coroutines.runBlocking { VaultDatabase.get(context).dao().allNow() }
+        val dao = VaultDatabase.get(context).dao()
+        val items = kotlinx.coroutines.runBlocking { dao.allNow() }
+        val userTags = kotlinx.coroutines.runBlocking { dao.allTagsNow() }
+        val itemTags = kotlinx.coroutines.runBlocking { dao.allItemTagsNow() }
+        val collections = kotlinx.coroutines.runBlocking { dao.allCollectionsNow() }
+        val collectionItems = kotlinx.coroutines.runBlocking { dao.allCollectionItemsNow() }
+        val savedSearches = kotlinx.coroutines.runBlocking { dao.allSavedSearchesNow() }
+        val metadata = kotlinx.coroutines.runBlocking { dao.allMetadataNow() }
         val records = JSONArray()
         // Preserve the complete catalogue, including indexed-only device files. Their
         // original paths are metadata references; only archived payloads are copied.
@@ -75,10 +88,42 @@ object VaultBackupManager {
                 put("trashOriginalRelativePath", trashOriginalRelative?.let { it } ?: JSONObject.NULL)
             })
         }
+        val tagRecords = JSONArray().apply { userTags.forEach { tag -> put(JSONObject().apply {
+            put("id", tag.id); put("name", tag.name); put("normalizedName", tag.normalizedName); put("createdAt", tag.createdAt)
+        }) } }
+        val itemTagRecords = JSONArray().apply { itemTags.forEach { ref -> put(JSONObject().apply {
+            put("itemId", ref.itemId); put("tagId", ref.tagId); put("addedAt", ref.addedAt)
+        }) } }
+        val collectionRecords = JSONArray().apply { collections.forEach { collection -> put(JSONObject().apply {
+            put("id", collection.id); put("name", collection.name); put("normalizedName", collection.normalizedName)
+            put("description", collection.description); put("createdAt", collection.createdAt); put("updatedAt", collection.updatedAt)
+        }) } }
+        val collectionItemRecords = JSONArray().apply { collectionItems.forEach { ref -> put(JSONObject().apply {
+            put("collectionId", ref.collectionId); put("itemId", ref.itemId); put("addedAt", ref.addedAt)
+        }) } }
+        val savedSearchRecords = JSONArray().apply { savedSearches.forEach { saved -> put(JSONObject().apply {
+            put("id", saved.id); put("name", saved.name); put("normalizedName", saved.normalizedName)
+            put("query", saved.query); put("createdAt", saved.createdAt)
+        }) } }
+        val metadataRecords = JSONArray().apply { metadata.forEach { meta -> put(JSONObject().apply {
+            put("itemId", meta.itemId); put("title", meta.title ?: JSONObject.NULL); put("author", meta.author ?: JSONObject.NULL)
+            put("subject", meta.subject ?: JSONObject.NULL); put("pageCount", meta.pageCount ?: JSONObject.NULL)
+            put("widthPx", meta.widthPx ?: JSONObject.NULL); put("heightPx", meta.heightPx ?: JSONObject.NULL)
+            put("durationMs", meta.durationMs ?: JSONObject.NULL); put("capturedAt", meta.capturedAt ?: JSONObject.NULL)
+            put("cameraModel", meta.cameraModel ?: JSONObject.NULL); put("packageName", meta.packageName ?: JSONObject.NULL)
+            put("packageVersionName", meta.packageVersionName ?: JSONObject.NULL); put("packageVersionCode", meta.packageVersionCode ?: JSONObject.NULL)
+            put("extractedAt", meta.extractedAt)
+        }) } }
         val manifest = JSONObject().apply {
-            put("format", "vaultos-backup-v1")
+            put("format", "vaultos-backup-v2")
             put("createdAt", System.currentTimeMillis())
             put("records", records)
+            put("userTags", tagRecords)
+            put("itemTags", itemTagRecords)
+            put("userCollections", collectionRecords)
+            put("collectionItems", collectionItemRecords)
+            put("savedSearches", savedSearchRecords)
+            put("itemMetadata", metadataRecords)
         }
         backupFolder.findFile("backup-index.json")?.delete()
         val manifestFile = backupFolder.createFile("application/json", "backup-index.json")
@@ -194,7 +239,8 @@ object VaultBackupManager {
             val json = context.contentResolver.openInputStream(manifestFile.uri)?.bufferedReader()?.use { it.readText() }
             if (!json.isNullOrBlank()) {
                 val rootObject = JSONObject(json)
-                require(rootObject.optString("format") == "vaultos-backup-v1") { "Unsupported VaultOS backup format" }
+                val format = rootObject.optString("format")
+                require(format == "vaultos-backup-v1" || format == "vaultos-backup-v2") { "Unsupported VaultOS backup format" }
                 val recordArray = rootObject.optJSONArray("records") ?: JSONArray()
                 val dao = VaultDatabase.get(context).dao()
                 val repository = VaultRepository(context)
@@ -240,6 +286,74 @@ object VaultBackupManager {
                     dao.upsert(item)
                     if (item.category == "Text" || item.category == "Code") repository.reindexText(item.id, file)
                     records++
+                }
+
+                // v2 restores the user-defined organization layer after item records exist.
+                if (format == "vaultos-backup-v2") {
+                    val tagIds = mutableMapOf<String, String>()
+                    val tagArray = rootObject.optJSONArray("userTags") ?: JSONArray()
+                    for (i in 0 until tagArray.length()) {
+                        val row = tagArray.optJSONObject(i) ?: continue
+                        val incoming = UserTag(row.optString("id"), row.optString("name"), row.optString("normalizedName"), row.optLong("createdAt"))
+                        dao.insertTag(incoming)
+                        tagIds[incoming.id] = dao.findTag(incoming.normalizedName)?.id ?: incoming.id
+                    }
+                    val collectionIds = mutableMapOf<String, String>()
+                    val collectionArray = rootObject.optJSONArray("userCollections") ?: JSONArray()
+                    for (i in 0 until collectionArray.length()) {
+                        val row = collectionArray.optJSONObject(i) ?: continue
+                        val incoming = UserCollection(
+                            row.optString("id"), row.optString("name"), row.optString("normalizedName"),
+                            row.optString("description"), row.optLong("createdAt"), row.optLong("updatedAt")
+                        )
+                        dao.insertCollection(incoming)
+                        collectionIds[incoming.id] = dao.findCollection(incoming.normalizedName)?.id ?: incoming.id
+                    }
+                    val itemTagArray = rootObject.optJSONArray("itemTags") ?: JSONArray()
+                    for (i in 0 until itemTagArray.length()) {
+                        val row = itemTagArray.optJSONObject(i) ?: continue
+                        val itemId = row.optString("itemId")
+                        val tagId = tagIds[row.optString("tagId")] ?: row.optString("tagId")
+                        if (dao.getById(itemId) != null && tagIds.containsValue(tagId)) {
+                            dao.addItemTag(ItemTagCrossRef(itemId, tagId, row.optLong("addedAt")))
+                        }
+                    }
+                    val collectionItemArray = rootObject.optJSONArray("collectionItems") ?: JSONArray()
+                    for (i in 0 until collectionItemArray.length()) {
+                        val row = collectionItemArray.optJSONObject(i) ?: continue
+                        val collectionId = collectionIds[row.optString("collectionId")] ?: row.optString("collectionId")
+                        val itemId = row.optString("itemId")
+                        if (dao.getById(itemId) != null && collectionIds.containsValue(collectionId)) {
+                            dao.addCollectionItem(CollectionItemCrossRef(collectionId, itemId, row.optLong("addedAt")))
+                        }
+                    }
+                    val savedArray = rootObject.optJSONArray("savedSearches") ?: JSONArray()
+                    for (i in 0 until savedArray.length()) {
+                        val row = savedArray.optJSONObject(i) ?: continue
+                        dao.insertSavedSearch(SavedSearch(row.optString("id"), row.optString("name"), row.optString("normalizedName"), row.optString("query"), row.optLong("createdAt")))
+                    }
+                    val metadataArray = rootObject.optJSONArray("itemMetadata") ?: JSONArray()
+                    for (i in 0 until metadataArray.length()) {
+                        val row = metadataArray.optJSONObject(i) ?: continue
+                        val itemId = row.optString("itemId")
+                        if (dao.getById(itemId) == null) continue
+                        dao.upsertMetadata(ItemMetadata(
+                            itemId = itemId,
+                            title = row.optString("title").takeIf { it.isNotBlank() && it != "null" },
+                            author = row.optString("author").takeIf { it.isNotBlank() && it != "null" },
+                            subject = row.optString("subject").takeIf { it.isNotBlank() && it != "null" },
+                            pageCount = if (row.isNull("pageCount")) null else row.optInt("pageCount"),
+                            widthPx = if (row.isNull("widthPx")) null else row.optInt("widthPx"),
+                            heightPx = if (row.isNull("heightPx")) null else row.optInt("heightPx"),
+                            durationMs = if (row.isNull("durationMs")) null else row.optLong("durationMs"),
+                            capturedAt = row.optString("capturedAt").takeIf { it.isNotBlank() && it != "null" },
+                            cameraModel = row.optString("cameraModel").takeIf { it.isNotBlank() && it != "null" },
+                            packageName = row.optString("packageName").takeIf { it.isNotBlank() && it != "null" },
+                            packageVersionName = row.optString("packageVersionName").takeIf { it.isNotBlank() && it != "null" },
+                            packageVersionCode = if (row.isNull("packageVersionCode")) null else row.optLong("packageVersionCode"),
+                            extractedAt = row.optLong("extractedAt", System.currentTimeMillis())
+                        ))
+                    }
                 }
             }
         }

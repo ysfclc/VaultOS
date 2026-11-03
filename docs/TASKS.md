@@ -48,10 +48,11 @@ Phase 2 implementation is in release line 0.2.0. The Room 1→2 migration adds r
 - [x] Deterministic categories and unified search.
 - [x] Pinned items and category collections.
 - [x] Preserve index-only item references in backup manifest.
-- [ ] User-defined tags and collections.
-- [ ] Related-item and duplicate-group views.
-- [ ] Optional local metadata extraction (PDF/document title, image metadata, APK package metadata).
-- [ ] Optional on-device semantic indexing, disabled unless explicitly configured.
+- [x] User-defined tags and collections, with item assignment/removal and cascade-safe storage.
+- [x] Related-item and SHA-256 duplicate-group views.
+- [x] Explicit local metadata extraction for PDFs, DOCX/ODT, images, audio/video, APKs and text items.
+- [x] Saved searches, including metadata and tag matches in unified search.
+- [ ] Optional on-device semantic indexing, disabled until an embedding runtime/model is explicitly selected.
 
 ## Phase 5 — device integration and polish
 
@@ -98,3 +99,18 @@ Phase 2 implementation is in release line 0.2.0. The Room 1→2 migration adds r
 - [x] Installed-versus-archived APK version comparison and split-component export guidance.
 - [x] Reduce redundant full-vault reconciliation during device-storage scans; debounce MediaStore scan requests and bound initial scan work.
 - [ ] GitHub Actions and physical Redmi validation.
+
+
+## Phase 4 verification gate (2026-11-03)
+
+- [x] Add Room 2→3 migration for tags, collections, saved searches, metadata and relationship tables without clearing existing items.
+- [x] Add user-defined tags and collections, related-item navigation, and SHA-256 duplicate groups.
+- [x] Add user-triggered local metadata extraction and include metadata in unified search.
+- [x] Extend external backup manifest to v2 while retaining v1 restore compatibility.
+- [x] Add focused PDF/XML metadata parser unit tests.
+- [x] Clean local Gradle test, lint, debug APK and signed release APK build.
+- [x] Confirm 13 unit tests pass and Android lint has 0 errors (16 warnings).
+- [x] Confirm debug/release APK certificate matches the retained 0.3.0 release certificate.
+- [x] Validate migration DDL with SQLite, including uniqueness, foreign-key integrity and cascades.
+- [ ] Configure and validate an on-device embedding engine before enabling semantic indexing.
+- [ ] Run GitHub Actions and complete physical Redmi Note 12 Pro 5G acceptance testing.

@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Database
 import androidx.room.Entity
 import androidx.room.Index
+import androidx.room.ForeignKey
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.PrimaryKey
@@ -49,6 +50,80 @@ data class SearchChunk(
     val content: String
 )
 
+
+@Entity(tableName = "user_tags", indices = [Index(value = ["normalizedName"], unique = true)])
+data class UserTag(
+    @PrimaryKey val id: String,
+    val name: String,
+    val normalizedName: String,
+    val createdAt: Long
+)
+
+@Entity(
+    tableName = "item_tag_cross_ref",
+    primaryKeys = ["itemId", "tagId"],
+    indices = [Index("tagId")],
+    foreignKeys = [
+        ForeignKey(entity = VaultItem::class, parentColumns = ["id"], childColumns = ["itemId"], onDelete = ForeignKey.CASCADE),
+        ForeignKey(entity = UserTag::class, parentColumns = ["id"], childColumns = ["tagId"], onDelete = ForeignKey.CASCADE)
+    ]
+)
+data class ItemTagCrossRef(val itemId: String, val tagId: String, val addedAt: Long)
+
+@Entity(tableName = "user_collections", indices = [Index(value = ["normalizedName"], unique = true)])
+data class UserCollection(
+    @PrimaryKey val id: String,
+    val name: String,
+    val normalizedName: String,
+    val description: String,
+    val createdAt: Long,
+    val updatedAt: Long
+)
+
+@Entity(
+    tableName = "collection_item_cross_ref",
+    primaryKeys = ["collectionId", "itemId"],
+    indices = [Index("itemId")],
+    foreignKeys = [
+        ForeignKey(entity = UserCollection::class, parentColumns = ["id"], childColumns = ["collectionId"], onDelete = ForeignKey.CASCADE),
+        ForeignKey(entity = VaultItem::class, parentColumns = ["id"], childColumns = ["itemId"], onDelete = ForeignKey.CASCADE)
+    ]
+)
+data class CollectionItemCrossRef(val collectionId: String, val itemId: String, val addedAt: Long)
+
+@Entity(tableName = "saved_searches", indices = [Index(value = ["normalizedName"], unique = true)])
+data class SavedSearch(
+    @PrimaryKey val id: String,
+    val name: String,
+    val normalizedName: String,
+    val query: String,
+    val createdAt: Long
+)
+
+@Entity(
+    tableName = "item_metadata",
+    indices = [Index("packageName")],
+    foreignKeys = [ForeignKey(entity = VaultItem::class, parentColumns = ["id"], childColumns = ["itemId"], onDelete = ForeignKey.CASCADE)]
+)
+data class ItemMetadata(
+    @PrimaryKey val itemId: String,
+    val title: String? = null,
+    val author: String? = null,
+    val subject: String? = null,
+    val pageCount: Int? = null,
+    val widthPx: Int? = null,
+    val heightPx: Int? = null,
+    val durationMs: Long? = null,
+    val capturedAt: String? = null,
+    val cameraModel: String? = null,
+    val packageName: String? = null,
+    val packageVersionName: String? = null,
+    val packageVersionCode: Long? = null,
+    val extractedAt: Long
+)
+
+data class DuplicateGroup(val hash: String, val itemCount: Int, val totalBytes: Long)
+
 @Dao
 interface VaultDao {
     @Query("SELECT * FROM items WHERE isTrashed = 0 ORDER BY isPinned DESC, createdAt DESC")
@@ -64,10 +139,17 @@ interface VaultDao {
     @Query("""
         SELECT DISTINCT items.* FROM items
         LEFT JOIN search_chunks ON search_chunks.itemId = items.id
+        LEFT JOIN item_metadata ON item_metadata.itemId = items.id
+        LEFT JOIN item_tag_cross_ref ON item_tag_cross_ref.itemId = items.id
+        LEFT JOIN user_tags ON user_tags.id = item_tag_cross_ref.tagId
         WHERE items.isTrashed = 0 AND (
               items.name LIKE '%' || :query || '%'
            OR items.textContent LIKE '%' || :query || '%'
            OR items.category LIKE '%' || :query || '%'
+           OR item_metadata.title LIKE '%' || :query || '%'
+           OR item_metadata.author LIKE '%' || :query || '%'
+           OR item_metadata.subject LIKE '%' || :query || '%'
+           OR user_tags.name LIKE '%' || :query || '%'
            OR search_chunks.content LIKE '%' || :query || '%'
         )
         ORDER BY items.isPinned DESC, items.createdAt DESC
@@ -113,6 +195,116 @@ interface VaultDao {
     @Query("SELECT COALESCE(SUM(sizeBytes),0) FROM items WHERE isArchived = 1 AND isTrashed = 0")
     fun archivedBytes(): Flow<Long>
 
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertTag(tag: UserTag)
+
+    @Query("SELECT * FROM user_tags WHERE normalizedName = :normalizedName LIMIT 1")
+    suspend fun findTag(normalizedName: String): UserTag?
+
+    @Query("SELECT * FROM user_tags ORDER BY name COLLATE NOCASE")
+    fun observeTags(): Flow<List<UserTag>>
+
+    @Query("SELECT user_tags.* FROM user_tags INNER JOIN item_tag_cross_ref ON item_tag_cross_ref.tagId = user_tags.id WHERE item_tag_cross_ref.itemId = :itemId ORDER BY user_tags.name COLLATE NOCASE")
+    fun observeTagsForItem(itemId: String): Flow<List<UserTag>>
+
+    @Query("SELECT * FROM user_tags ORDER BY name COLLATE NOCASE")
+    suspend fun allTagsNow(): List<UserTag>
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun addItemTag(reference: ItemTagCrossRef)
+
+    @Query("DELETE FROM item_tag_cross_ref WHERE itemId = :itemId AND tagId = :tagId")
+    suspend fun removeItemTag(itemId: String, tagId: String)
+
+    @Query("DELETE FROM user_tags WHERE id = :tagId")
+    suspend fun deleteTag(tagId: String)
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertCollection(collection: UserCollection)
+
+    @Query("SELECT * FROM user_collections WHERE normalizedName = :normalizedName LIMIT 1")
+    suspend fun findCollection(normalizedName: String): UserCollection?
+
+    @Query("SELECT * FROM user_collections ORDER BY name COLLATE NOCASE")
+    fun observeCollections(): Flow<List<UserCollection>>
+
+    @Query("SELECT user_collections.* FROM user_collections INNER JOIN collection_item_cross_ref ON collection_item_cross_ref.collectionId = user_collections.id WHERE collection_item_cross_ref.itemId = :itemId ORDER BY user_collections.name COLLATE NOCASE")
+    fun observeCollectionsForItem(itemId: String): Flow<List<UserCollection>>
+
+    @Query("SELECT items.* FROM items INNER JOIN collection_item_cross_ref ON collection_item_cross_ref.itemId = items.id WHERE collection_item_cross_ref.collectionId = :collectionId AND items.isTrashed = 0 ORDER BY items.isPinned DESC, items.createdAt DESC")
+    fun observeCollectionItems(collectionId: String): Flow<List<VaultItem>>
+
+    @Query("SELECT * FROM user_collections ORDER BY name COLLATE NOCASE")
+    suspend fun allCollectionsNow(): List<UserCollection>
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun addCollectionItem(reference: CollectionItemCrossRef)
+
+    @Query("DELETE FROM collection_item_cross_ref WHERE collectionId = :collectionId AND itemId = :itemId")
+    suspend fun removeCollectionItem(collectionId: String, itemId: String)
+
+    @Query("DELETE FROM user_collections WHERE id = :collectionId")
+    suspend fun deleteCollection(collectionId: String)
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertSavedSearch(search: SavedSearch)
+
+    @Query("SELECT * FROM saved_searches ORDER BY createdAt DESC")
+    fun observeSavedSearches(): Flow<List<SavedSearch>>
+
+    @Query("SELECT * FROM saved_searches ORDER BY createdAt DESC")
+    suspend fun allSavedSearchesNow(): List<SavedSearch>
+
+    @Query("DELETE FROM saved_searches WHERE id = :searchId")
+    suspend fun deleteSavedSearch(searchId: String)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertMetadata(metadata: ItemMetadata)
+
+    @Query("SELECT * FROM item_metadata WHERE itemId = :itemId LIMIT 1")
+    fun observeMetadata(itemId: String): Flow<ItemMetadata?>
+
+    @Query("SELECT * FROM item_metadata")
+    suspend fun allMetadataNow(): List<ItemMetadata>
+
+    @Query("SELECT sha256 AS hash, COUNT(*) AS itemCount, SUM(sizeBytes) AS totalBytes FROM items WHERE isTrashed = 0 AND sha256 IS NOT NULL AND sha256 != '' GROUP BY sha256 HAVING COUNT(*) > 1 ORDER BY itemCount DESC, totalBytes DESC")
+    fun observeDuplicateGroups(): Flow<List<DuplicateGroup>>
+
+    @Query("SELECT * FROM items WHERE isTrashed = 0 AND sha256 = :hash ORDER BY name COLLATE NOCASE")
+    fun observeDuplicateItems(hash: String): Flow<List<VaultItem>>
+
+    @Query("""
+        SELECT DISTINCT related.* FROM items AS related
+        WHERE related.id != :itemId AND related.isTrashed = 0 AND (
+            related.id IN (
+                SELECT candidate.itemId FROM item_tag_cross_ref AS candidate
+                INNER JOIN item_tag_cross_ref AS current ON current.tagId = candidate.tagId
+                WHERE current.itemId = :itemId
+            )
+            OR related.id IN (
+                SELECT candidate.itemId FROM collection_item_cross_ref AS candidate
+                INNER JOIN collection_item_cross_ref AS current ON current.collectionId = candidate.collectionId
+                WHERE current.itemId = :itemId
+            )
+            OR related.category = (SELECT category FROM items WHERE id = :itemId)
+        )
+        ORDER BY
+            CASE
+                WHEN related.id IN (SELECT candidate.itemId FROM item_tag_cross_ref AS candidate INNER JOIN item_tag_cross_ref AS current ON current.tagId = candidate.tagId WHERE current.itemId = :itemId) THEN 0
+                WHEN related.id IN (SELECT candidate.itemId FROM collection_item_cross_ref AS candidate INNER JOIN collection_item_cross_ref AS current ON current.collectionId = candidate.collectionId WHERE current.itemId = :itemId) THEN 1
+                ELSE 2
+            END,
+            related.isPinned DESC, related.createdAt DESC
+        LIMIT 8
+    """)
+    fun observeRelatedItems(itemId: String): Flow<List<VaultItem>>
+
+    @Query("SELECT * FROM item_tag_cross_ref")
+    suspend fun allItemTagsNow(): List<ItemTagCrossRef>
+
+    @Query("SELECT * FROM collection_item_cross_ref")
+    suspend fun allCollectionItemsNow(): List<CollectionItemCrossRef>
+
     @Query("SELECT * FROM items WHERE id = :id LIMIT 1")
     suspend fun getById(id: String): VaultItem?
 
@@ -123,7 +315,7 @@ interface VaultDao {
     suspend fun latestTextItem(): VaultItem?
 }
 
-@Database(entities = [VaultItem::class, SearchChunk::class], version = 2, exportSchema = false)
+@Database(entities = [VaultItem::class, SearchChunk::class, UserTag::class, ItemTagCrossRef::class, UserCollection::class, CollectionItemCrossRef::class, SavedSearch::class, ItemMetadata::class], version = 3, exportSchema = false)
 abstract class VaultDatabase : RoomDatabase() {
     abstract fun dao(): VaultDao
 
@@ -136,6 +328,23 @@ abstract class VaultDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS `user_tags` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `normalizedName` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, PRIMARY KEY(`id`))")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_user_tags_normalizedName` ON `user_tags` (`normalizedName`)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS `item_tag_cross_ref` (`itemId` TEXT NOT NULL, `tagId` TEXT NOT NULL, `addedAt` INTEGER NOT NULL, PRIMARY KEY(`itemId`, `tagId`), FOREIGN KEY(`itemId`) REFERENCES `items`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE, FOREIGN KEY(`tagId`) REFERENCES `user_tags`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_item_tag_cross_ref_tagId` ON `item_tag_cross_ref` (`tagId`)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS `user_collections` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `normalizedName` TEXT NOT NULL, `description` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_user_collections_normalizedName` ON `user_collections` (`normalizedName`)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS `collection_item_cross_ref` (`collectionId` TEXT NOT NULL, `itemId` TEXT NOT NULL, `addedAt` INTEGER NOT NULL, PRIMARY KEY(`collectionId`, `itemId`), FOREIGN KEY(`collectionId`) REFERENCES `user_collections`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE, FOREIGN KEY(`itemId`) REFERENCES `items`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_collection_item_cross_ref_itemId` ON `collection_item_cross_ref` (`itemId`)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS `saved_searches` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `normalizedName` TEXT NOT NULL, `query` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, PRIMARY KEY(`id`))")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_saved_searches_normalizedName` ON `saved_searches` (`normalizedName`)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS `item_metadata` (`itemId` TEXT NOT NULL, `title` TEXT, `author` TEXT, `subject` TEXT, `pageCount` INTEGER, `widthPx` INTEGER, `heightPx` INTEGER, `durationMs` INTEGER, `capturedAt` TEXT, `cameraModel` TEXT, `packageName` TEXT, `packageVersionName` TEXT, `packageVersionCode` INTEGER, `extractedAt` INTEGER NOT NULL, PRIMARY KEY(`itemId`), FOREIGN KEY(`itemId`) REFERENCES `items`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_item_metadata_packageName` ON `item_metadata` (`packageName`)")
+            }
+        }
+
         @Volatile private var INSTANCE: VaultDatabase? = null
 
         fun get(context: Context): VaultDatabase = INSTANCE ?: synchronized(this) {
@@ -143,7 +352,7 @@ abstract class VaultDatabase : RoomDatabase() {
                 context.applicationContext,
                 VaultDatabase::class.java,
                 "vaultos.db"
-            ).addMigrations(MIGRATION_1_2).build().also { INSTANCE = it }
+            ).addMigrations(MIGRATION_1_2, MIGRATION_2_3).build().also { INSTANCE = it }
         }
     }
 }

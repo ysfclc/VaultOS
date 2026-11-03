@@ -1,6 +1,6 @@
 # VaultOS — project status
 
-**Release line:** 0.3.0 · **Application ID:** `com.vaultos.app` · **Target:** Redmi Note 12 Pro 5G
+**Release line:** 0.4.0 · **Application ID:** `com.vaultos.app` · **Target:** Redmi Note 12 Pro 5G
 
 ## Product contract
 
@@ -113,3 +113,18 @@ GitHub-hosted Actions confirmation and physical Redmi Note 12 Pro 5G verificatio
 - A bounded LRU cache prevents repeated preview decoding while scrolling.
 - Signing key is a local sideload key. Keep it private and backed up; never regenerate it or updates will fail to install over existing copies. It is not intended as a Google Play production signing identity.
 - GitHub Actions and physical-device performance remain unverified.
+
+
+## Implemented in 0.4.0 — smarter library
+
+- User-created tags and collections can be created, assigned to items, removed, and deleted.
+- Saved searches can be saved from the search bar and reopened from Collections. Unified search includes tag names and extracted title/author/subject values.
+- Duplicate groups are calculated from existing SHA-256 catalogue values; opening a group shows all matching items without re-hashing the device library.
+- Related items are surfaced from shared tags, shared collections and category membership.
+- Metadata extraction is explicitly user-triggered and runs locally: image dimensions/EXIF, PDF title/author/subject/page count, DOCX/ODT core properties, audio/video media tags, APK package/version and text title. Unsupported or unavailable metadata remains blank; source files are not modified.
+- External backup manifest v2 preserves tags, relationships, collections, saved searches and extracted metadata. Restore remains compatible with v1 backups.
+- Room 2→3 migration adds the new tables and indexes without destructive fallback.
+
+### Phase 4 boundaries
+
+On-device semantic indexing is not included in this release. It remains disabled until an embedding runtime and model are explicitly selected and validated for the supported phone class. No model is downloaded and no content is sent to a service. GitHub-hosted Actions and physical Redmi Note 12 Pro 5G verification remain pending.

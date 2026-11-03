@@ -14,7 +14,7 @@ Signed sideloadable debug/release APKs with a persistent signing identity, insta
 
 ## 0.4.0 — smarter library
 
-User-defined collections and tags, duplicate groups, richer metadata extraction, saved searches and optional local semantic search.
+User-defined collections and tags, related-item and SHA-256 duplicate groups, saved searches, user-triggered local metadata extraction, and backup manifest v2. Optional local semantic search remains gated on selecting and validating an on-device embedding runtime/model.
 
 ## 1.0.0 — device-verified product
 

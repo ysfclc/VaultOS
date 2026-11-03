@@ -28,8 +28,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -51,18 +54,30 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.vaultos.app.data.VaultDatabase
 import com.vaultos.app.data.VaultItem
+import com.vaultos.app.data.VaultDao
+import com.vaultos.app.data.UserTag
+import com.vaultos.app.data.ItemTagCrossRef
+import com.vaultos.app.data.UserCollection
+import com.vaultos.app.data.CollectionItemCrossRef
+import com.vaultos.app.data.SavedSearch
 import com.vaultos.app.keyboard.VaultKeyboardService
 import com.vaultos.app.storage.StorageScanWorker
 import com.vaultos.app.storage.VaultBackupManager
 import com.vaultos.app.storage.FileOperationProgress
 import com.vaultos.app.storage.FileOperations
 import com.vaultos.app.storage.VaultRepository
+import com.vaultos.app.storage.MetadataExtractor
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.flowOf
 import java.io.File
+import java.util.Locale
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
@@ -148,10 +163,13 @@ private fun VaultApp(activity: MainActivity, repository: VaultRepository, resume
     val bytes by dao.archivedBytes().collectAsState(initial = 0L)
     var page by remember { mutableStateOf(Page.Home) }
     var query by remember { mutableStateOf("") }
+    var activeSearchQuery by remember { mutableStateOf("") }
+    LaunchedEffect(query) { delay(250); activeSearchQuery = query.trim() }
     var searchMode by remember { mutableStateOf(false) }
     var showItem by remember { mutableStateOf<VaultItem?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
-    val searchItems by dao.search(query).collectAsState(initial = emptyList())
+    val searchItems by remember(activeSearchQuery) { if (activeSearchQuery.isBlank()) flowOf(emptyList()) else dao.search(activeSearchQuery) }.collectAsState(initial = emptyList())
+    val uiScope = rememberCoroutineScope()
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         uris.forEach { uri -> activity.lifecycleScope.launch {
             runCatching { repository.importUri(uri, "Manual import") }
@@ -209,16 +227,34 @@ private fun VaultApp(activity: MainActivity, repository: VaultRepository, resume
                 if (searchMode) {
                     OutlinedTextField(
                         value = query, onValueChange = { query = it }, modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
-                        placeholder = { Text("Search names, full text, categories…") },
+                        placeholder = { Text("Search names, full text, tags, metadata…") },
                         leadingIcon = { Icon(Icons.Default.Search, null) }, singleLine = true
                     )
+                    if (query.isNotBlank()) {
+                        TextButton(onClick = {
+                            val name = query.trim().take(60)
+                            val normalized = name.lowercase(Locale.ROOT)
+                            uiScope.launch {
+                                dao.insertSavedSearch(SavedSearch(UUID.randomUUID().toString(), name, normalized, query.trim(), System.currentTimeMillis()))
+                                message = "Search saved"
+                            }
+                        }) { Icon(Icons.Default.BookmarkAdd, null); Spacer(Modifier.width(6.dp)); Text("Save search") }
+                    }
                 }
                 val visible = if (searchMode && query.isNotBlank()) searchItems else items
                 when (page) {
                     Page.Home -> HomePage(count, bytes, storageAvailable(), items.take(8), onPage = { page = it }, onItem = { showItem = it }, onImport = { importLauncher.launch(arrayOf("*/*")) }, onCapture = { captureClipboard(activity, repository) { message = it } })
                     Page.Incoming -> ItemList(visible, onItem = { showItem = it }, onPin = { item, pinned -> activity.lifecycleScope.launch { repository.setPinned(item, pinned) } })
                     Page.Files -> FilesPage(activity, repository, visible.filter { it.category != "Text" }, trashItems, permissionGranted, onItem = { showItem = it }, onPermission = { openStorageSettings(activity) }, onMessage = { message = it })
-                    Page.Collections -> CollectionsPage(items, onCategory = { query = it; searchMode = true; page = Page.Incoming })
+                    Page.Collections -> CollectionsPage(
+                        dao = dao,
+                        items = items,
+                        onCategory = { query = it; searchMode = true; page = Page.Incoming },
+                        onTag = { query = it; searchMode = true; page = Page.Incoming },
+                        onSavedSearch = { query = it; searchMode = true; page = Page.Incoming },
+                        onItem = { showItem = it },
+                        onMessage = { message = it }
+                    )
                     Page.Apps -> AppsPage(activity, repository, onMessage = { message = it })
                     Page.Settings -> SettingsPage(activity, repository, permissionGranted, backupLauncher, onMessage = { message = it })
                 }
@@ -232,7 +268,10 @@ private fun VaultApp(activity: MainActivity, repository: VaultRepository, resume
                 onDismissRequest = { if (!isCopying) showItem = null },
                 title = { Text(item.name, maxLines = 2, overflow = TextOverflow.Ellipsis) },
                 text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(
+                        Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         Text("${item.category} · ${formatBytes(item.sizeBytes)} · ${if (item.isArchived) "Archived" else "Indexed"}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                         Text("Source: ${item.source}", style = MaterialTheme.typography.bodySmall)
                         Text(item.mimeType, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -240,6 +279,12 @@ private fun VaultApp(activity: MainActivity, repository: VaultRepository, resume
                         if (isText) Text(item.textContent?.take(3000).orEmpty().ifBlank { "Text content is preserved in the original file." }, maxLines = 16, overflow = TextOverflow.Ellipsis)
                         else if (item.category != "Images") Text(item.archivedPath ?: item.originalUri ?: "Indexed item", maxLines = 3, overflow = TextOverflow.Ellipsis)
                         if (isText && item.sizeBytes > 3000) Text("The complete ${item.sizeBytes} byte original is preserved. Copy reads the full file only when requested.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        HorizontalDivider(color = Color(0xFF303943))
+                        ItemOrganizerSection(dao, item, uiScope)
+                        HorizontalDivider(color = Color(0xFF303943))
+                        ItemMetadataSection(activity, dao, item, uiScope, onMessage = { message = it })
+        HorizontalDivider(color = Color(0xFF303943))
+        ItemRelatedSection(dao, item, onItem = { showItem = it })
                     }
                 },
                 confirmButton = {
@@ -362,19 +407,244 @@ private fun HomePage(count: Int, bytes: Long, available: Long, recent: List<Vaul
     }
 }
 
-@Composable private fun CollectionsPage(items: List<VaultItem>, onCategory: (String) -> Unit) {
-    val groups = items.groupingBy { it.category }.eachCount().toList().sortedByDescending { it.second }
-    if (groups.isEmpty()) EmptyState("Smart collections", "Imported files are automatically grouped by content type.")
-    else Column(Modifier.fillMaxSize().padding(top = 12.dp)) {
-        Text("Smart collections", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-        Text("Automatically grouped by file type and content", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-        Spacer(Modifier.height(14.dp))
-        LazyColumn { items(groups) { (name, total) ->
-            Card(Modifier.fillMaxWidth().padding(bottom = 8.dp).clickable { onCategory(name) }, colors = CardDefaults.cardColors(containerColor = Color(0xFF151A20))) {
-                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.Folder, null, tint = Color(0xFF9AE6C1)); Text(name, Modifier.weight(1f).padding(start = 12.dp)); Text(total.toString(), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+@Composable
+private fun CollectionsPage(
+    dao: VaultDao,
+    items: List<VaultItem>,
+    onCategory: (String) -> Unit,
+    onTag: (String) -> Unit,
+    onSavedSearch: (String) -> Unit,
+    onItem: (VaultItem) -> Unit,
+    onMessage: (String) -> Unit
+) {
+    val collections by dao.observeCollections().collectAsState(initial = emptyList())
+    val tags by dao.observeTags().collectAsState(initial = emptyList())
+    val savedSearches by dao.observeSavedSearches().collectAsState(initial = emptyList())
+    val duplicateGroups by dao.observeDuplicateGroups().collectAsState(initial = emptyList())
+    var selectedCollectionId by remember { mutableStateOf<String?>(null) }
+    var selectedDuplicateHash by remember { mutableStateOf<String?>(null) }
+    var showCreateCollection by remember { mutableStateOf(false) }
+    var newCollectionName by remember { mutableStateOf("") }
+    var newCollectionDescription by remember { mutableStateOf("") }
+    val collectionItems by remember(selectedCollectionId) {
+        selectedCollectionId?.let { dao.observeCollectionItems(it) } ?: flowOf(emptyList())
+    }.collectAsState(initial = emptyList())
+    val duplicateItems by remember(selectedDuplicateHash) {
+        selectedDuplicateHash?.let { dao.observeDuplicateItems(it) } ?: flowOf(emptyList())
+    }.collectAsState(initial = emptyList())
+    val scope = rememberCoroutineScope()
+
+    Column(Modifier.fillMaxSize().padding(top = 10.dp)) {
+        when {
+            selectedCollectionId != null -> {
+                val selected = collections.firstOrNull { it.id == selectedCollectionId }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = { selectedCollectionId = null }) { Icon(Icons.Default.ArrowBack, "Back") }
+                    Column(Modifier.weight(1f)) {
+                        Text(selected?.name ?: "Collection", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                        Text("${collectionItems.size} items", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+                if (collectionItems.isEmpty()) EmptyState("Collection is empty", "Open an item and add it to this collection.")
+                else LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(7.dp), contentPadding = PaddingValues(vertical = 10.dp)) {
+                    items(collectionItems, key = { it.id }) { item -> ItemRow(item, onClick = { onItem(item) }) }
+                }
             }
-        } }
+            selectedDuplicateHash != null -> {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = { selectedDuplicateHash = null }) { Icon(Icons.Default.ArrowBack, "Back") }
+                    Column(Modifier.weight(1f)) {
+                        Text("Matching files", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                        Text("SHA-256 ${selectedDuplicateHash?.take(16)}…", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+                LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(7.dp), contentPadding = PaddingValues(vertical = 10.dp)) {
+                    items(duplicateItems, key = { it.id }) { item -> ItemRow(item, onClick = { onItem(item) }) }
+                }
+            }
+            else -> {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Your library, organized", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                        Text("Automatic groups, your own collections and tags", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    }
+                    FilledTonalButton(onClick = { showCreateCollection = true }) { Icon(Icons.Default.CreateNewFolder, null); Spacer(Modifier.width(6.dp)); Text("New") }
+                }
+                LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(vertical = 14.dp)) {
+                    item { Text("SMART CATEGORIES", color = Color(0xFF9AE6C1), style = MaterialTheme.typography.labelMedium) }
+                    val groups = items.groupingBy { it.category }.eachCount().toList().sortedByDescending { it.second }
+                    if (groups.isEmpty()) item { Text("No indexed items yet", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    items(groups, key = { "category-${it.first}" }) { (name, total) ->
+                        Card(Modifier.fillMaxWidth().clickable { onCategory(name) }, colors = CardDefaults.cardColors(containerColor = Color(0xFF151A20))) {
+                            Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Folder, null, tint = Color(0xFF9AE6C1)); Text(name, Modifier.weight(1f).padding(start = 12.dp)); Text(total.toString(), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                    item { Spacer(Modifier.height(8.dp)); Text("YOUR COLLECTIONS", color = Color(0xFF9AE6C1), style = MaterialTheme.typography.labelMedium) }
+                    if (collections.isEmpty()) item { Text("Create a collection, then add items from their detail view.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    items(collections, key = { "collection-${it.id}" }) { collection ->
+                        Card(Modifier.fillMaxWidth().clickable { selectedCollectionId = collection.id }, colors = CardDefaults.cardColors(containerColor = Color(0xFF151A20))) {
+                            Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.CollectionsBookmark, null, tint = Color(0xFF8DBBFF)); Text(collection.name, Modifier.weight(1f).padding(start = 12.dp)); IconButton(onClick = { scope.launch { dao.deleteCollection(collection.id); onMessage("Collection deleted") } }) { Icon(Icons.Default.DeleteOutline, "Delete collection") }; Icon(Icons.Default.ChevronRight, null)
+                            }
+                        }
+                    }
+                    item { Spacer(Modifier.height(8.dp)); Text("TAGS", color = Color(0xFF9AE6C1), style = MaterialTheme.typography.labelMedium) }
+                    if (tags.isEmpty()) item { Text("Add tags from an item’s detail view.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    items(tags, key = { "tag-${it.id}" }) { tag ->
+                        Card(Modifier.fillMaxWidth().clickable { onTag(tag.name) }, colors = CardDefaults.cardColors(containerColor = Color(0xFF151A20))) {
+                            Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.Tag, null); Text(tag.name, Modifier.weight(1f).padding(start = 10.dp)); IconButton(onClick = { scope.launch { dao.deleteTag(tag.id); onMessage("Tag deleted") } }) { Icon(Icons.Default.DeleteOutline, "Delete tag") }; Icon(Icons.Default.ChevronRight, null) }
+                        }
+                    }
+                    item { Spacer(Modifier.height(8.dp)); Text("SAVED SEARCHES", color = Color(0xFF9AE6C1), style = MaterialTheme.typography.labelMedium) }
+                    if (savedSearches.isEmpty()) item { Text("Save a search from the search bar to keep it here.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    items(savedSearches, key = { "search-${it.id}" }) { saved ->
+                        Card(Modifier.fillMaxWidth().clickable { onSavedSearch(saved.query) }, colors = CardDefaults.cardColors(containerColor = Color(0xFF151A20))) {
+                            Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.Bookmark, null); Column(Modifier.weight(1f).padding(horizontal = 10.dp)) { Text(saved.name); Text(saved.query, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }; IconButton(onClick = { scope.launch { dao.deleteSavedSearch(saved.id); onMessage("Saved search deleted") } }) { Icon(Icons.Default.DeleteOutline, "Delete saved search") }; Icon(Icons.Default.ChevronRight, null) }
+                        }
+                    }
+                    item { Spacer(Modifier.height(8.dp)); Text("DUPLICATE GROUPS", color = Color(0xFF9AE6C1), style = MaterialTheme.typography.labelMedium) }
+                    if (duplicateGroups.isEmpty()) item { Text("No duplicate content groups found in the indexed library.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    items(duplicateGroups, key = { "duplicate-${it.hash}" }) { group ->
+                        Card(Modifier.fillMaxWidth().clickable { selectedDuplicateHash = group.hash }, colors = CardDefaults.cardColors(containerColor = Color(0xFF151A20))) {
+                            Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.ContentCopy, null, tint = Color(0xFFFFC477)); Column(Modifier.weight(1f).padding(horizontal = 12.dp)) { Text("${group.itemCount} identical files"); Text("${group.hash.take(16)}…", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }; Text(formatBytes(group.totalBytes))
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
+
+    if (showCreateCollection) {
+        AlertDialog(
+            onDismissRequest = { showCreateCollection = false },
+            title = { Text("New collection") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(newCollectionName, { newCollectionName = it }, label = { Text("Name") }, singleLine = true)
+                    OutlinedTextField(newCollectionDescription, { newCollectionDescription = it }, label = { Text("Description (optional)") }, minLines = 2)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val name = normalizeLibraryLabel(newCollectionName)
+                    if (name == null) onMessage("Enter a collection name")
+                    else scope.launch {
+                        val now = System.currentTimeMillis()
+                        dao.insertCollection(UserCollection(UUID.randomUUID().toString(), name.first, name.second, newCollectionDescription.trim().take(240), now, now))
+                        val saved = dao.findCollection(name.second)
+                        if (saved != null) { selectedCollectionId = saved.id; onMessage("Collection created") }
+                        showCreateCollection = false; newCollectionName = ""; newCollectionDescription = ""
+                    }
+                }) { Text("Create") }
+            },
+            dismissButton = { TextButton(onClick = { showCreateCollection = false }) { Text("Cancel") } }
+        )
+    }
+}
+
+@Composable
+private fun ItemOrganizerSection(dao: VaultDao, item: VaultItem, scope: CoroutineScope) {
+    val tags by dao.observeTags().collectAsState(initial = emptyList())
+    val assignedTags by dao.observeTagsForItem(item.id).collectAsState(initial = emptyList())
+    val collections by dao.observeCollections().collectAsState(initial = emptyList())
+    val assignedCollections by dao.observeCollectionsForItem(item.id).collectAsState(initial = emptyList())
+    var newTag by remember(item.id) { mutableStateOf("") }
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text("TAGS", style = MaterialTheme.typography.labelMedium, color = Color(0xFF9AE6C1))
+        if (tags.isNotEmpty()) LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            items(tags, key = { it.id }) { tag ->
+                FilterChip(
+                    selected = assignedTags.any { it.id == tag.id },
+                    onClick = { scope.launch { if (assignedTags.any { it.id == tag.id }) dao.removeItemTag(item.id, tag.id) else dao.addItemTag(ItemTagCrossRef(item.id, tag.id, System.currentTimeMillis())) } },
+                    label = { Text(tag.name) }, leadingIcon = { Icon(Icons.Default.Tag, null) }
+                )
+            }
+        } else Text("No tags yet. Create one below.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            OutlinedTextField(newTag, { newTag = it }, modifier = Modifier.weight(1f), label = { Text("Create or add tag") }, singleLine = true)
+            IconButton(onClick = {
+                val normalized = normalizeLibraryLabel(newTag)
+                if (normalized != null) scope.launch {
+                    dao.insertTag(UserTag(UUID.randomUUID().toString(), normalized.first, normalized.second, System.currentTimeMillis()))
+                    val tag = dao.findTag(normalized.second)
+                    if (tag != null) dao.addItemTag(ItemTagCrossRef(item.id, tag.id, System.currentTimeMillis()))
+                    newTag = ""
+                }
+            }) { Icon(Icons.Default.AddCircle, "Add tag") }
+        }
+        Text("COLLECTIONS", style = MaterialTheme.typography.labelMedium, color = Color(0xFF9AE6C1))
+        if (collections.isEmpty()) Text("Create a collection in the Collections tab.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        else LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            items(collections, key = { it.id }) { collection ->
+                FilterChip(
+                    selected = assignedCollections.any { it.id == collection.id },
+                    onClick = { scope.launch { if (assignedCollections.any { it.id == collection.id }) dao.removeCollectionItem(collection.id, item.id) else dao.addCollectionItem(CollectionItemCrossRef(collection.id, item.id, System.currentTimeMillis())) } },
+                    label = { Text(collection.name) }, leadingIcon = { Icon(Icons.Default.CollectionsBookmark, null) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ItemMetadataSection(
+    context: Context,
+    dao: VaultDao,
+    item: VaultItem,
+    scope: CoroutineScope,
+    onMessage: (String) -> Unit
+) {
+    val metadata by dao.observeMetadata(item.id).collectAsState(initial = null)
+    var extracting by remember(item.id) { mutableStateOf(false) }
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text("LOCAL METADATA", style = MaterialTheme.typography.labelMedium, color = Color(0xFF9AE6C1))
+        metadata?.let { meta ->
+            meta.title?.let { Text("Title: $it", style = MaterialTheme.typography.bodySmall) }
+            meta.author?.let { Text("By: $it", style = MaterialTheme.typography.bodySmall) }
+            meta.subject?.let { Text("Subject: $it", style = MaterialTheme.typography.bodySmall) }
+            if (meta.pageCount != null) Text("Pages: ${meta.pageCount}", style = MaterialTheme.typography.bodySmall)
+            if (meta.widthPx != null && meta.heightPx != null) Text("Dimensions: ${meta.widthPx} × ${meta.heightPx}", style = MaterialTheme.typography.bodySmall)
+            if (meta.durationMs != null) Text("Duration: ${meta.durationMs / 1000}s", style = MaterialTheme.typography.bodySmall)
+            meta.capturedAt?.let { Text("Captured: $it", style = MaterialTheme.typography.bodySmall) }
+            meta.cameraModel?.let { Text("Camera: $it", style = MaterialTheme.typography.bodySmall) }
+            meta.packageName?.let { Text("Package: $it", style = MaterialTheme.typography.bodySmall) }
+            meta.packageVersionName?.let { Text("Version: $it (${meta.packageVersionCode ?: 0})", style = MaterialTheme.typography.bodySmall) }
+        } ?: Text("Metadata is read only when you request it.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        TextButton(enabled = !extracting, onClick = {
+            extracting = true
+            scope.launch {
+                runCatching { MetadataExtractor.extract(context, item) }
+                    .onSuccess { dao.upsertMetadata(it); onMessage("Metadata extracted on this device") }
+                    .onFailure { onMessage(it.message ?: "Metadata extraction failed") }
+                extracting = false
+            }
+        }) { Icon(Icons.Default.DocumentScanner, null); Spacer(Modifier.width(6.dp)); Text(if (extracting) "Reading metadata…" else if (metadata == null) "Extract metadata" else "Refresh metadata") }
+    }
+}
+
+@Composable
+private fun ItemRelatedSection(dao: VaultDao, item: VaultItem, onItem: (VaultItem) -> Unit) {
+    val related by dao.observeRelatedItems(item.id).collectAsState(initial = emptyList())
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text("RELATED ITEMS", style = MaterialTheme.typography.labelMedium, color = Color(0xFF9AE6C1))
+        Text("Files with the same category, tags or collection", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (related.isEmpty()) Text("No related files found yet.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        else related.forEach { candidate ->
+            TextButton(onClick = { onItem(candidate) }, contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)) {
+                Icon(Icons.Default.Link, null); Spacer(Modifier.width(8.dp)); Text(candidate.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+    }
+}
+
+private fun normalizeLibraryLabel(raw: String): Pair<String, String>? {
+    val name = raw.trim().replace(Regex("\\s+"), " ").take(48)
+    if (name.isBlank()) return null
+    return name to name.lowercase(Locale.ROOT)
 }
 
 @Composable private fun FilesPage(
