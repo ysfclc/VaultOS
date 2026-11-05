@@ -138,3 +138,19 @@ Phase 2 implementation is in release line 0.2.0. The Room 1→2 migration adds r
 - [x] Run unit tests, lint and signed debug/release assembly; verify both APK certificates.
 - [ ] Run the GitHub-hosted workflow for 0.6.0.
 - [ ] Complete all physical-device acceptance items before 1.0.0.
+
+## Phase 7 — clipboard history foundation (0.7.0)
+
+- [x] Add a dedicated Room clipboard-history event table with a non-destructive 3→4 migration.
+- [x] Record each clipboard copy as a separate event, even when identical content already exists in the library.
+- [x] Reuse deduplicated archived payloads while retaining distinct copy timestamps and history entries.
+- [x] Record foreground editor package context, clipboard label, MIME types, SHA-256, character count, byte count and capture time.
+- [x] Capture every supported text/URI item in a multi-item clipboard payload.
+- [x] Exclude password input fields and Android 13+ clips explicitly marked sensitive from automatic capture.
+- [x] Add a searchable clipboard gallery with full-text copy, pin, individual delete and clear-unpinned actions.
+- [x] Expose clipboard history from both the main app and the optional VaultOS keyboard.
+- [x] Verify full-text payload size and SHA-256 on write, duplicate reuse and readback before paste.
+- [ ] Confirm GitHub Actions test/lint/APK build for this phase.
+- [ ] Verify clipboard access and multi-item behavior on the Redmi Note 12 Pro 5G across Chrome, ChatGPT, WhatsApp, Notes and password fields.
+
+**Platform boundary:** automatic clipboard capture is available only while VaultOS is the selected input method (or when the user manually captures from inside VaultOS). Android does not permit a normal background app to silently read another keyboard's clipboard. The foreground editor package is recorded as context, not asserted as definitive clipboard-origin metadata.
