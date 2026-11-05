@@ -75,6 +75,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     private var keyPreviewPopup: PopupWindow? = null
     private var typedWord = StringBuilder()
     private var lastCommittedWord = ""
+    private var previousWordForPrediction = ""
     private var inputGeneration = 0
     private var spellCheckGeneration = 0
     private var currentSuggestions: List<String> = emptyList()
@@ -115,6 +116,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         symbols = false
         typedWord.clear()
         lastCommittedWord = ""
+        previousWordForPrediction = ""
         currentSuggestions = emptyList()
         activeSpellCheckWord = ""
         spellCheckGeneration++
@@ -147,13 +149,19 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
 
     override fun onGetSuggestions(results: Array<SuggestionsInfo>) {
         val info = results.firstOrNull() ?: return
-        if (info.cookie != spellCheckGeneration) return
-        val suggestions = (0 until info.suggestionsCount)
-            .mapNotNull { index -> info.getSuggestionAt(index) }
-            .distinct().take(3)
+        val requestId = info.cookie
+        if (requestId != spellCheckGeneration) return
         val looksLikeTypo = info.suggestionsAttributes and SuggestionsInfo.RESULT_ATTR_LOOKS_LIKE_TYPO != 0
-        val requestedWord = activeSpellCheckWord
+        val suggestions = if (looksLikeTypo) {
+            (0 until info.suggestionsCount)
+                .mapNotNull { index -> info.getSuggestionAt(index) }
+                .filter { it.isNotBlank() }
+                .distinct().take(2)
+        } else emptyList()
         runOnMain {
+            // A newer keystroke may have arrived while this callback was queued.
+            if (requestId != spellCheckGeneration) return@runOnMain
+            val requestedWord = activeSpellCheckWord
             val activeWord = typedWord.toString().ifBlank { lastCommittedWord }
             if (requestedWord.isNotBlank() && !activeWord.equals(requestedWord, ignoreCase = true)) return@runOnMain
             currentSuggestions = suggestions
@@ -168,6 +176,10 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                         connection.deleteSurroundingText(lastCommittedWord.length + 1, 0)
                         connection.commitText("$replacement ", 1)
                     }
+                    lastCommittedWord = replacement
+                    previousWordForPrediction = replacement
+                    currentSuggestions = emptyList()
+                    renderSuggestions()
                 }
             }
         }
@@ -187,7 +199,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(4), dp(4), dp(4), dp(6))
-            setBackgroundColor(if (keyboardThemeDark()) Color.rgb(20, 25, 32) else Color.rgb(218, 224, 232))
+            setBackgroundColor(if (keyboardThemeDark()) Color.rgb(18, 22, 29) else Color.rgb(232, 237, 243))
         }
         val top = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -273,8 +285,8 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         val suggestions = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
-            setPadding(dp(3), dp(2), dp(3), dp(2))
-            setBackgroundColor(if (keyboardThemeDark()) Color.rgb(28, 35, 44) else Color.rgb(202, 210, 220))
+            setPadding(dp(5), dp(2), dp(5), dp(2))
+            setBackgroundColor(if (keyboardThemeDark()) Color.rgb(18, 22, 29) else Color.rgb(232, 237, 243))
         }
         suggestionRow = suggestions
         root.addView(suggestions, LinearLayout.LayoutParams(-1, dp(36)).apply { setMargins(0, dp(2), 0, dp(3)) })
@@ -432,17 +444,17 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     private fun keyBackground(wide: Boolean, active: Boolean = false, toolbar: Boolean = false): RippleDrawable {
         val dark = keyboardThemeDark()
         val normalColor = when {
-            active -> if (dark) Color.rgb(43, 100, 79) else Color.rgb(190, 232, 211)
-            toolbar -> if (dark) Color.rgb(43, 53, 66) else Color.rgb(238, 242, 247)
-            wide -> if (dark) Color.rgb(62, 76, 93) else Color.rgb(190, 201, 214)
-            else -> if (dark) Color.rgb(43, 53, 66) else Color.rgb(250, 251, 253)
+            active -> if (dark) Color.rgb(39, 73, 63) else Color.rgb(210, 239, 225)
+            toolbar -> if (dark) Color.rgb(27, 33, 42) else Color.rgb(224, 230, 237)
+            wide -> if (dark) Color.rgb(48, 58, 72) else Color.rgb(211, 219, 228)
+            else -> if (dark) Color.rgb(37, 44, 55) else Color.rgb(255, 255, 255)
         }
-        val pressedColor = if (dark) Color.rgb(154, 230, 193) else Color.rgb(116, 211, 170)
-        val strokeColor = if (dark) Color.rgb(83, 97, 114) else Color.rgb(176, 187, 200)
+        val pressedColor = if (dark) Color.rgb(83, 148, 121) else Color.rgb(184, 229, 207)
+        val strokeColor = if (dark) Color.rgb(59, 69, 83) else Color.rgb(214, 221, 229)
         fun shape(color: Int) = GradientDrawable().apply {
             setColor(color)
-            cornerRadius = dp(if (toolbar) 9 else 7).toFloat()
-            setStroke(dp(1), strokeColor)
+            cornerRadius = dp(if (toolbar) 12 else 10).toFloat()
+            if (!toolbar) setStroke(dp(1), strokeColor)
         }
         val states = StateListDrawable().apply {
             addState(intArrayOf(android.R.attr.state_pressed), shape(pressedColor))
@@ -450,7 +462,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         }
         val mask = GradientDrawable().apply {
             setColor(Color.WHITE)
-            cornerRadius = dp(if (toolbar) 9 else 7).toFloat()
+            cornerRadius = dp(if (toolbar) 12 else 10).toFloat()
         }
         return RippleDrawable(ColorStateList.valueOf(Color.argb(90, 154, 230, 193)), states, mask)
     }
@@ -731,6 +743,8 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                 if (action != EditorInfo.IME_ACTION_NONE && action != EditorInfo.IME_ACTION_UNSPECIFIED) currentInputConnection?.performEditorAction(action)
                 else currentInputConnection?.commitText("\n", 1)
                 typedWord.clear()
+                lastCommittedWord = ""
+                previousWordForPrediction = ""
                 currentSuggestions = emptyList()
                 renderSuggestions()
             }
@@ -742,6 +756,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                     lastCommittedWord = ""
                     requestWordSuggestions(typedWord.toString())
                 } else {
+                    if (typedWord.isNotBlank()) previousWordForPrediction = typedWord.toString()
                     typedWord.clear()
                     lastCommittedWord = ""
                     activeSpellCheckWord = ""
@@ -754,6 +769,8 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     }
 
     private fun requestWordSuggestions(word: String) {
+        spellCheckGeneration++
+        val requestId = spellCheckGeneration
         if (word.length < 2 || !isSafeForSuggestions(currentInputEditorInfo) || spellChecker == null) {
             activeSpellCheckWord = ""
             currentSuggestions = emptyList()
@@ -761,8 +778,6 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
             return
         }
         activeSpellCheckWord = word
-        spellCheckGeneration++
-        val requestId = spellCheckGeneration
         spellChecker?.getSuggestions(arrayOf(TextInfo(word, requestId, requestId)), 3, false)
     }
 
@@ -770,6 +785,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         val word = typedWord.toString()
         if (word.isNotBlank() && isSafeForSuggestions(currentInputEditorInfo)) {
             lastCommittedWord = word
+            previousWordForPrediction = word
             activeSuggestionInputGeneration = inputGeneration
             requestWordSuggestions(word)
         } else {
@@ -793,6 +809,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         }
         typedWord.clear()
         lastCommittedWord = value
+        previousWordForPrediction = value
         activeSpellCheckWord = ""
         spellCheckGeneration++
         currentSuggestions = emptyList()
@@ -802,19 +819,88 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     private fun renderSuggestions() {
         val row = suggestionRow ?: return
         row.removeAllViews()
-        val showCorrections = currentSuggestions.isNotEmpty() && (typedWord.isNotEmpty() || lastCommittedWord.isNotBlank())
-        val candidates = if (showCorrections) currentSuggestions else listOf(typedWord.toString().ifBlank { lastCommittedWord.ifBlank { selectedLanguageLabel() } })
-        candidates.take(3).forEach { candidate ->
+        val typed = typedWord.toString()
+        val correcting = currentSuggestions.isNotEmpty() && (typed.isNotBlank() || lastCommittedWord.isNotBlank())
+        val candidates = when {
+            typed.isNotBlank() -> (listOf(typed) + currentSuggestions +
+                KeyboardSuggestionEngine.completePrefix(selectedLanguageCode(), typed)).distinct().take(3)
+            correcting -> (listOf(lastCommittedWord) + currentSuggestions).distinct().take(3)
+            previousWordForPrediction.isNotBlank() ->
+                KeyboardSuggestionEngine.nextWordSuggestions(selectedLanguageCode(), previousWordForPrediction)
+            else -> emptyList()
+        }
+
+        if (candidates.isEmpty()) {
+            val hint = TextView(this).apply {
+                text = selectedLanguageLabel()
+                textSize = 11f
+                letterSpacing = 0.04f
+                gravity = Gravity.CENTER
+                setTextColor(if (keyboardThemeDark()) Color.rgb(143, 155, 171) else Color.rgb(112, 124, 139))
+            }
+            row.addView(hint, LinearLayout.LayoutParams(-1, -1))
+            return
+        }
+
+        candidates.forEachIndexed { index, candidate ->
+            if (index > 0) {
+                row.addView(View(this).apply {
+                    setBackgroundColor(if (keyboardThemeDark()) Color.rgb(53, 62, 74) else Color.rgb(205, 213, 222))
+                }, LinearLayout.LayoutParams(dp(1), dp(20)).apply {
+                    gravity = Gravity.CENTER_VERTICAL
+                })
+            }
+            val isCurrent = (typed.isNotBlank() || correcting) && candidate.equals(typed.ifBlank { lastCommittedWord }, ignoreCase = true)
             val item = TextView(this).apply {
                 text = candidate
-                textSize = 13f
+                textSize = if (isCurrent) 13f else 13.5f
+                typeface = if (isCurrent) android.graphics.Typeface.DEFAULT_BOLD else android.graphics.Typeface.DEFAULT
                 gravity = Gravity.CENTER
-                setTextColor(if (!showCorrections) Color.LTGRAY else Color.WHITE)
-                setPadding(dp(8), 0, dp(8), 0)
-                setOnClickListener { if (showCorrections) applySuggestion(candidate) }
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                setTextColor(
+                    when {
+                        isCurrent && keyboardThemeDark() -> Color.rgb(177, 244, 211)
+                        isCurrent -> Color.rgb(27, 105, 75)
+                        keyboardThemeDark() -> Color.rgb(226, 232, 240)
+                        else -> Color.rgb(45, 55, 68)
+                    }
+                )
+                setPadding(dp(5), 0, dp(5), 0)
+                if (isCurrent) background = suggestionPillBackground()
+                setOnClickListener {
+                    when {
+                        typed.isNotBlank() -> {
+                            if (candidate.equals(typed, ignoreCase = true)) commitSpace() else applySuggestion(candidate)
+                        }
+                        correcting -> {
+                            if (!candidate.equals(lastCommittedWord, ignoreCase = true)) applySuggestion(candidate)
+                        }
+                        else -> applyNextWordSuggestion(candidate)
+                    }
+                }
             }
             row.addView(item, LinearLayout.LayoutParams(0, -1, 1f))
         }
+    }
+
+    private fun suggestionPillBackground(): android.graphics.drawable.Drawable {
+        val dark = keyboardThemeDark()
+        return GradientDrawable().apply {
+            setColor(if (dark) Color.rgb(37, 62, 57) else Color.rgb(210, 239, 225))
+            cornerRadius = dp(9).toFloat()
+        }
+    }
+
+    private fun applyNextWordSuggestion(value: String) {
+        currentInputConnection?.commitText("$value ", 1)
+        typedWord.clear()
+        lastCommittedWord = value
+        previousWordForPrediction = value
+        activeSpellCheckWord = ""
+        currentSuggestions = emptyList()
+        spellCheckGeneration++
+        renderSuggestions()
     }
 
     private fun selectedLanguageLabel(): String = when (selectedLanguageCode()) {
