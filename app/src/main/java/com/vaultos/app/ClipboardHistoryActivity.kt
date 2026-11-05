@@ -138,7 +138,7 @@ private fun ClipboardEntryCard(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(if (entry.contentType == "text") "TEXT" else "FILE", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.width(8.dp))
-                Text(entry.foregroundPackage ?: "Unknown source", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                Text(entry.foregroundPackage?.let { "Editor · $it" } ?: "Editor unknown", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                 IconButton(onClick = onPin) { Icon(Icons.Default.PushPin, contentDescription = if (entry.isPinned) "Unpin" else "Pin", tint = if (entry.isPinned) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant) }
                 IconButton(onClick = onDelete) { Icon(Icons.Default.Delete, contentDescription = "Remove from history") }
             }
