@@ -164,7 +164,7 @@ Implemented in source:
 - Password-field exclusion and Android 13+ sensitive-clip exclusion.
 
 Not yet accepted:
-- GitHub Actions build for the latest source commit `6c7274fd92b23d4407703638eda9e899a0636e7e` is pending.
+- Run `42025657002` exposed Kotlin import errors; these were corrected in commit `3def5b4f98b357b778613b5561a9fec148e98a99`. Corrected build run `42026208055` is in progress.
 - Physical Redmi Note 12 Pro 5G clipboard, keyboard lifecycle and long-text acceptance remains outstanding.
 - Automatic capture still requires VaultOS to be the selected IME; manual capture is available inside the app.
 - Signing migration GOV-001 is deferred until the user provisions replacement key material and Actions secrets. Keep the historical key in place until update continuity is proven.
