@@ -133,3 +133,8 @@ Clipboard history stores the foreground editor package as context, the clipboard
 **Android limitation:** automatic capture requires VaultOS to be the selected input method. A normal Android app cannot silently monitor the clipboard while another keyboard is active. Manual capture remains available from inside VaultOS. The foreground editor package is context, not guaranteed origin attribution.
 
 CI and physical-device acceptance for 0.7.0 are pending.
+## Phase 8 — keyboard usability (0.8.0)
+
+The keyboard now has a persistent EN / PL / TR selector in its toolbar and Settings. Clips mode stays inside the keyboard: use the letter/symbol keys to search saved clipboard events, tap a result to insert the complete verified text into the focused field, and pin or unpin items without leaving the keyboard. The separate History screen remains available for full browsing and management.
+
+Spelling suggestions and autocorrect remain disabled until they can be implemented and tested without altering passwords, URLs, code, or fields that request no suggestions. Physical-device keyboard acceptance remains pending.
