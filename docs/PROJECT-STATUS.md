@@ -1,6 +1,6 @@
 # VaultOS — project status
 
-**Release line:** 0.9.0 · **Application ID:** `com.vaultos.app` · **Target:** Redmi Note 12 Pro 5G
+**Release line:** 0.11.0 · **Application ID:** `com.vaultos.app` · **Target:** Redmi Note 12 Pro 5G
 
 ## Product contract
 
@@ -179,3 +179,10 @@ The user rejected 0.9.0 as unusable and specifically reported that key presses w
 VaultOS-specific utility remains central: Clips searches/pins/pastes complete saved text; Cmd searches the local Vault catalogue and inserts full Text/Code records. English/Polish/Turkish switching and long-press alternatives remain. Spell-check suggestions request live words with stale callback sequencing; autocorrect is off by default and now requires the installed spell-checker to flag a likely typo.
 
 The redesign borrows interaction patterns from mature keyboards (immediate key feedback, compact toolbar, resize/theme controls, multilingual support and clipboard utility) without claiming proprietary glide typing or prediction. Version 0.10.0 / versionCode 10 is in source. Hosted CI passed in run `42041620803` (unit-test task, lint, debug/release assembly, signing verification and debug/release/metadata artifact uploads). Physical Redmi acceptance remains pending; do not call it usable until the device matrix is completed.
+
+
+## Phase 11 — recommendation quality and keyboard refinement (0.11.0)
+
+Version 0.11.0 adds a deterministic on-device EN / PL / TR word-completion lexicon and a compact set of common next-word suggestions. The Android spell-checker remains the typo-correction fallback, but its alternatives are only displayed when Android marks the input as a likely typo. The candidate strip retains the current word, displays alternatives separately, and commits a selected completion with a single trailing space. Stale spell-check callbacks are invalidated when the active word or editor changes. The keyboard palette and candidate strip have been softened for a more coherent, less boxed-in appearance.
+
+The lexicon is intentionally small and deterministic. This is not neural next-word prediction, a personal learned dictionary, or a claim of Gboard-equivalent recommendation quality. All processing remains on-device. New unit tests cover language-specific prefix and context behavior. CI and physical-device acceptance are still pending for this release.
