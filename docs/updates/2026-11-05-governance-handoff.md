@@ -35,7 +35,7 @@ The historical keystore remains tracked and Gradle still uses it for both debug 
 - Confirmed both workflow files are exact mirrors.
 - Confirmed the importer gate, private-key archive rejection, signing-directory exclusion, and safe rebase logic are present in both copies.
 - A previous build run (`41974529337`) failed in the ZIP-import push because the remote branch moved during the run; it did not fail in Gradle.
-- A subsequent build run (`41974664174`) passed ZIP import, lint-critical source checks, Java/SDK/Gradle setup, and persistent-key verification; the Gradle test/lint/build step was still running at the time of this handoff. Do not treat it as a passing build until GitHub reports a completed success.
+- A subsequent build run (`41974664174`) completed successfully: ZIP import, lint-critical source checks, Java/SDK/Gradle setup, unit tests, lint, APK assembly, signature verification, and artifact uploads all passed. The first run after raising minSdk (`41976573899`) failed before creating any jobs because the workflow file contained a malformed duplicate tail. That YAML defect is being removed in this commit; require a new successful run before treating the API 28 change as CI-verified.
 - The current repository still contains the exposed signing identity. The security remediation is not complete.
 
 ## Next actions
