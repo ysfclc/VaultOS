@@ -9,7 +9,6 @@ import android.inputmethodservice.InputMethodService
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
-import android.os.SystemClock
 import android.text.InputType
 import android.view.Gravity
 import android.view.HapticFeedbackConstants
@@ -126,7 +125,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
             currentSuggestions = suggestions
             renderSuggestions()
             if (getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_AUTOCORRECT, false) &&
-                suggestions.isNotEmpty() && lastCommittedWord.isNotBlank() &&
+                suggestions.isNotEmpty() && lastCommittedWord.isNotBlank() && typedWord.isEmpty() &&
                 inputGeneration == activeSuggestionInputGeneration
             ) {
                 val replacement = suggestions.first()
@@ -147,7 +146,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     private var activeSuggestionInputGeneration = 0
 
     private fun runOnMain(block: () -> Unit) {
-        if (Looper.myLooper() == Looper.getMainLooper()) block() else mainHandler.post(block)
+        if (Looper.myLooper() == Looper.getMainLooper()) block() else mainHandler.post { block() }
     }
 
     private fun buildKeyboard(): View {
