@@ -101,10 +101,10 @@ object KeyboardSuggestionEngine {
         )
     )
 
-    fun completePrefix(language: String, prefix: String, limit: Int = 3): List<String> {
+    fun completePrefix(language: String, prefix: String, limit: Int = 3, additionalWords: List<String> = emptyList()): List<String> {
         val normalized = prefix.trim().lowercase(locale(language))
         if (normalized.length < 2 || limit <= 0) return emptyList()
-        return words[languageCode(language)].orEmpty()
+        return (additionalWords + words[languageCode(language)].orEmpty())
             .asSequence()
             .filter { it.startsWith(normalized) && !it.equals(normalized, ignoreCase = true) }
             .distinct()
@@ -112,12 +112,12 @@ object KeyboardSuggestionEngine {
             .toList()
     }
 
-    fun nearbyCorrections(language: String, input: String, limit: Int = 2): List<String> {
+    fun nearbyCorrections(language: String, input: String, limit: Int = 2, additionalWords: List<String> = emptyList()): List<String> {
         val code = languageCode(language)
         val locale = locale(code)
         val normalized = input.trim().lowercase(locale)
         if (normalized.length < 3 || limit <= 0) return emptyList()
-        val vocabulary = words[code].orEmpty().distinct()
+        val vocabulary = (additionalWords + words[code].orEmpty()).distinct()
         if (normalized in vocabulary) return emptyList()
 
         val maxDistance = if (normalized.length <= 6) 1 else 2
