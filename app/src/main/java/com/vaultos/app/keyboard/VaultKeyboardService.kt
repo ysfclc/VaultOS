@@ -524,6 +524,11 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         val prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
         val actions = listOf<Pair<String, () -> Unit>>(
             "Capture clipboard" to { captureClipboard(showToast = true) },
+            (if (LocalTypingMemory(this).isLearningEnabled()) "Pause private word learning" else "Learn my words on this device") to {
+                val memory = LocalTypingMemory(this)
+                memory.setLearningEnabled(!memory.isLearningEnabled())
+                refreshKeyboard()
+            },
             "Paste latest saved text" to { pasteLatestText() },
             "Open clipboard History" to { openClipboardHistory() },
             "Emoji panel" to { emojiMode = true; clipboardMode = false; commandsMode = false; refreshKeyboard() },
