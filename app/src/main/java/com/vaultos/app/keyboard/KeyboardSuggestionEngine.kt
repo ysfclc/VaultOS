@@ -23,7 +23,9 @@ object KeyboardSuggestionEngine {
             "like", "make", "me", "more", "much", "my", "need", "new", "no", "not", "now",
             "of", "on", "one", "only", "or", "our", "out", "please", "really", "right",
             "see", "so", "some", "something", "than", "time", "to", "today", "too", "up",
-            "use", "very", "want", "was", "way", "we", "well", "were", "work", "yes"
+            "use", "usable", "very", "want", "was", "way", "we", "well", "were", "work", "yes",
+            "actually", "better", "build", "elegant", "experience", "keyboard", "maybe",
+            "recommendation", "recommendations", "should", "suggestion", "suggestions"
         ),
         "pl" to listOf(
             "nie", "tak", "to", "jest", "że", "się", "na", "do", "i", "w", "z", "za",
@@ -60,7 +62,7 @@ object KeyboardSuggestionEngine {
             "how" to listOf("are", "do", "is"),
             "good" to listOf("morning", "idea", "to"),
             "thanks" to listOf("for", "you", "a"),
-            "thank" to listOf("you", "you", "you"),
+            "thank" to listOf("you", "for", "so much"),
             "looking" to listOf("forward", "for", "good"),
             "for" to listOf("the", "you", "me"),
             "have" to listOf("a", "to", "been"),
