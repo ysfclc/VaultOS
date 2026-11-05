@@ -149,3 +149,18 @@ Run in ChatGPT, Chrome, WhatsApp and Notes on the Redmi Note 12 Pro 5G. The keyb
 9. **Insertion safety:** tap the current word, a prefix completion, a spelling correction and a next-word suggestion. Confirm no duplicated word, missing separator or double space appears.
 
 Record the Android system spell-checker and active keyboard language. The local lexicon is a small deterministic baseline, not a full language model; report missing or awkward suggestions as device feedback rather than assuming CI can measure language quality.
+
+
+## Phase 12 — adaptive typing and smart punctuation acceptance
+
+1. **Learning default:** fresh install and verify personal word learning is off until explicitly enabled from More.
+2. **Learned vocabulary:** enable learning, type and commit uncommon words in a normal text field, hide/reopen keyboard and restart the app; verify they become prefix completions.
+3. **Word-pair relevance:** repeat a short phrase several times; after its first word and a space, verify the learned next word rises above unrelated static candidates. Test another preceding word and verify candidates differ.
+4. **Language isolation:** repeat learning in EN, PL and TR; confirm words and word pairs do not leak between languages.
+5. **Manual dictionary:** disable automatic learning, type a name or specialist term and long-press the current-word candidate. Verify it is offered as a completion later.
+6. **Typo correction:** test a typo close to a personal dictionary word. Verify the candidate appears but is never silently committed when autocorrect is off.
+7. **Sensitive fields:** focus password, email, URL, numeric, autocomplete and no-suggestions fields. Verify no word or pair is learned.
+8. **Clear-memory safety:** open More → Clear local typing memory. Cancel and verify data remains; confirm and verify personal words and predictions disappear. Clipboard history and Vault content must remain untouched.
+9. **Sentence capitalization:** test first word, period, question mark, exclamation mark and Enter. Confirm next letter is uppercase; disable the setting and confirm normal lowercase behavior.
+10. **Double-space period:** type a sentence and tap space twice quickly. Verify the second space becomes a period plus one space. Test deliberate double spaces after a long pause, then disable the feature and confirm no conversion.
+11. **App compatibility:** repeat in ChatGPT, Chrome, WhatsApp and Notes, including portrait/landscape and larger font settings.
