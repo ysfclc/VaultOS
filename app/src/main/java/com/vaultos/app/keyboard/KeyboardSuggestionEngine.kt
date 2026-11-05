@@ -62,7 +62,7 @@ object KeyboardSuggestionEngine {
             "how" to listOf("are", "do", "is"),
             "good" to listOf("morning", "idea", "to"),
             "thanks" to listOf("for", "you", "a"),
-            "thank" to listOf("you", "for", "so much"),
+            "thank" to listOf("you"),
             "looking" to listOf("forward", "for", "good"),
             "for" to listOf("the", "you", "me"),
             "have" to listOf("a", "to", "been"),
@@ -70,7 +70,7 @@ object KeyboardSuggestionEngine {
             "will" to listOf("be", "do", "have"),
             "not" to listOf("sure", "a", "the"),
             "see" to listOf("you", "it", "what"),
-            "hello" to listOf("there", "how", "!")
+            "hello" to listOf("there", "how", "again")
         ),
         "pl" to mapOf(
             "jak" to listOf("się", "jest", "to"),
@@ -78,7 +78,7 @@ object KeyboardSuggestionEngine {
             "to" to listOf("jest", "było", "będzie"),
             "czy" to listOf("możesz", "jest", "to"),
             "bardzo" to listOf("dobrze", "mi", "dziękuję"),
-            "dzień" to listOf("dobry", "dobry", "dzisiaj"),
+            "dzień" to listOf("dobry", "dzisiaj"),
             "dobry" to listOf("pomysł", "dzień", "wieczór"),
             "dzięki" to listOf("za", "wielkie", "bardzo"),
             "mam" to listOf("pytanie", "nadzieję", "to"),
@@ -97,7 +97,7 @@ object KeyboardSuggestionEngine {
             "iyi" to listOf("günler", "olur", "mi"),
             "teşekkürler" to listOf("çok", "sana", "ederim"),
             "için" to listOf("teşekkürler", "çok", "önemli"),
-            "tamam" to listOf("dır", "olur", "teşekkürler")
+            "tamam" to listOf("olur", "anlaştık", "teşekkürler")
         )
     )
 
