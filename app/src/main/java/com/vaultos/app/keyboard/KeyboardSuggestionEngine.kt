@@ -112,6 +112,49 @@ object KeyboardSuggestionEngine {
             .toList()
     }
 
+    fun nearbyCorrections(language: String, input: String, limit: Int = 2): List<String> {
+        val code = languageCode(language)
+        val locale = locale(code)
+        val normalized = input.trim().lowercase(locale)
+        if (normalized.length < 3 || limit <= 0) return emptyList()
+        val vocabulary = words[code].orEmpty().distinct()
+        if (normalized in vocabulary) return emptyList()
+
+        val maxDistance = if (normalized.length <= 6) 1 else 2
+        return vocabulary.asSequence()
+            .map { candidate -> candidate to damerauLevenshtein(normalized, candidate.lowercase(locale)) }
+            .filter { (candidate, distance) ->
+                distance in 1..maxDistance && kotlin.math.abs(candidate.length - normalized.length) <= maxDistance
+            }
+            .sortedBy { it.second }
+            .take(limit)
+            .map { it.first }
+            .toList()
+    }
+
+    private fun damerauLevenshtein(left: String, right: String): Int {
+        val matrix = Array(left.length + 1) { IntArray(right.length + 1) }
+        for (i in 0..left.length) matrix[i][0] = i
+        for (j in 0..right.length) matrix[0][j] = j
+        for (i in 1..left.length) {
+            for (j in 1..right.length) {
+                val cost = if (left[i - 1] == right[j - 1]) 0 else 1
+                var value = minOf(
+                    matrix[i - 1][j] + 1,
+                    matrix[i][j - 1] + 1,
+                    matrix[i - 1][j - 1] + cost
+                )
+                if (i > 1 && j > 1 &&
+                    left[i - 1] == right[j - 2] && left[i - 2] == right[j - 1]
+                ) {
+                    value = minOf(value, matrix[i - 2][j - 2] + 1)
+                }
+                matrix[i][j] = value
+            }
+        }
+        return matrix[left.length][right.length]
+    }
+
     fun nextWordSuggestions(language: String, previousWord: String, limit: Int = 3): List<String> {
         if (limit <= 0) return emptyList()
         val normalized = previousWord.trim().lowercase(locale(language))
