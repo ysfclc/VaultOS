@@ -850,6 +850,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
             connection.deleteSurroundingText(word.length + if (committedWord) 1 else 0, 0)
             connection.commitText("$value ", 1)
         }
+        LocalTypingMemory(this).learn(selectedLanguageCode(), value, previousWordForPrediction)
         typedWord.clear()
         lastCommittedWord = value
         previousWordForPrediction = value
@@ -961,6 +962,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     }
 
     private fun applyNextWordSuggestion(value: String) {
+        LocalTypingMemory(this).learn(selectedLanguageCode(), value, previousWordForPrediction)
         currentInputConnection?.commitText("$value ", 1)
         typedWord.clear()
         lastCommittedWord = value
