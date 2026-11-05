@@ -101,3 +101,10 @@ The historical keystore remains tracked and Gradle still uses it for both debug 
 - Artifacts uploaded: `VaultOS-debug-APK` (15,438,915 bytes), `VaultOS-release-APK` (11,587,443 bytes), and `VaultOS-build-metadata` (539 bytes).
 - Workflow run: https://github.com/ysfclc/VaultOS/actions/runs/42026208055
 - This confirms hosted compilation, unit-test task, lint, APK assembly and artifact upload. It does not substitute for physical-device acceptance.
+## Phase 8 — keyboard usability (0.8.0)
+
+- Added persistent EN / PL / TR language selection from the keyboard toolbar and app Settings.
+- Added an inline Clips mode that keeps the active input field, searches the full clipboard archive through the existing chunk index, shows recent/pinned matches, and pastes complete text directly into the focused field.
+- Added pin/unpin actions inside the keyboard. Full gallery remains accessible through History.
+- Build run `42027563663` for the intermediate keyboard source is in progress; release 0.8.0 run `42027643930` is queued for versionCode 8. Wait for the latter to verify the exact release source.
+- Remaining Phase 2 items: spelling suggestions/autocorrect with sensitive-field exclusions, additional settings and physical lifecycle/accessibility acceptance.
