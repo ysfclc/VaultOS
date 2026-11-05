@@ -195,4 +195,4 @@ Implemented: opt-in local personal vocabulary (off by default), long-press to ad
 
 ## Phase 12.1 — privacy hardening (0.12.1)
 
-All personal typing-memory writes now use one guard that checks the active editor type before persisting a word or adjacent-word count. This closes punctuation and Enter commit paths that could otherwise bypass the safe-field check. Automatic learning remains off by default; personal word pinning is still an explicit user action. Version 0.12.1 / versionCode 13 is the next patch build. CI and physical Redmi acceptance are pending.
+All personal typing-memory writes now use one guard that checks the active editor type before persisting a word or adjacent-word count. This closes punctuation and Enter commit paths that could otherwise bypass the safe-field check. Automatic learning remains off by default; personal word pinning is still an explicit user action. Version 0.12.1 / versionCode 13 passed hosted CI in run `42079070087`: unit tests, lint, signed debug/release APK assembly, signing verification and all artifact uploads succeeded. Physical Redmi acceptance remains pending.
