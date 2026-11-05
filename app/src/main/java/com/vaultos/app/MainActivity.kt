@@ -1328,19 +1328,20 @@ private fun captureClipboard(activity: Context, repository: VaultRepository, onM
         val history = ClipboardHistoryRepository(activity)
         val mimeTypes = (0 until clip.description.mimeTypeCount).map { clip.description.getMimeType(it) }
         val label = clip.description.label?.toString()
-        val result = runCatching {
-            for (index in 0 until clip.itemCount) {
+        val outcomes = (0 until clip.itemCount).map { index ->
+            runCatching {
                 val item = clip.getItemAt(index)
                 val uri = item.uri
                 if (uri != null) history.captureUri(uri, null, label, mimeTypes)
                 else {
                     val text = item.text?.toString() ?: item.coerceToText(activity)?.toString()
-                    if (!text.isNullOrEmpty()) history.captureText(text, null, label, mimeTypes)
+                    if (!text.isNullOrEmpty()) history.captureText(text, null, label, mimeTypes) else null
                 }
             }
         }
-        result.onSuccess { onMessage("Clipboard capture added to history") }
-            .onFailure { onMessage(it.message ?: "Clipboard capture failed") }
+        val saved = outcomes.count { it.isSuccess && it.getOrNull() != null }
+        val failed = outcomes.count { it.isFailure }
+        onMessage(if (failed == 0) "Saved $saved clipboard item(s) to history" else "Saved $saved · failed $failed")
     }
 }
 
