@@ -91,3 +91,21 @@ Do not mark 1.0.0 device-verified until every required group below has an observ
 7. **Performance and stability:** cold start, large initial scan, incremental scan, large-file import, 100,000+ character text, thumbnail scrolling, batch operations, backup/restore and repeated app relaunch. Record crashes, ANRs, lost items and unusual battery use.
 
 Record these device facts with the results: model, Android version/API, MIUI/HyperOS version, VaultOS version, free storage before testing, and whether the test used internal storage, SD/USB, or another SAF provider. Use synthetic/private-safe test content, not real passwords or private conversations.
+
+## Clipboard history acceptance — 0.7.0
+
+Run these tests on the Redmi Note 12 Pro 5G after selecting VaultOS Capture Keyboard. Do not infer device acceptance from CI alone.
+
+1. **App coverage:** copy ordinary text from Chrome, ChatGPT, WhatsApp and Notes. Confirm each appears once in Clipboard history with a timestamp and foreground editor package context where available.
+2. **Repeated identical copy:** copy the exact same text twice at different times. Confirm two history events exist, while the library does not need to store two identical payload files.
+3. **Long text:** copy a payload larger than 100,000 characters. Confirm character/byte counts, search for a phrase located well beyond the 420-character preview, copy full text from history, and compare the pasted result with the source.
+4. **Latest paste:** copy text A, then text B, then copy A again. Use the keyboard's Paste saved action and confirm A is inserted, not B.
+5. **Multi-item clip:** capture a clipboard payload containing multiple text/URI items. Confirm each accessible item is recorded; an inaccessible URI must not prevent subsequent entries from being captured.
+6. **Sensitive data:** test a password editor and an Android 13+ clip marked sensitive. Confirm automatic capture skips them. Also confirm a normal text field still captures.
+7. **Keyboard boundary:** switch to Gboard and copy text. Confirm VaultOS does not claim to capture it automatically. Use manual Capture inside VaultOS and confirm the event is saved.
+8. **History actions:** search, pin, unpin, copy full text, delete one event and clear unpinned history. Confirm pinned events remain and deleting/clearing history does not delete the corresponding library payload.
+9. **Persistence:** force-stop VaultOS and reboot the phone. Confirm history remains available after reopening.
+10. **Integrity failure:** in a test-only build, alter or remove an archived text payload. Confirm readback/paste refuses corrupted or incomplete content rather than silently pasting it.
+11. **Lifecycle and background:** with VaultOS selected, lock/unlock, hide/show the keyboard, switch apps and repeat clipboard capture. Record any vendor-specific delays or missed events.
+
+**Expected Android limitation:** automatic clipboard event capture is available only while VaultOS is the selected input method. Gboard-active copy events must not appear unless the user manually captures them from VaultOS.
