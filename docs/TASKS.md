@@ -218,3 +218,5 @@ Phase 2 implementation is in release line 0.2.0. The Room 1→2 migration adds r
 - [ ] Verify clearing typing memory leaves clipboard history and Vault content untouched.
 - [ ] Verify punctuation and capitalization in ChatGPT, Chrome, WhatsApp and Notes.
 - [ ] Evaluate recommendation relevance after several days of normal use on Redmi Note 12 Pro 5G.
+
+- [x] Run hosted CI for 0.12.0 (run `42054296162`): unit tests, lint, signed debug/release APKs and all artifact uploads passed.
