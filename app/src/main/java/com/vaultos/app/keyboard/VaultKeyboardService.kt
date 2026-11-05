@@ -775,7 +775,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                 if (action != EditorInfo.IME_ACTION_NONE && action != EditorInfo.IME_ACTION_UNSPECIFIED) currentInputConnection?.performEditorAction(action)
                 else currentInputConnection?.commitText("\n", 1)
                 if (typedWord.isNotBlank()) {
-                    LocalTypingMemory(this).learn(selectedLanguageCode(), typedWord.toString(), previousWordForPrediction)
+                    learnWord(typedWord.toString(), previousWordForPrediction)
                 }
                 typedWord.clear()
                 lastCommittedWord = ""
@@ -795,7 +795,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                     requestWordSuggestions(typedWord.toString())
                 } else {
                     if (typedWord.isNotBlank()) {
-                        LocalTypingMemory(this).learn(selectedLanguageCode(), typedWord.toString(), previousWordForPrediction)
+                        learnWord(typedWord.toString(), previousWordForPrediction)
                         previousWordForPrediction = typedWord.toString()
                     }
                     typedWord.clear()
@@ -829,6 +829,13 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         spellChecker?.getSuggestions(arrayOf(TextInfo(word, requestId, requestId)), 3, false)
     }
 
+    private fun learnWord(word: String, previousWord: String = "") {
+        // Never persist text from password, email, URL, numeric, autocomplete or other
+        // fields where suggestions are disabled, even when a word ends at punctuation.
+        if (!isSafeForSuggestions(currentInputEditorInfo)) return
+        LocalTypingMemory(this).learn(selectedLanguageCode(), word, previousWord)
+    }
+
     private fun handleSmartSpace() {
         val now = android.os.SystemClock.uptimeMillis()
         if (getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_SMART_PUNCTUATION, true) &&
@@ -855,7 +862,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     private fun commitSpace() {
         val word = typedWord.toString()
         if (word.isNotBlank() && isSafeForSuggestions(currentInputEditorInfo)) {
-            LocalTypingMemory(this).learn(selectedLanguageCode(), word, previousWordForPrediction)
+            learnWord(word, previousWordForPrediction)
             lastCommittedWord = word
             previousWordForPrediction = word
             activeSuggestionInputGeneration = inputGeneration
@@ -880,7 +887,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
             connection.deleteSurroundingText(word.length + if (committedWord) 1 else 0, 0)
             connection.commitText("$value ", 1)
         }
-        LocalTypingMemory(this).learn(selectedLanguageCode(), value, previousWordForPrediction)
+        learnWord(value, previousWordForPrediction)
         typedWord.clear()
         lastCommittedWord = value
         previousWordForPrediction = value
@@ -992,7 +999,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     }
 
     private fun applyNextWordSuggestion(value: String) {
-        LocalTypingMemory(this).learn(selectedLanguageCode(), value, previousWordForPrediction)
+        learnWord(value, previousWordForPrediction)
         currentInputConnection?.commitText("$value ", 1)
         typedWord.clear()
         lastCommittedWord = value
