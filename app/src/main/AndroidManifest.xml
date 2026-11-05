@@ -76,5 +76,6 @@
         <receiver android:name=".storage.DownloadCompletedReceiver" android:exported="true">
             <intent-filter><action android:name="android.intent.action.DOWNLOAD_COMPLETE" /></intent-filter>
         </receiver>
+        <activity android:name=".ClipboardHistoryActivity" android:exported="false" android:label="Clipboard history" />
     </application>
 </manifest>
