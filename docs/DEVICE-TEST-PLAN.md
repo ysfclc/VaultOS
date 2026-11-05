@@ -109,17 +109,25 @@ Run these tests on the Redmi Note 12 Pro 5G after selecting VaultOS Capture Keyb
 11. **Lifecycle and background:** with VaultOS selected, lock/unlock, hide/show the keyboard, switch apps and repeat clipboard capture. Record any vendor-specific delays or missed events.
 
 **Expected Android limitation:** automatic clipboard event capture is available only while VaultOS is the selected input method. Gboard-active copy events must not appear unless the user manually captures them from VaultOS.
-## Keyboard usability acceptance — 0.8.0
+## Daily-use keyboard acceptance — 0.9.0
 
-1. **Language selector:** cycle EN → PL → TR → EN from the keyboard toolbar. Confirm the visible key row changes and the preference remains selected after hiding/reopening the keyboard and restarting VaultOS.
-2. **Settings language:** set Polish in Settings, open a text field and verify Polish keys; repeat for Turkish and English. Confirm the toolbar selector and Settings remain synchronized.
-3. **Polish typing:** type `zażółć gęślą jaźń` using the Polish key row; verify every character and uppercase behavior.
-4. **Turkish typing:** type `İ ı ş Ş ğ Ğ ü Ü ö Ö ç Ç` and verify dotless/dotted I and Turkish-specific letters.
-5. **Symbols and editing:** in every language, switch to symbols and back, type punctuation, use backspace on selected text and ordinary text, and test Enter in a multiline field and an editor with a Search/Done action.
-6. **Inline Clips mode:** enter Clips mode while a text field is focused. Search a term that appears beyond the 420-character preview, select the matching result and verify the complete original text is inserted into that field.
-7. **Pinning:** pin and unpin a clipboard item directly from Clips mode; confirm pinned results move above unpinned results and persist after reopening.
-8. **Return to typing:** leave Clips mode with Keys and verify the active text field retains its cursor and selection.
-9. **Latest paste:** verify Paste inserts the most recent clipboard event, including a repeated copy of an older identical payload.
-10. **Input safety:** repeat keyboard tests in normal text, email, URL, numeric, password and no-suggestions fields. Confirm password fields never trigger automatic clipboard capture.
-11. **Small screen and large font:** test keyboard toolbar, language selector, Clips results and letter rows at default and enlarged system font/display settings; no button should become unreachable.
-12. **Lifecycle:** hide/show keyboard, switch applications, rotate device, lock/unlock, force-stop/reopen VaultOS and reboot; verify selected language and clipboard history persist and the keyboard recovers cleanly.
+Run on the Redmi Note 12 Pro 5G with VaultOS selected as the active IME. CI is not a substitute for this test.
+
+1. **Basic typing:** in Chrome, ChatGPT, WhatsApp and Notes, type full sentences at normal speed. Confirm every key commits exactly one character, the cursor remains stable and the keyboard does not close or rebuild unexpectedly.
+2. **QWERTY layout and spacing:** test the top, home and bottom letter rows in portrait and landscape. Confirm keys are reachable, row offsets feel natural, the space key is easy to hit, and the toolbar does not steal excessive height.
+3. **Shift/caps lock:** type lowercase, one uppercase character, then double-tap Shift for caps lock. Tap Shift again to turn caps lock fully off.
+4. **Polish long-press:** long-press a/c/e/l/n/o/s/z and enter ą ć ę ł ń ó ś ź ż. Verify both lower- and uppercase variants and confirm ordinary taps still enter the base letter.
+5. **Turkish long-press:** long-press g/i/s/u/o/c and enter ğ ı İ ş ü ö ç. Verify dotted/dotless I and uppercase variants.
+6. **Number alternatives and symbols:** long-press q–p to enter 1–0. Switch to ?123 and test every number/symbol row, punctuation and return to ABC.
+7. **Editing:** select text and press Backspace; test ordinary deletion, cursor-left/right movement, comma/period alternatives and selection behavior.
+8. **Editor actions:** test Enter in multiline Notes, and Search/Go/Done in corresponding fields. It must perform the editor action when requested rather than always inserting a newline.
+9. **Word suggestions:** test common correctly spelled and deliberately misspelled words in EN, PL and TR. Verify suggestions only appear when the installed Android spell-checker supports that locale; tapping a suggestion replaces the last completed word without deleting adjacent text.
+10. **Autocorrect:** confirm Auto is off after a fresh install. Turn it on deliberately and verify it corrects an obvious typo only. Turn it off again and verify no automatic replacement occurs.
+11. **Sensitive/editor exclusions:** in password, email, URL, numeric, code/no-suggestions and other non-text fields, confirm suggestions and autocorrect are suppressed. Confirm ordinary text fields still work.
+12. **Haptics and size:** toggle vibration off/on and cycle all key-height settings. Confirm the preference persists after hiding/reopening the keyboard and restarting VaultOS.
+13. **Keyboard switching:** tap Switch and select Gboard from Android's IME picker. Confirm Gboard becomes active. Reopen the picker and return to VaultOS.
+14. **Clipboard integration:** copy normal text while VaultOS is active and confirm it enters History. Search and paste a long saved clip from inline Clips mode, pin/unpin, and verify Paste inserts the latest captured text. Clipboard mode must not break the focused editor.
+15. **Small screen/accessibility:** test default and enlarged display/font sizes, TalkBack labels/focus, portrait and landscape. No toolbar action or key may become unreachable.
+16. **Lifecycle:** hide/show, switch apps, rotate, lock/unlock, force-stop/reopen and reboot. Confirm the keyboard recovers, the selected language and settings persist, and clipboard history remains available.
+
+Record model, Android/API, MIUI/HyperOS version, VaultOS version, language and spell-checker provider, layout size, and any missed keystrokes or crashes. Do not mark the keyboard daily-use accepted until the actual device run is complete.

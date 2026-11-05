@@ -1,6 +1,6 @@
 # VaultOS — project status
 
-**Release line:** 0.6.0 · **Application ID:** `com.vaultos.app` · **Target:** Redmi Note 12 Pro 5G
+**Release line:** 0.9.0 · **Application ID:** `com.vaultos.app` · **Target:** Redmi Note 12 Pro 5G
 
 ## Product contract
 
@@ -168,16 +168,14 @@ Not yet accepted:
 - Physical Redmi Note 12 Pro 5G clipboard, keyboard lifecycle and long-text acceptance remains outstanding.
 - Automatic capture still requires VaultOS to be the selected IME; manual capture is available inside the app.
 - Signing migration GOV-001 is deferred until the user provisions replacement key material and Actions secrets. Keep the historical key in place until update continuity is proven.
-## Phase 8 — keyboard usability (0.8.0), in progress
+## Phase 8 — keyboard integration (0.8.0)
 
-Implemented in source:
-- Explicit EN / PL / TR keyboard language selector; preference persists in VaultOS settings and keyboard toolbar.
-- Inline Clips mode in the IME, with search input driven by the keyboard's own keys rather than an internal EditText.
-- Recent/pinned clipboard matches shown inside the keyboard; full text is read from the verified archive and inserted into the focused field in bounded chunks.
-- Pin/unpin directly from the keyboard; full gallery remains available from History.
+The keyboard gained persistent EN / PL / TR selection and inline clipboard Clips mode with full-text search, pinning and complete-text insertion. Hosted CI passed in run `42027643930`; device acceptance remains open.
 
-Still open:
-- Spelling suggestions and optional autocorrect with exclusions for password, URL, code and no-suggestions fields.
-- Additional keyboard settings and physical lifecycle/accessibility testing.
-- 0.8.0 CI build for source commit `282e268a14a3b97e75c0d1e0f215d18ea9329177` is queued as run `42027643930`.
-- Physical Redmi Note 12 Pro 5G acceptance remains outstanding.
+## Phase 9 — daily-use keyboard (0.9.0)
+
+The basic IME has been replaced with a daily-use-oriented keyboard implementation: weighted QWERTY rows, shift/caps lock, number/symbol layer, punctuation, backspace, editor-aware Enter, long-press character alternatives, cursor arrows, word suggestions, optional autocorrect, adjustable key height and haptic feedback. The toolbar retains Capture, Clips, Paste, History, language selection, Android's IME picker and Hide.
+
+Autocorrect is off by default. Spell-checking is disabled for password, email, URL, non-text and no-suggestions editors. Suggestions are provided by Android's installed spell-checker and therefore depend on local language dictionaries being available.
+
+Hosted CI passed in run `42032766808`: unit-test task, lint, debug and release APK assembly, signing verification and all three artifact uploads succeeded. This is a source/build verification only. Physical typing quality, key sizing, language dictionaries, haptics, cursor behavior, Gboard switching and Xiaomi lifecycle behavior remain unverified on the Redmi Note 12 Pro 5G. Do not mark the keyboard accepted until those device checks are completed.

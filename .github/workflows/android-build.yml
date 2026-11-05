@@ -268,7 +268,7 @@ jobs:
           cd dist
           sha256sum VaultOS-debug.apk VaultOS-release.apk > SHA256SUMS.txt
           {
-            echo "VaultOS 0.8.0"
+            echo "VaultOS 0.9.0"
             echo "Build: ${GITHUB_RUN_NUMBER}"
             echo "Commit: $(git rev-parse HEAD)"
             echo "Variants: debug and release (same persistent local sideload signing certificate)"
@@ -309,7 +309,7 @@ jobs:
           {
             echo "## VaultOS Android build"
             echo "- Device target: Redmi Note 12 Pro 5G / Android 13+"
-            echo "- Release: 0.8.0 (versionCode 8)"
+            echo "- Release: 0.9.0 (versionCode 9)"
             echo "- Signed debug and release APKs use the persistent certificate carried forward from 0.2.0"
             echo "- Compile SDK: 35"
             echo "- Java: 17"

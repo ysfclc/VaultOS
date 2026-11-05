@@ -162,16 +162,26 @@ Phase 2 implementation is in release line 0.2.0. The Room 1→2 migration adds r
 - [x] Verify the persistent signing certificate step succeeds.
 - [x] Upload `VaultOS-debug-APK`, `VaultOS-release-APK` and `VaultOS-build-metadata` artifacts (run 60).
 - [ ] Install the APK on the Redmi Note 12 Pro 5G and complete the clipboard device acceptance matrix.
-## Phase 8 — keyboard usability (0.8.0)
+## Phase 8 — keyboard integration (0.8.0)
 
-- [x] Add an explicit EN / PL / TR keyboard language selector, persisted across app restarts.
-- [x] Expose the same language preference in Settings.
-- [x] Add an inline Clips mode without leaving the focused text field.
-- [x] Search clipboard history from the keyboard itself using the keyboard's own keys (no fake EditText or system-clipboard workaround).
-- [x] Show recent/pinned matches and paste the complete verified text directly into the active input connection.
-- [x] Pin/unpin clipboard entries directly from the keyboard mode.
-- [x] Keep the full clipboard gallery available from the History action.
-- [ ] Add spelling suggestions and optional autocorrect with safe password/no-suggestions exclusions.
-- [ ] Add further keyboard settings (haptics/layout preferences) only when functional controls are implemented.
-- [ ] Complete keyboard lifecycle and device acceptance tests on the Redmi Note 12 Pro 5G.
-- [ ] Confirm 0.8.0 CI build and APK artifacts.
+- [x] Add a persistent EN / PL / TR selector, synchronized with Settings.
+- [x] Add inline clipboard Clips mode with full-text search, pinning and complete-text paste.
+- [x] Keep full clipboard History available without leaving the keyboard.
+- [x] Confirm hosted CI for 0.8.0 (run `42027643930`).
+- [ ] Complete the 0.8.0 device acceptance plan.
+
+## Phase 9 — daily-use keyboard (0.9.0)
+
+- [x] Replace default Android Button keys with compact, weighted touch keys and a standard QWERTY layout.
+- [x] Implement one-shot shift and double-tap caps lock.
+- [x] Add dedicated numbers/symbols layer, punctuation, backspace and editor-aware Enter behavior.
+- [x] Add long-press Polish and Turkish diacritics, number alternatives and punctuation alternatives.
+- [x] Add left/right cursor movement controls.
+- [x] Add Android spell-checker word suggestions using the selected EN / PL / TR locale.
+- [x] Add optional autocorrect, disabled by default, with exclusions for password, email, URL, non-text and no-suggestions fields.
+- [x] Add functional haptics and key-height controls.
+- [x] Keep Android's system IME picker available for switching back to Gboard.
+- [x] Preserve clipboard Capture, Paste saved, inline Clips, pinning and History.
+- [x] Confirm hosted CI for the rebuilt keyboard (run `42032766808`; unit tests, lint, debug/release assembly, signature verification and artifact uploads passed).
+- [ ] Verify actual typing, suggestions, language dictionaries, long-press alternatives, haptics, sizing and Gboard switching on Redmi Note 12 Pro 5G.
+- [ ] Tune key sizing/spacing from physical-device feedback before calling the keyboard daily-use accepted.

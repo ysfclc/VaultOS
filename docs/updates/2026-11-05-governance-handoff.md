@@ -108,3 +108,21 @@ The historical keystore remains tracked and Gradle still uses it for both debug 
 - Added pin/unpin actions inside the keyboard. Full gallery remains accessible through History.
 - Build run `42027563663` for the intermediate keyboard source is in progress; release 0.8.0 run `42027643930` is queued for versionCode 8. Wait for the latter to verify the exact release source.
 - Remaining Phase 2 items: spelling suggestions/autocorrect with sensitive-field exclusions, additional settings and physical lifecycle/accessibility acceptance.
+
+## Daily-use keyboard rebuild — 2026-11-05
+
+The user clarified that the previous keyboard was not acceptable as a daily typing keyboard and referenced the November 3 product discussion. The requirement is a genuinely usable, changeable keyboard, not merely a clipboard launcher.
+
+Implemented in `VaultKeyboardService.kt`:
+- Replaced oversized default Button keys with weighted QWERTY touch rows.
+- Added shift/caps lock, number/symbol layer, punctuation, backspace, editor-aware Enter and cursor arrows.
+- Added long-press Polish/Turkish diacritics, number alternatives and punctuation alternatives.
+- Added Android SpellCheckerSession word suggestions for the selected EN/PL/TR locale.
+- Added optional autocorrect (off by default), excluding password, email, URL, non-text and no-suggestions fields.
+- Added haptic toggle and adjustable key height.
+- Kept Android's IME picker for switching back to Gboard.
+- Preserved automatic clipboard capture while selected, Capture, Paste saved, inline Clips search, pinning and full History.
+
+CI verification: run `42032766808`, commit `c229a51a5deb05cb26ba9479a9949e95b6f87391`. Unit-test task, lint, debug/release APK assembly, signing verification and debug/release/metadata artifact uploads passed. APKs are version 0.8.0 at this verification point; the 0.9.0 version bump is recorded in the release commit.
+
+Remaining: install and test on the Redmi Note 12 Pro 5G. In particular verify real typing, Polish/Turkish dictionaries, long-press alternatives, cursor movement, suggestions/autocorrect exclusions, haptics, key sizing and switching to Gboard. Build success does not prove typing usability. Signing-key rotation remains deferred by the user.

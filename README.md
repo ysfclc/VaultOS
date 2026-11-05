@@ -1,6 +1,6 @@
 # VaultOS for Android
 
-**A local-first Android file library and manager (release 0.8.0).** This repository contains a native Kotlin/Jetpack Compose application, an optional capture keyboard, a DocumentsProvider, a private archive, local indexing, and manual external backup/restore.
+**A local-first Android file library and manager (release 0.9.0).** This repository contains a native Kotlin/Jetpack Compose application, an optional capture keyboard, a DocumentsProvider, a private archive, local indexing, and manual external backup/restore.
 
 ## What is implemented
 
@@ -81,7 +81,7 @@ app/src/main/java/com/vaultos/app/
   storage/StorageScanWorker.kt      Resumable shared-storage scan
   storage/VaultBackupManager.kt     SAF backup and restore
   storage/DownloadCompletedReceiver.kt
-  keyboard/VaultKeyboardService.kt  Optional IME and direct saved-text paste
+  keyboard/VaultKeyboardService.kt  Daily-use IME, spellcheck and clipboard access
   provider/VaultDocumentsProvider.kt Android Storage Access Framework provider
   util/FileClassifier.kt            Deterministic content classification
 ```
@@ -133,8 +133,20 @@ Clipboard history stores the foreground editor package as context, the clipboard
 **Android limitation:** automatic capture requires VaultOS to be the selected input method. A normal Android app cannot silently monitor the clipboard while another keyboard is active. Manual capture remains available from inside VaultOS. The foreground editor package is context, not guaranteed origin attribution.
 
 CI and physical-device acceptance for 0.7.0 are pending.
-## Phase 8 — keyboard usability (0.8.0)
+## Phase 8 — keyboard integration (0.8.0)
 
-The keyboard now has a persistent EN / PL / TR selector in its toolbar and Settings. Clips mode stays inside the keyboard: use the letter/symbol keys to search saved clipboard events, tap a result to insert the complete verified text into the focused field, and pin or unpin items without leaving the keyboard. The separate History screen remains available for full browsing and management.
+VaultOS introduced a persistent EN / PL / TR selector and an inline Clips mode. Search clipboard history from the keyboard, pin or unpin entries, and insert the complete verified text into the focused field without opening the app.
 
-Spelling suggestions and autocorrect remain disabled until they can be implemented and tested without altering passwords, URLs, code, or fields that request no suggestions. Physical-device keyboard acceptance remains pending.
+## Phase 9 — daily-use keyboard (0.9.0)
+
+The keyboard has been rebuilt around a compact QWERTY layout rather than treating the clipboard toolbar as the product. It now includes:
+
+- Standard QWERTY rows, shift and caps lock, a dedicated number/symbol layer, punctuation, backspace and editor-aware Enter/Search/Done behavior.
+- Long-press alternatives for Polish and Turkish characters, numbers and common punctuation.
+- Left/right cursor controls and a full-width space key.
+- Word suggestions using Android's installed spell-checker for the selected EN / PL / TR language.
+- Optional autocorrect, off by default. Suggestions and autocorrect are excluded from password, email, URL, non-text and no-suggestions fields.
+- Functional keyboard controls for haptics, key height and autocorrect, plus Android's system keyboard picker to switch back to Gboard.
+- Clipboard Capture, Paste saved, inline Clips search and full History access remain part of the keyboard.
+
+Spell-check quality depends on the spell-checker dictionaries installed on the phone. CI verifies compilation, lint and APK packaging; real typing, language dictionaries, layout and Xiaomi IME behavior still require acceptance on the Redmi Note 12 Pro 5G.
