@@ -139,6 +139,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         inputGeneration++
         typedWord.clear()
         lastCommittedWord = ""
+        previousWordForPrediction = ""
         currentSuggestions = emptyList()
         spellCheckGeneration++
         spellChecker?.close()
@@ -771,9 +772,9 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     private fun requestWordSuggestions(word: String) {
         spellCheckGeneration++
         val requestId = spellCheckGeneration
+        currentSuggestions = emptyList()
         if (word.length < 2 || !isSafeForSuggestions(currentInputEditorInfo) || spellChecker == null) {
             activeSpellCheckWord = ""
-            currentSuggestions = emptyList()
             renderSuggestions()
             return
         }
@@ -792,6 +793,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
             lastCommittedWord = ""
             activeSpellCheckWord = ""
             currentSuggestions = emptyList()
+            spellCheckGeneration++
         }
         currentInputConnection?.commitText(" ", 1)
         typedWord.clear()
@@ -805,7 +807,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         if (word.isBlank()) return
         currentInputConnection?.let { connection ->
             connection.deleteSurroundingText(word.length + if (committedWord) 1 else 0, 0)
-            connection.commitText(if (committedWord) "$value " else value, 1)
+            connection.commitText("$value ", 1)
         }
         typedWord.clear()
         lastCommittedWord = value
@@ -912,8 +914,10 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, code))
         typedWord.clear()
         lastCommittedWord = ""
+        previousWordForPrediction = ""
         activeSpellCheckWord = ""
         currentSuggestions = emptyList()
+        spellCheckGeneration++
         renderSuggestions()
     }
 
