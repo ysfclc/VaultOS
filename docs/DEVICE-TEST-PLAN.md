@@ -109,3 +109,17 @@ Run these tests on the Redmi Note 12 Pro 5G after selecting VaultOS Capture Keyb
 11. **Lifecycle and background:** with VaultOS selected, lock/unlock, hide/show the keyboard, switch apps and repeat clipboard capture. Record any vendor-specific delays or missed events.
 
 **Expected Android limitation:** automatic clipboard event capture is available only while VaultOS is the selected input method. Gboard-active copy events must not appear unless the user manually captures them from VaultOS.
+## Keyboard usability acceptance — 0.8.0
+
+1. **Language selector:** cycle EN → PL → TR → EN from the keyboard toolbar. Confirm the visible key row changes and the preference remains selected after hiding/reopening the keyboard and restarting VaultOS.
+2. **Settings language:** set Polish in Settings, open a text field and verify Polish keys; repeat for Turkish and English. Confirm the toolbar selector and Settings remain synchronized.
+3. **Polish typing:** type `zażółć gęślą jaźń` using the Polish key row; verify every character and uppercase behavior.
+4. **Turkish typing:** type `İ ı ş Ş ğ Ğ ü Ü ö Ö ç Ç` and verify dotless/dotted I and Turkish-specific letters.
+5. **Symbols and editing:** in every language, switch to symbols and back, type punctuation, use backspace on selected text and ordinary text, and test Enter in a multiline field and an editor with a Search/Done action.
+6. **Inline Clips mode:** enter Clips mode while a text field is focused. Search a term that appears beyond the 420-character preview, select the matching result and verify the complete original text is inserted into that field.
+7. **Pinning:** pin and unpin a clipboard item directly from Clips mode; confirm pinned results move above unpinned results and persist after reopening.
+8. **Return to typing:** leave Clips mode with Keys and verify the active text field retains its cursor and selection.
+9. **Latest paste:** verify Paste inserts the most recent clipboard event, including a repeated copy of an older identical payload.
+10. **Input safety:** repeat keyboard tests in normal text, email, URL, numeric, password and no-suggestions fields. Confirm password fields never trigger automatic clipboard capture.
+11. **Small screen and large font:** test keyboard toolbar, language selector, Clips results and letter rows at default and enlarged system font/display settings; no button should become unreachable.
+12. **Lifecycle:** hide/show keyboard, switch applications, rotate device, lock/unlock, force-stop/reopen VaultOS and reboot; verify selected language and clipboard history persist and the keyboard recovers cleanly.
