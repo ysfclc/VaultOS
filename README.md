@@ -175,3 +175,6 @@ Hosted CI for 0.12.0 passed in run `42054296162`: unit tests, lint, debug/releas
 ### 0.12.1 privacy hardening
 
 Personal word learning now passes through one safe-field guard at every commit boundary, including punctuation and Enter. Password, email, URL, numeric, autocomplete and other excluded editor fields cannot contribute words or word-pair counts. Automatic learning remains off by default. This patch does not change the Room schema or existing vault data.
+
+
+**0.12.1 verification:** hosted CI run [42079070087](https://github.com/ysfclc/VaultOS/actions/runs/42079070087) passed unit tests, lint, signed debug/release APK assembly, signing verification and all artifact uploads. Physical Redmi acceptance remains outstanding.
