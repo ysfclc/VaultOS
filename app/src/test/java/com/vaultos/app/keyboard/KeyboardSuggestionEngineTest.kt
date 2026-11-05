@@ -11,6 +11,11 @@ class KeyboardSuggestionEngineTest {
     }
 
     @Test
+    fun longerEnglishPrefixFindsRecommendationVocabulary() {
+        assertTrue(KeyboardSuggestionEngine.completePrefix("en", "reco").contains("recommendations"))
+    }
+
+    @Test
     fun polishPrefixKeepsDiacritics() {
         assertTrue(KeyboardSuggestionEngine.completePrefix("pl", "dzi").contains("dzień"))
         assertTrue(KeyboardSuggestionEngine.completePrefix("pl", "dzi").contains("dzisiaj"))
