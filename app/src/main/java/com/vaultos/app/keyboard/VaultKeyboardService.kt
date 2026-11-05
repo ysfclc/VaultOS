@@ -774,6 +774,9 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                 val action = currentInputEditorInfo?.imeOptions?.and(EditorInfo.IME_MASK_ACTION) ?: EditorInfo.IME_ACTION_NONE
                 if (action != EditorInfo.IME_ACTION_NONE && action != EditorInfo.IME_ACTION_UNSPECIFIED) currentInputConnection?.performEditorAction(action)
                 else currentInputConnection?.commitText("\n", 1)
+                if (typedWord.isNotBlank()) {
+                    LocalTypingMemory(this).learn(selectedLanguageCode(), typedWord.toString(), previousWordForPrediction)
+                }
                 typedWord.clear()
                 lastCommittedWord = ""
                 previousWordForPrediction = ""
@@ -791,7 +794,10 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                     lastCommittedWord = ""
                     requestWordSuggestions(typedWord.toString())
                 } else {
-                    if (typedWord.isNotBlank()) previousWordForPrediction = typedWord.toString()
+                    if (typedWord.isNotBlank()) {
+                        LocalTypingMemory(this).learn(selectedLanguageCode(), typedWord.toString(), previousWordForPrediction)
+                        previousWordForPrediction = typedWord.toString()
+                    }
                     typedWord.clear()
                     lastCommittedWord = ""
                     activeSpellCheckWord = ""
