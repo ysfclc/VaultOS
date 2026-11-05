@@ -78,7 +78,7 @@ The historical keystore remains tracked and Gradle still uses it for both debug 
 ## Current verification
 
 - Earlier governance build `41976641135` completed successfully, including tests, lint, APK assembly, signing verification and artifact upload, for its then-current source commit.
-- Clipboard 0.7.0 build run `42025505944` is queued for the latest clipboard source commit `9ef6a6c612140483bbc633f20e37f3daeb6ad5b5`. Do not mark the phase CI-verified until this run completes successfully.
+- Clipboard build attempts for earlier intermediate commits were cancelled by subsequent pushes. The current 0.7.0 build run is `42025657002`, queued for source commit `6c7274fd92b23d4407703638eda9e899a0636e7e`. Do not mark the phase CI-verified until this run completes successfully.
 - Physical Redmi Note 12 Pro 5G behavior is not yet verified. Follow the new clipboard acceptance section in `DEVICE-TEST-PLAN.md`.
 
 ## Next
