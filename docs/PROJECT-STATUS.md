@@ -1,6 +1,6 @@
 # VaultOS — project status
 
-**Release line:** 0.11.0 · **Application ID:** `com.vaultos.app` · **Target:** Redmi Note 12 Pro 5G
+**Release line:** 0.12.1 · **Application ID:** `com.vaultos.app` · **Target:** Redmi Note 12 Pro 5G
 
 ## Product contract
 
@@ -191,3 +191,8 @@ The lexicon is intentionally small and deterministic. This is not neural next-wo
 ## Phase 12 — adaptive local typing assistant (0.12.0)
 
 Implemented: opt-in local personal vocabulary (off by default), long-press to add a personal dictionary word, learned prefix completions, learned adjacent-word next predictions, personal-word typo candidates, a confirmation-gated clear action, sentence capitalization and double-space period. The typing store contains individual words and word-pair counts only; it does not store sentences, full editor contents or clipboard text, and has no network dependency. Device-level persistence, sensitive-field exclusions, suggestion relevance and punctuation edge cases remain to be accepted on the Redmi Note 12 Pro 5G. Hosted CI passed in run `42054296162` (unit tests, lint, signed debug/release APKs and all artifact uploads). Physical-device acceptance remains pending.
+
+
+## Phase 12.1 — privacy hardening (0.12.1)
+
+All personal typing-memory writes now use one guard that checks the active editor type before persisting a word or adjacent-word count. This closes punctuation and Enter commit paths that could otherwise bypass the safe-field check. Automatic learning remains off by default; personal word pinning is still an explicit user action. Version 0.12.1 / versionCode 13 is the next patch build. CI and physical Redmi acceptance are pending.
