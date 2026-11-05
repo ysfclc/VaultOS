@@ -821,6 +821,16 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     private fun renderSuggestions() {
         val row = suggestionRow ?: return
         row.removeAllViews()
+        if (!isSafeForSuggestions(currentInputEditorInfo)) {
+            val hint = TextView(this).apply {
+                text = selectedLanguageLabel()
+                textSize = 11f
+                gravity = Gravity.CENTER
+                setTextColor(if (keyboardThemeDark()) Color.rgb(115, 127, 143) else Color.rgb(130, 141, 154))
+            }
+            row.addView(hint, LinearLayout.LayoutParams(-1, -1))
+            return
+        }
         val typed = typedWord.toString()
         val correcting = currentSuggestions.isNotEmpty() && (typed.isNotBlank() || lastCommittedWord.isNotBlank())
         val candidates = when {
@@ -957,9 +967,14 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         getSharedPreferences(PREFS, MODE_PRIVATE).edit().putString(KEY_LANGUAGE, next).apply()
         spellChecker?.close()
         spellChecker = null
+        activeSpellCheckWord = ""
+        currentSuggestions = emptyList()
+        spellCheckGeneration++
         if (isSafeForSuggestions(currentInputEditorInfo)) {
             val manager = getSystemService(Context.TEXT_SERVICES_MANAGER_SERVICE) as? TextServicesManager
             spellChecker = runCatching { manager?.newSpellCheckerSession(null, inputLocale(), this, true) }.getOrNull()
+            val wordToCheck = typedWord.toString().ifBlank { lastCommittedWord }
+            if (wordToCheck.isNotBlank()) requestWordSuggestions(wordToCheck)
         }
         refreshKeyboard()
     }
