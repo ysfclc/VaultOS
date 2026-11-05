@@ -27,6 +27,18 @@ class KeyboardSuggestionEngineTest {
     }
 
     @Test
+    fun localCorrectionsCatchCommonMistypes() {
+        assertTrue(KeyboardSuggestionEngine.nearbyCorrections("en", "helo").contains("hello"))
+        assertTrue(KeyboardSuggestionEngine.nearbyCorrections("en", "teh").contains("the"))
+        assertTrue(KeyboardSuggestionEngine.nearbyCorrections("en", "recommendatins").contains("recommendations"))
+    }
+
+    @Test
+    fun knownWordsAreNotReplacedByNearbyCorrections() {
+        assertTrue(KeyboardSuggestionEngine.nearbyCorrections("en", "hello").isEmpty())
+    }
+
+    @Test
     fun contextSuggestionsAreLanguageSpecific() {
         assertEquals(listOf("am", "have", "think"), KeyboardSuggestionEngine.nextWordSuggestions("en", "I"))
         assertEquals(listOf("wiem", "ma", "mam"), KeyboardSuggestionEngine.nextWordSuggestions("pl", "NIE"))
