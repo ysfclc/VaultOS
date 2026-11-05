@@ -1,6 +1,6 @@
 # VaultOS for Android
 
-**A local-first Android file library and manager (release 0.6.0).** This repository contains a native Kotlin/Jetpack Compose application, an optional capture keyboard, a DocumentsProvider, a private archive, local indexing, and manual external backup/restore.
+**A local-first Android file library and manager (release 0.7.0).** This repository contains a native Kotlin/Jetpack Compose application, an optional capture keyboard, a DocumentsProvider, a private archive, local indexing, and manual external backup/restore.
 
 ## What is implemented
 
@@ -61,7 +61,7 @@ The supplied workflow is available in both places:
 - standalone copy: `android-build.yml`
 - GitHub Actions location: `.github/workflows/android-build.yml`
 
-For the Memo-style ZIP update flow, first add the standalone YAML at .github/workflows/android-build.yml (this alone does not start a build). Then create an incoming/ folder and upload the archive as incoming/VaultOS-source.zip. The workflow imports the archive only when incoming/VaultOS-source.zip itself is added or modified (or when you manually dispatch the workflow); ordinary code and documentation pushes never replay a stale ZIP. It validates the archive, rejects private signing material, extracts the project while preserving the repository's signing/ directory and protected workflow files, creates an import note under docs/updates/, safely rebases its import commit onto the latest branch head, then tests and builds. If the import conflicts with newer edits, it stops without overwriting them and asks for a refreshed ZIP. Both workflow copies (.github/workflows/android-build.yml and the root android-build.yml mirror) are exact mirrors and are excluded from ZIP extraction. Keep the filename stable; replacing the ZIP with new contents is detected by SHA-256. When a release changes the workflow YAML itself, replace both YAML copies separately before uploading the source ZIP; the importer intentionally excludes these protected workflow files. The 0.6.0 source package includes the matching updated copies. Alternatively, upload/extract the source ZIP yourself and run **Actions → VaultOS Android Build → Run workflow**. The workflow runs unit tests and lint before building both signed variants. It publishes `VaultOS-release-APK` (recommended for normal installation/update), `VaultOS-debug-APK`, and a `VaultOS-build-metadata` artifact containing checksums and build information. GitHub packages each uploaded artifact in a ZIP.
+For the Memo-style ZIP update flow, first add the standalone YAML at .github/workflows/android-build.yml (this alone does not start a build). Then create an incoming/ folder and upload the archive as incoming/VaultOS-source.zip. The workflow imports the archive only when incoming/VaultOS-source.zip itself is added or modified (or when you manually dispatch the workflow); ordinary code and documentation pushes never replay a stale ZIP. It validates the archive, rejects private signing material, extracts the project while preserving the repository's signing/ directory and protected workflow files, creates an import note under docs/updates/, safely rebases its import commit onto the latest branch head, then tests and builds. If the import conflicts with newer edits, it stops without overwriting them and asks for a refreshed ZIP. Both workflow copies (.github/workflows/android-build.yml and the root android-build.yml mirror) are exact mirrors and are excluded from ZIP extraction. Keep the filename stable; replacing the ZIP with new contents is detected by SHA-256. When a release changes the workflow YAML itself, replace both YAML copies separately before uploading the source ZIP; the importer intentionally excludes these protected workflow files. The current source package includes the matching updated copies. Alternatively, upload/extract the source ZIP yourself and run **Actions → VaultOS Android Build → Run workflow**. The workflow runs unit tests and lint before building both signed variants. It publishes `VaultOS-release-APK` (recommended for normal installation/update), `VaultOS-debug-APK`, and a `VaultOS-build-metadata` artifact containing checksums and build information. GitHub packages each uploaded artifact in a ZIP.
 
 ## Data and backup notes
 
@@ -117,9 +117,19 @@ File operations now refuse symbolic links rather than following them. This prote
 The 1.0.0 device-verification gate remains open: physical clipboard/IME, Android 13–15 permissions, Xiaomi background behavior, backup/restore on external storage, accessibility and landscape acceptance still require the actual phone.
 
 
-The 1.0.0 device acceptance checklist is in docs/RELEASE-1.0-GATE.md. Until those real-device checks pass, 0.6.0 is the latest locally verified release and device verification remains pending.
+The 1.0.0 device acceptance checklist is in docs/RELEASE-1.0-GATE.md. Until those real-device checks pass, the latest source build remains unverified on physical hardware.
 
 
 ## Android compatibility
 
-Starting with the next build, VaultOS requires Android 9 (API 28) or newer. Android 8 and 8.1 devices (API 26–27) are no longer supported. This is a deliberate security and signing-rotation policy decision; users on those older versions should export their VaultOS data before moving to a supported device.
+VaultOS 0.7.0 requires Android 9 (API 28) or newer. Android 8 and 8.1 devices (API 26–27) are no longer supported. This is a deliberate security and signing-rotation policy decision; users on those older versions should export their VaultOS data before moving to a supported device.
+
+## Phase 7 — clipboard history foundation (0.7.0)
+
+Clipboard capture now has its own persistent event history, separate from the deduplicated file library. Each copy event gets its own timestamp and metadata record even when the same text payload has already been archived; repeated payloads can share one verified stored file. The gallery supports search, full-text copy, pinning, individual removal and clearing unpinned history. Open it from the clipboard-history icon in the main app or the History button in the VaultOS keyboard.
+
+Clipboard history stores the foreground editor package as context, the clipboard label and MIME types, a SHA-256 digest, character/byte counts and capture time. Text payloads are checked against their recorded byte count and digest when written, reused or read back. Multiple text/URI items are recorded separately. Sensitive clips marked by the source app on Android 13+ and password editor fields are excluded from automatic capture.
+
+**Android limitation:** automatic capture requires VaultOS to be the selected input method. A normal Android app cannot silently monitor the clipboard while another keyboard is active. Manual capture remains available from inside VaultOS. The foreground editor package is context, not guaranteed origin attribution.
+
+CI and physical-device acceptance for 0.7.0 are pending.
