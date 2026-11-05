@@ -820,6 +820,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     private fun commitSpace() {
         val word = typedWord.toString()
         if (word.isNotBlank() && isSafeForSuggestions(currentInputEditorInfo)) {
+            LocalTypingMemory(this).learn(selectedLanguageCode(), word, previousWordForPrediction)
             lastCommittedWord = word
             previousWordForPrediction = word
             activeSuggestionInputGeneration = inputGeneration
