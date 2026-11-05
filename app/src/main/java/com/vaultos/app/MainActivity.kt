@@ -69,6 +69,7 @@ import com.vaultos.app.storage.VaultBackupManager
 import com.vaultos.app.storage.FileOperationProgress
 import com.vaultos.app.storage.FileOperations
 import com.vaultos.app.storage.VaultRepository
+import com.vaultos.app.storage.ClipboardHistoryRepository
 import com.vaultos.app.storage.MetadataExtractor
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -202,6 +203,7 @@ private fun VaultApp(activity: MainActivity, repository: VaultRepository, resume
                     title = { Column { Text("VaultOS", fontWeight = FontWeight.Bold); Text("Your phone. One library.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) } },
                     actions = {
                         IconButton(onClick = { captureClipboard(activity, repository, onMessage = { message = it }) }) { Icon(Icons.Default.ContentPaste, "Capture clipboard") }
+                        IconButton(onClick = { activity.startActivity(Intent(activity, ClipboardHistoryActivity::class.java)) }) { Icon(Icons.Default.History, "Clipboard history") }
                         IconButton(onClick = { searchMode = !searchMode; if (!searchMode) query = "" }) { Icon(Icons.Default.Search, "Search") }
                         IconButton(onClick = { importLauncher.launch(arrayOf("*/*")) }) { Icon(Icons.Default.Add, "Import files") }
                     },
@@ -1319,19 +1321,25 @@ private fun captureClipboard(activity: Context, repository: VaultRepository, onM
     val manager = activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     val clip = manager.primaryClip
     if (clip == null || clip.itemCount == 0) { onMessage("Clipboard is empty"); return }
+    if (Build.VERSION.SDK_INT >= 33 && runCatching { clip.description.extras?.getBoolean(android.content.ClipDescription.EXTRA_IS_SENSITIVE, false) == true }.getOrDefault(false)) {
+        onMessage("This clipboard item is marked sensitive and was not saved"); return
+    }
     (activity as? ComponentActivity)?.lifecycleScope?.launch {
+        val history = ClipboardHistoryRepository(activity)
+        val mimeTypes = (0 until clip.description.mimeTypeCount).map { clip.description.getMimeType(it) }
+        val label = clip.description.label?.toString()
         val result = runCatching {
             for (index in 0 until clip.itemCount) {
                 val item = clip.getItemAt(index)
                 val uri = item.uri
-                if (uri != null) repository.importUri(uri, "Manual clipboard file capture")
+                if (uri != null) history.captureUri(uri, null, label, mimeTypes)
                 else {
                     val text = item.text?.toString() ?: item.coerceToText(activity)?.toString()
-                    if (!text.isNullOrEmpty()) repository.saveText(text, "Manual clipboard capture")
+                    if (!text.isNullOrEmpty()) history.captureText(text, null, label, mimeTypes)
                 }
             }
         }
-        result.onSuccess { onMessage("Clipboard content saved") }
+        result.onSuccess { onMessage("Clipboard capture added to history") }
             .onFailure { onMessage(it.message ?: "Clipboard capture failed") }
     }
 }
