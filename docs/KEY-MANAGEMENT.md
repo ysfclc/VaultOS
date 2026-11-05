@@ -40,7 +40,7 @@ Do not choose between these options silently. The supported-device policy and th
 
 ## Current build warning
 
-The current Gradle configuration and workflow still reference the historical committed keystore. This is an unresolved blocker. The workflow also needs its source-ZIP import path hardened so a future archive cannot reintroduce private signing material.
+The current Gradle configuration and workflow still reference the historical committed keystore. This is an unresolved blocker. The source-ZIP importer now rejects archives containing signing directories or private-key files and preserves the repository's existing signing/ directory during extraction; this prevents a source ZIP from replacing or reintroducing signing material, but it does not remove the already-committed key.
 
 The GitHub connector cannot read or verify GitHub Actions secret values. A successful build alone is not proof of signing-key rotation; inspect the resulting certificate and lineage. Do not claim remediation complete until the lineage and in-place update have been verified on-device.
 

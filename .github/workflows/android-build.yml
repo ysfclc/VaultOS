@@ -36,6 +36,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
+          # A ZIP is imported only when this push actually changes the ZIP.
+          # Other pushes and documentation updates must never replay a stale archive.
+          if [ "$GITHUB_EVENT_NAME" = "push" ] && ! jq -e '((.head_commit.added // []) + (.head_commit.modified // [])) | index("incoming/VaultOS-source.zip") != null' "$GITHUB_EVENT_PATH" >/dev/null; then
+            echo "This push did not add or modify incoming/VaultOS-source.zip; skipping ZIP import."
+            exit 0
+          fi
+
           ZIP_PATH="incoming/VaultOS-source.zip"
           if [ ! -f "$ZIP_PATH" ]; then
             echo "No incoming source ZIP found; using the checked-out repository."
@@ -56,6 +64,14 @@ jobs:
           PROJECT_DIR="$(dirname "$SETTINGS_FILE")"
           if [ ! -f "$PROJECT_DIR/app/build.gradle.kts" ] || [ ! -f "$PROJECT_DIR/README.md" ]; then
             echo "Source ZIP is incomplete: app/build.gradle.kts or README.md is missing." >&2
+            exit 1
+          fi
+
+          # Never accept private signing material from a source archive.
+          SIGNING_MATERIAL="$(find "$PROJECT_DIR" -type f \\( -iname '*.jks' -o -iname '*.keystore' -o -iname '*.p12' -o -iname '*.pfx' -o -iname '*.pk8' -o -iname '*.key' \\) -print)"
+          if [ -n "$SIGNING_MATERIAL" ] || [ -d "$PROJECT_DIR/signing" ]; then
+            echo "Source ZIP contains signing material. Remove the signing/ directory and private key files before uploading." >&2
+            printf '%s\\n' "$SIGNING_MATERIAL" >&2
             exit 1
           fi
 
@@ -98,6 +114,7 @@ jobs:
             --exclude='incoming/' \
             --exclude='.vaultos/' \
             --exclude='docs/updates/' \
+            --exclude='signing/' \
             --exclude='.github/workflows/android-build.yml' \
             --exclude='android-build.yml' \
             "$PROJECT_DIR/" ./
@@ -122,7 +139,28 @@ jobs:
           if ! git diff --cached --quiet; then
             git commit -m "Import VaultOS source ZIP ${GITHUB_RUN_NUMBER}"
             if [ "${GITHUB_REF_TYPE}" = "branch" ]; then
-              git push origin "HEAD:${GITHUB_REF_NAME}"
+              # Rebase the import commit onto the latest remote head before pushing.
+              # Retry non-conflicting races; stop safely if newer edits conflict.
+              pushed=false
+              for attempt in 1 2 3; do
+                git fetch origin "${GITHUB_REF_NAME}"
+                if ! git rebase "origin/${GITHUB_REF_NAME}"; then
+                  git rebase --abort || true
+                  echo "ZIP import conflicts with newer repository changes; no import was pushed." >&2
+                  echo "Refresh the source ZIP from the latest main branch and upload it again." >&2
+                  exit 1
+                fi
+                if git push origin "HEAD:${GITHUB_REF_NAME}"; then
+                  pushed=true
+                  break
+                fi
+                echo "Remote branch moved during push attempt ${attempt}; retrying after fetch/rebase."
+                sleep 2
+              done
+              if [ "$pushed" != "true" ]; then
+                echo "Could not push ZIP import after three safe attempts." >&2
+                exit 1
+              fi
             fi
           else
             echo "Uploaded source already matches the repository; no import commit needed."
