@@ -167,3 +167,6 @@ This is deliberately a lightweight deterministic baseline, not a neural predicti
 The keyboard now has an optional on-device personal vocabulary and word-pair model. Learning is **off by default** and must be enabled from More. When enabled, it records only individual words and adjacent word-pair counts after a word is committed in a safe text field; it does not store sentences, full field contents or clipboard data, and it sends nothing off-device. A long-press on the current word adds it to the personal dictionary even when automatic learning is off. Learned words contribute to prefix completions and local typo matching; learned word pairs influence next-word suggestions. A confirmation action clears this separate local typing store.
 
 Everyday typing also gains sentence capitalization and optional-by-default-on double-space period punctuation. Both can be switched off in More. The feature remains deterministic and local; it is not a neural language model or a full Gboard replacement. Device acceptance is required for language quality and punctuation edge cases.
+
+
+Hosted CI for 0.12.0 passed in run `42054296162`: unit tests, lint, debug/release APK builds, signing verification and all APK/metadata artifact uploads succeeded. Physical Redmi acceptance remains outstanding.
