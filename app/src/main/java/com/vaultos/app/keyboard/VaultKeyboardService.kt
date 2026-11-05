@@ -80,6 +80,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     private var spellCheckGeneration = 0
     private var currentSuggestions: List<String> = emptyList()
     private var activeSpellCheckWord = ""
+    private var lastSpaceAt = 0L
 
     private val clipboardListener = ClipboardManager.OnPrimaryClipChangedListener {
         if (getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_AUTO_CAPTURE, true)) {
