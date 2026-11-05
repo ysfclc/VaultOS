@@ -27,6 +27,21 @@ class KeyboardSuggestionEngineTest {
     }
 
     @Test
+    fun personalWordsJoinPrefixCompletions() {
+        assertEquals(
+            listOf("yusufword"),
+            KeyboardSuggestionEngine.completePrefix("en", "yus", additionalWords = listOf("yusufword"))
+        )
+    }
+
+    @Test
+    fun personalWordsCanCorrectMistypes() {
+        assertTrue(
+            KeyboardSuggestionEngine.nearbyCorrections("en", "yusf", additionalWords = listOf("yusuf")).contains("yusuf")
+        )
+    }
+
+    @Test
     fun localCorrectionsCatchCommonMistypes() {
         assertTrue(KeyboardSuggestionEngine.nearbyCorrections("en", "helo").contains("hello"))
         assertTrue(KeyboardSuggestionEngine.nearbyCorrections("en", "teh").contains("the"))
