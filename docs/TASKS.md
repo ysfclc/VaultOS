@@ -198,5 +198,6 @@ Phase 2 implementation is in release line 0.2.0. The Room 1→2 migration adds r
 - [x] Make selecting a completion commit the word and one trailing space consistently.
 - [x] Refine keyboard and candidate-strip colors, spacing, keycap radius and toolbar surfaces.
 - [x] Add unit tests for EN / PL / TR prefix completion, context suggestions, unknown contexts and short-prefix behavior.
+- [x] Run hosted 0.11.0 CI in run `42047330196`: unit tests, lint, debug/release APK assembly, persistent signing verification and all three artifact uploads passed.
 - [ ] Verify actual recommendation relevance and visual quality on Redmi Note 12 Pro 5G in ChatGPT, Chrome, WhatsApp and Notes.
 - [ ] Confirm no unwanted candidate insertion, duplicate spaces or stale spell-check replacement while typing quickly.
