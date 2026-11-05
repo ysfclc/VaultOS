@@ -55,3 +55,35 @@ The historical keystore remains tracked and Gradle still uses it for both debug 
 3. Implement the v3 signing-lineage pipeline and test in-place updates on API 28, API 32, and API 33+ devices.
 4. Only after update continuity is proven, remove private signing material from the current tree and rewrite exposed Git history.
 5. Refresh the source ZIP from the current repository and exclude `signing/` before the next import.
+
+## 0.7.0 — clipboard history foundation
+
+- Added Room schema v4 and a non-destructive 3→4 migration for clipboard event history.
+- Each captured clipboard item creates its own timestamped history event. Identical text payloads can reuse one archived VaultItem without collapsing separate copy events.
+- Captures retain foreground editor package context, clipboard label, MIME types, content hash, character/byte counts and capture time.
+- Automatic IME capture now records every supported item in multi-item clips independently; one inaccessible URI no longer prevents later items from being saved.
+- Added searchable history gallery with full-text search through existing chunk indexes, full-text copy, pinning, event deletion and clear-unpinned behavior.
+- Gallery is accessible from the main app toolbar and the VaultOS keyboard's History action.
+- Text archive writes and reads verify byte count and SHA-256; Paste saved now follows the most recent clipboard event rather than the original deduplicated item's creation time.
+- Password editor fields and Android 13+ sensitive clipboard clips are excluded from automatic capture.
+- Android's selected-IME restriction remains: automatic capture requires VaultOS to be the active input method. Manual capture remains available inside VaultOS.
+- App version is now 0.7.0 / versionCode 7; minimum supported API is 28.
+
+## Signing migration — deferred by user
+
+- GOV-001 remains open and is explicitly deferred until the user provisions the replacement signing material and GitHub Actions secrets.
+- Keep the historical signing keystore in place until the replacement lineage and in-place update path are validated. Do not rotate, delete or rewrite history prematurely.
+- This deferred security task does not block clipboard, keyboard, gallery, command or connector product work.
+
+## Current verification
+
+- Earlier governance build `41976641135` completed successfully, including tests, lint, APK assembly, signing verification and artifact upload, for its then-current source commit.
+- Clipboard 0.7.0 build run `42025505944` is queued for the latest clipboard source commit `9ef6a6c612140483bbc633f20e37f3daeb6ad5b5`. Do not mark the phase CI-verified until this run completes successfully.
+- Physical Redmi Note 12 Pro 5G behavior is not yet verified. Follow the new clipboard acceptance section in `DEVICE-TEST-PLAN.md`.
+
+## Next
+
+1. Confirm run `42025505944` completes tests, lint, debug/release assembly and artifact uploads; fix any real failure before continuing.
+2. Install the 0.7.0 APK on the Redmi Note 12 Pro 5G and complete the clipboard acceptance matrix.
+3. Continue Phase 2 keyboard work: language selector, suggestions/autocorrect, clipboard mode/search/pins inside the keyboard, settings and lifecycle tests.
+4. Resume GOV-001 only when the user has added the replacement keystore and signing secrets.
