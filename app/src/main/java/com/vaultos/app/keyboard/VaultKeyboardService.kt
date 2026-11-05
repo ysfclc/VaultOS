@@ -233,7 +233,7 @@ class VaultKeyboardService : InputMethodService() {
             entries.take(3).forEach { entry ->
                 val row = LinearLayout(this@VaultKeyboardService).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setBackgroundColor(Color.rgb(29, 36, 44)) }
                 val preview = TextView(this@VaultKeyboardService).apply {
-                    text = entry.preview.replace("\\n", " ").take(110)
+                    text = entry.preview.replace("\n", " ").take(110)
                     setTextColor(Color.WHITE); textSize = 11f; maxLines = 2; setPadding(dp(7), dp(4), dp(4), dp(4))
                     setOnClickListener { pasteClipboardEntry(entry) }
                 }
