@@ -24,6 +24,10 @@ Xiaomi MIUI/HyperOS background-work onboarding, app-info and battery-optimizatio
 
 Reject symbolic links in recursive copy, move, ZIP creation and delete operations; use no-follow directory checks; avoid repeated archive-stat traversals; add regression tests proving linked targets outside a selected tree remain untouched.
 
+## 0.11.0 — multilingual suggestions and visual refinement
+
+Deterministic EN / PL / TR prefix completion, conservative offline typo candidates, short context-aware next-word suggestions, and Android spell-checker fallback. Candidate strip keeps the current word visible, avoids showing platform alternatives unless marked as likely typos, and uses a quieter visual treatment. Local-only; no network or personal typing-history collection. Physical-device relevance and touch acceptance remain open.
+
 ## 1.0.0 — device-verified product
 
 Signed release process, GitHub-hosted CI verification, migration/restore tests, accessibility and performance review, measured Xiaomi background behavior, and documented Android-version compatibility. See docs/RELEASE-1.0-GATE.md; 1.0.0 is not complete until physical-device checks pass.
