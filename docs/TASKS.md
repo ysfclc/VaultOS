@@ -222,4 +222,5 @@ Phase 2 implementation is in release line 0.2.0. The Room 1→2 migration adds r
 - [x] Run hosted CI for 0.12.0 (run `42054296162`): unit tests, lint, signed debug/release APKs and all artifact uploads passed.
 
 - [x] Route every personal-learning write through a safe-editor-field guard, including punctuation and Enter boundaries.
-- [ ] Complete 0.12.1 CI and physical Redmi privacy/prediction acceptance.
+- [x] Complete 0.12.1 hosted CI in run `42079070087`: unit tests, lint, debug/release APK assembly, signing verification and all three artifact uploads passed.
+- [ ] Complete physical Redmi privacy/prediction acceptance.
