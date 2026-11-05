@@ -69,7 +69,7 @@ jobs:
 
           # Never accept private signing material from a source archive.
           # Never accept private signing material from a source archive.
-          SIGNING_MATERIAL="$(find "$PROJECT_DIR" -type f -print | grep -Ei '\\.(jks|keystore|p12|pfx|pk8|key)$' || true)"
+          SIGNING_MATERIAL="$(find "$PROJECT_DIR" -type f -print | grep -Ei '[.](jks|keystore|p12|pfx|pk8|key)$' || true)"
           if [ -n "$SIGNING_MATERIAL" ] || [ -d "$PROJECT_DIR/signing" ]; then
             echo "Source ZIP contains signing material. Remove the signing/ directory and private key files before uploading." >&2
             printf '%s\n' "$SIGNING_MATERIAL" >&2
