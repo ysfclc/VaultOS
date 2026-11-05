@@ -28,6 +28,10 @@ Reject symbolic links in recursive copy, move, ZIP creation and delete operation
 
 Deterministic EN / PL / TR prefix completion, conservative offline typo candidates, short context-aware next-word suggestions, and Android spell-checker fallback. Candidate strip keeps the current word visible, avoids showing platform alternatives unless marked as likely typos, and uses a quieter visual treatment. Local-only; no network or personal typing-history collection. Physical-device relevance and touch acceptance remain open.
 
+## 0.12.0 — adaptive local typing assistant
+
+Opt-in local personal vocabulary and adjacent-word learning; long-press to add a personal dictionary entry; learned words used in prefix completions and typo candidates; learned word pairs influence next-word ranking; confirmation-gated clear-memory action; sentence capitalization; double-space period punctuation. Learning is off by default and stores only words and pair counts, never sentences or full editor contents. Physical-device quality, persistence and sensitive-field exclusions remain acceptance gates.
+
 ## 1.0.0 — device-verified product
 
 Signed release process, GitHub-hosted CI verification, migration/restore tests, accessibility and performance review, measured Xiaomi background behavior, and documented Android-version compatibility. See docs/RELEASE-1.0-GATE.md; 1.0.0 is not complete until physical-device checks pass.
