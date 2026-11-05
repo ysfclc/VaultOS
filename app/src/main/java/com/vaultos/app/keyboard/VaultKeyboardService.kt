@@ -18,6 +18,7 @@ import android.widget.Toast
 import com.vaultos.app.MainActivity
 import com.vaultos.app.ClipboardHistoryActivity
 import com.vaultos.app.storage.ClipboardHistoryRepository
+import com.vaultos.app.storage.VaultRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
