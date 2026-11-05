@@ -152,4 +152,4 @@ The keyboard now includes:
 - Dark/light themes and off/left/right one-handed layout.
 - A More menu for capture, paste, history, keyboard size, haptics, sound, key previews, number row, autocorrect, theme, one-hand mode and switching back to Gboard.
 
-The implementation is local-first. It does not claim to include glide typing or a proprietary next-word prediction engine. Spell-check quality still depends on installed Android dictionaries. CI build success is not proof of touch ergonomics; the Redmi Note 12 Pro 5G acceptance matrix remains mandatory.
+The implementation is local-first. It does not claim to include glide typing or a proprietary next-word prediction engine. Spell-check quality still depends on installed Android dictionaries. Hosted CI passed in run `42041620803` (unit-test task, lint, debug/release assembly, signing verification and APK artifact uploads). Build success is not proof of touch ergonomics; the Redmi Note 12 Pro 5G acceptance matrix remains mandatory.

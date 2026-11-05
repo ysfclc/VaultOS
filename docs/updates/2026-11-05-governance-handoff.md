@@ -136,4 +136,4 @@ Value-packed additions: optional number row, dark/light theme, one-handed left/r
 
 Research references: SwiftKey documents keyboard resizing, toolbar customization, clipboard, themes and multilingual/Flow typing; HeliBoard documents offline dictionaries, customizable layouts/themes, clipboard history, one-handed/split modes and number pad. VaultOS adopts relevant interaction ideas but does not copy proprietary code or claim glide typing.
 
-Version 0.10.0 / versionCode 10 is source-complete pending hosted CI. Physical Redmi Note 12 Pro 5G acceptance remains mandatory, especially visible press feedback, popup positioning, touch accuracy and missed/duplicate key entry. Do not mark the keyboard accepted before these tests pass.
+Version 0.10.0 / versionCode 10 passed hosted CI in run `42041620803`: `clean testDebugUnitTest lintDebug assembleDebug assembleRelease`, signing verification and debug/release/metadata artifact uploads all succeeded. Physical Redmi Note 12 Pro 5G acceptance remains mandatory, especially visible press feedback, popup positioning, touch accuracy and missed/duplicate key entry. Do not mark the keyboard accepted before these tests pass.

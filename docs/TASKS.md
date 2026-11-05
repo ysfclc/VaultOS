@@ -182,7 +182,7 @@ Phase 2 implementation is in release line 0.2.0. The Room 1→2 migration adds r
 - [x] Add a Vault Cmd panel that searches the local library and inserts complete saved Text/Code content.
 - [x] Add live spell-check requests with stale-result sequencing and only autocorrect when the spell-checker flags a likely typo.
 - [x] Preserve EN / PL / TR, long-press alternatives, Clips, clipboard capture, pinning, History and complete-text insertion.
-- [ ] Run the hosted 0.10.0 build and fix every compile/lint/test failure.
+- [x] Run hosted 0.10.0 CI: run `42041620803` passed `clean testDebugUnitTest lintDebug assembleDebug assembleRelease`, signature verification and all three artifact uploads.
 - [ ] Install on Redmi Note 12 Pro 5G and verify that each pressed key is unmistakably visible, the popup preview follows touch, and missed/duplicate characters do not occur.
 - [ ] Test landscape, enlarged display/font, TalkBack, one-hand modes, theme, number row, emoji, Commands, clipboard, cursor swipe, sounds, haptics and Gboard switching.
 - [ ] Tune dimensions from real device feedback. Do not call the keyboard usable until this acceptance passes.
