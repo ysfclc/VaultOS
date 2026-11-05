@@ -150,7 +150,15 @@ Phase 2 implementation is in release line 0.2.0. The Room 1→2 migration adds r
 - [x] Add a searchable clipboard gallery with full-text copy, pin, individual delete and clear-unpinned actions.
 - [x] Expose clipboard history from both the main app and the optional VaultOS keyboard.
 - [x] Verify full-text payload size and SHA-256 on write, duplicate reuse and readback before paste.
-- [ ] Confirm GitHub Actions test/lint/APK build for this phase.
+- [x] Confirm GitHub Actions test/lint/APK build for this phase (run `42026208055`; BUILD SUCCESSFUL; signed debug and release APK artifacts uploaded).
 - [ ] Verify clipboard access and multi-item behavior on the Redmi Note 12 Pro 5G across Chrome, ChatGPT, WhatsApp, Notes and password fields.
 
 **Platform boundary:** automatic clipboard capture is available only while VaultOS is the selected input method (or when the user manually captures from inside VaultOS). Android does not permit a normal background app to silently read another keyboard's clipboard. The foreground editor package is recorded as context, not asserted as definitive clipboard-origin metadata.
+
+### Phase 7 CI verification — 2026-11-05
+
+- [x] Run `clean testDebugUnitTest lintDebug assembleDebug assembleRelease` in GitHub Actions with Java 17 / Gradle 8.9 / Android SDK 35.
+- [x] Confirm Kotlin compilation, unit-test task, lint and both APK assembly tasks complete successfully.
+- [x] Verify the persistent signing certificate step succeeds.
+- [x] Upload `VaultOS-debug-APK`, `VaultOS-release-APK` and `VaultOS-build-metadata` artifacts (run 60).
+- [ ] Install the APK on the Redmi Note 12 Pro 5G and complete the clipboard device acceptance matrix.
