@@ -5,7 +5,7 @@
 - Repository: `ysfclc/VaultOS`
 - Default branch: `main`
 - Visibility: private
-- Latest verified source commit at handoff: `50dc7b31786ab33519a43db74628b8fadc0fa5ed`
+- Latest verified source commit before the API policy change: `db5d43c8f51980f38a126dac2192dea294bfc1bf`
 
 ## Completed in this work session
 
@@ -27,11 +27,7 @@
 
 The historical keystore remains tracked and Gradle still uses it for both debug and release. No replacement keystore or GitHub Actions signing secrets have been provisioned or verified. The old key has not been deleted and Git history has not been rewritten.
 
-A compatibility decision is required before release signing changes:
-- Keep API 26–27: those devices still require the exposed original signer; this preserves legacy update continuity but leaves that legacy path compromised.
-- Raise minSdk to API 28: use v3 lineage rotation for supported devices, but API 26–27 users need a data-export/reinstall migration rather than an in-place update.
-
-The exact Android rotation behavior and decision points are documented in `docs/KEY-MANAGEMENT.md`.
+**Decision approved and implemented in source:** minSdk is raised from API 26 to API 28. Android 8/8.1 users are outside the supported update path and need to export their data before moving to a supported device. The v3 lineage migration itself remains pending.
 
 ## Verification
 
@@ -44,8 +40,8 @@ The exact Android rotation behavior and decision points are documented in `docs/
 
 ## Next actions
 
-1. Decide whether VaultOS continues supporting API 26–27.
-2. Provision and verify the replacement signing material and required Actions secrets.
-3. Implement and test the v3 signing-lineage pipeline before removing the historical signer.
-4. Remove private signing material from the current tree and ZIP workflow, then rewrite exposed Git history after update continuity is proven.
+1. Provision and verify replacement signing material and the required GitHub Actions secrets.
+2. Generate the signing lineage from the historical certificate to the replacement certificate using Android Build Tools.
+3. Implement the v3 signing-lineage pipeline and test in-place updates on API 28, API 32, and API 33+ devices.
+4. Only after update continuity is proven, remove private signing material from the current tree and rewrite exposed Git history.
 5. Refresh the source ZIP from the current repository and exclude `signing/` before the next import.

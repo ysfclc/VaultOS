@@ -10,7 +10,7 @@ android {
     compileSdk = 35
     defaultConfig {
         applicationId = "com.vaultos.app"
-        minSdk = 26
+        minSdk = 28
         targetSdk = 35
         versionCode = 6
         versionName = "0.6.0"

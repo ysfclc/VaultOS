@@ -68,7 +68,6 @@ jobs:
           fi
 
           # Never accept private signing material from a source archive.
-          # Never accept private signing material from a source archive.
           SIGNING_MATERIAL="$(find "$PROJECT_DIR" -type f -print | grep -Ei '[.](jks|keystore|p12|pfx|pk8|key)$' || true)"
           if [ -n "$SIGNING_MATERIAL" ] || [ -d "$PROJECT_DIR/signing" ]; then
             echo "Source ZIP contains signing material. Remove the signing/ directory and private key files before uploading." >&2
@@ -274,7 +273,7 @@ jobs:
             echo "Commit: $(git rev-parse HEAD)"
             echo "Variants: debug and release (same persistent local sideload signing certificate)"
             echo "Target SDK: 35"
-            echo "Minimum SDK: 26"
+            echo "Minimum SDK: 28"
           } > BUILD-INFO.txt
 
       - name: Upload installable debug APK
@@ -333,7 +332,7 @@ jobs:
  || true)"
           if [ -n "$SIGNING_MATERIAL" ] || [ -d "$PROJECT_DIR/signing" ]; then
             echo "Source ZIP contains signing material. Remove the signing/ directory and private key files before uploading." >&2
-            printf '%s\\n' "$SIGNING_MATERIAL" >&2
+            printf '%s\n' "$SIGNING_MATERIAL" >&2
             exit 1
           fi
 

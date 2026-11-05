@@ -9,29 +9,26 @@ The former signing identity at `signing/vaultos-stable.keystore` was committed w
 ## Existing installation continuity
 
 - Application ID: `com.vaultos.app`
-- Minimum Android version: API 26
+- Minimum Android version: API 28 (approved policy; implementation now committed)
 - The historical build used the same signing certificate for debug and release.
 - A different signing certificate normally cannot update an existing installation in place.
 - APK Signature Scheme v3 key rotation is supported from Android 9 (API 28).
 - With `apksigner sign --lineage ... --rotation-min-sdk-version 28`, the rotated signer is used from API 28 onward; the original signer remains necessary for platforms below API 28.
 - Android 13 (API 33) introduced v3.1, whose default behavior targets the rotated signer at API 33+ and retains the original signer in the v3 block for older platforms. Do not rely on that default if the intended rotation boundary is API 28.
 
-### The API 26–27 security trade-off
+### API 26–27 support decision
 
 Because VaultOS currently supports API 26 and 27, those devices cannot use the v3 proof-of-rotation mechanism. Keeping in-place updates for those installations requires continuing to sign their compatible APKs with the exposed original key. That preserves update continuity but does **not** fully remediate the compromised key for API 26–27 devices.
 
-There are therefore two honest choices:
+**Decision approved:** VaultOS now raises minSdk to API 28. This drops Android 8 and 8.1 from supported updates so the release signer can rotate from API 28 onward without retaining a legacy API 26–27 update path. Existing API 26–27 users cannot install the new build as an in-place update; they should export their VaultOS data and move to a supported Android device.
 
-1. **Keep minSdk 26:** rotate to the replacement signer from API 28, while retaining the exposed signer for API 26–27. This protects the supported API 28+ update path but leaves legacy API 26–27 updates dependent on the compromised signer.
-2. **Raise minSdk to 28:** stop supporting API 26–27 and use the replacement signer through a v3 lineage for supported devices. Existing API 26–27 users would need a data-export/reinstall migration; they cannot receive a normal in-place update signed only by the new key.
-
-Do not choose between these options silently. The supported-device policy and the data-migration consequences must be accepted before release signing changes.
+The rotation itself is still pending. API 28–32 have platform-specific key-rotation caveats; the lineage and signed APK must be validated with the exact Build Tools version and tested on representative Android 9, Android 12L, and Android 13+ devices before the release is declared safe. Android's current guidance warns about rotation-related behavior on Android 12 and earlier. Do not infer successful in-place update from `apksigner verify` alone.
 
 ## Required remediation sequence
 
 1. Keep the repository private while cleanup is underway.
 2. Provision a replacement keystore and keep it outside the repository. Store the required keystore bytes and passwords as GitHub Actions secrets; never commit them.
-3. Decide whether API 26–27 remain supported. If they do, document that their update signer remains compromised.
+3. API 26–27 support has been dropped by raising minSdk to API 28.
 4. Generate and verify a signing-certificate lineage from the exposed certificate to the replacement certificate. For an API 28 rotation boundary, use the documented `apksigner` rotation options and explicitly set `--rotation-min-sdk-version 28`.
 5. Update Gradle and the canonical GitHub Actions workflow to use the Android default debug signer for debug builds and secret-backed signing for release builds.
 6. Build and verify APK signatures for the supported API range. Test an in-place update from the last distributed APK on representative Android versions and verify app-private data remains intact.
@@ -40,7 +37,7 @@ Do not choose between these options silently. The supported-device policy and th
 
 ## Current build warning
 
-The current Gradle configuration and workflow still reference the historical committed keystore. This is an unresolved blocker. The source-ZIP importer now rejects archives containing signing directories or private-key files and preserves the repository's existing signing/ directory during extraction; this prevents a source ZIP from replacing or reintroducing signing material, but it does not remove the already-committed key.
+The current Gradle configuration and workflow still reference the historical committed keystore. This is an unresolved blocker. The app's minSdk is now API 28, as approved. The source-ZIP importer now rejects archives containing signing directories or private-key files and preserves the repository's existing signing/ directory during extraction; this prevents a source ZIP from replacing or reintroducing signing material, but it does not remove the already-committed key.
 
 The GitHub connector cannot read or verify GitHub Actions secret values. A successful build alone is not proof of signing-key rotation; inspect the resulting certificate and lineage. Do not claim remediation complete until the lineage and in-place update have been verified on-device.
 

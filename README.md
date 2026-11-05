@@ -118,3 +118,8 @@ The 1.0.0 device-verification gate remains open: physical clipboard/IME, Android
 
 
 The 1.0.0 device acceptance checklist is in docs/RELEASE-1.0-GATE.md. Until those real-device checks pass, 0.6.0 is the latest locally verified release and device verification remains pending.
+
+
+## Android compatibility
+
+Starting with the next build, VaultOS requires Android 9 (API 28) or newer. Android 8 and 8.1 devices (API 26–27) are no longer supported. This is a deliberate security and signing-rotation policy decision; users on those older versions should export their VaultOS data before moving to a supported device.
