@@ -333,7 +333,7 @@ interface VaultDao {
     @Query("SELECT * FROM clipboard_history ORDER BY isPinned DESC, capturedAt DESC")
     fun observeClipboardHistory(): Flow<List<ClipboardHistoryEntry>>
 
-    @Query("SELECT * FROM clipboard_history WHERE preview LIKE '%' || :query || '%' OR foregroundPackage LIKE '%' || :query || '%' OR clipLabel LIKE '%' || :query || '%' OR mimeTypes LIKE '%' || :query || '%' ORDER BY isPinned DESC, capturedAt DESC")
+    @Query("SELECT DISTINCT clipboard_history.* FROM clipboard_history LEFT JOIN items ON items.id = clipboard_history.itemId LEFT JOIN search_chunks ON search_chunks.itemId = items.id WHERE clipboard_history.preview LIKE '%' || :query || '%' OR items.textContent LIKE '%' || :query || '%' OR search_chunks.content LIKE '%' || :query || '%' OR clipboard_history.foregroundPackage LIKE '%' || :query || '%' OR clipboard_history.clipLabel LIKE '%' || :query || '%' OR clipboard_history.mimeTypes LIKE '%' || :query || '%' ORDER BY clipboard_history.isPinned DESC, clipboard_history.capturedAt DESC")
     fun searchClipboardHistory(query: String): Flow<List<ClipboardHistoryEntry>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -350,6 +350,9 @@ interface VaultDao {
 
     @Query("SELECT COUNT(*) FROM clipboard_history")
     fun clipboardHistoryCount(): Flow<Int>
+
+    @Query("SELECT * FROM clipboard_history WHERE contentType = 'text' ORDER BY capturedAt DESC LIMIT 1")
+    suspend fun latestClipboardText(): ClipboardHistoryEntry?
 
     @Query("SELECT * FROM items WHERE isTrashed = 0 AND category IN ('Text','Code') ORDER BY createdAt DESC LIMIT 1")
     suspend fun latestTextItem(): VaultItem?
