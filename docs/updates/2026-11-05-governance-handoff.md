@@ -137,3 +137,24 @@ Value-packed additions: optional number row, dark/light theme, one-handed left/r
 Research references: SwiftKey documents keyboard resizing, toolbar customization, clipboard, themes and multilingual/Flow typing; HeliBoard documents offline dictionaries, customizable layouts/themes, clipboard history, one-handed/split modes and number pad. VaultOS adopts relevant interaction ideas but does not copy proprietary code or claim glide typing.
 
 Version 0.10.0 / versionCode 10 passed hosted CI in run `42041620803`: `clean testDebugUnitTest lintDebug assembleDebug assembleRelease`, signing verification and debug/release/metadata artifact uploads all succeeded. Physical Redmi Note 12 Pro 5G acceptance remains mandatory, especially visible press feedback, popup positioning, touch accuracy and missed/duplicate key entry. Do not mark the keyboard accepted before these tests pass.
+
+
+## Keyboard recommendations and visual refinement — 2026-11-05 (0.11.0)
+
+The user reported that the keyboard was somewhat better but the recommendations were still poor and the visual experience did not feel elegant. They also confirmed they were actively using VaultOS Keyboard while chatting, giving us a real dogfooding signal rather than relying only on the build.
+
+Implemented:
+- A deterministic local EN / PL / TR prefix lexicon with common completions.
+- Conservative offline typo candidates using Damerau–Levenshtein distance; exact words in the bundled vocabulary are not treated as typos.
+- A small contextual next-word map for common English, Polish and Turkish phrases. Unknown contexts return no invented suggestions.
+- Android SpellCheckerSession remains as a secondary source, but its alternatives are shown only when the platform flags a likely typo.
+- The candidate strip keeps the typed word visible, separates alternatives, and inserts a selected completion with exactly one trailing space.
+- Stale spell-check callbacks are invalidated when the active word/editor changes; suggestions are suppressed in unsafe editor fields.
+- Refined dark/light palette, quieter toolbar surfaces, softer keycaps and a more restrained candidate strip.
+- Added unit tests for prefix completion, typo corrections, context predictions, unknown contexts and known-word protection.
+
+Release: 0.11.0 / versionCode 11.
+Source build commit: `f66b1e068fc7b87162b11420907d987663d25369`.
+Hosted CI run: `42047330196` passed `clean testDebugUnitTest lintDebug assembleDebug assembleRelease`, persistent signing verification, APK preparation and all three artifact uploads. Artifacts: `VaultOS-debug-APK`, `VaultOS-release-APK`, `VaultOS-build-metadata`.
+
+Still not claimed: Gboard-level neural prediction, a full dictionary, learned personal typing model, or glide typing. The bundled vocabulary is a small deterministic baseline. Physical acceptance on the Redmi Note 12 Pro 5G is still required to judge real-world relevance, insertion behavior, touch accuracy and visual quality.
