@@ -132,3 +132,20 @@ Run on the Redmi Note 12 Pro 5G. This is the acceptance gate for the redesign; a
 17. **Accessibility and lifecycle:** TalkBack focus/labels, large font/display size, portrait/landscape, rotate, lock/unlock, hide/show, switch apps, force-stop/reopen and reboot. No controls may disappear or become unreachable.
 
 Record Android/API, MIUI/HyperOS, VaultOS build, display/font scaling, active spell-checker and any missed/duplicate keystrokes. Any failure in steps 1–4 blocks acceptance.
+
+
+## Keyboard suggestions and visual refinement — 0.11.0
+
+Run in ChatGPT, Chrome, WhatsApp and Notes on the Redmi Note 12 Pro 5G. The keyboard must remain responsive while candidate results arrive asynchronously.
+
+1. **English prefix completions:** type `hel` and verify useful completions such as `hello` / `help`; type `reco` and verify recommendation-related completions. Selecting one must replace the partial word and insert exactly one trailing space.
+2. **Polish prefix completions:** select PL, type `dzi`, and verify `dzień` / `dzisiaj` are offered with diacritics intact.
+3. **Turkish prefix completions:** select TR, type `merh`, and verify `merhaba` is offered with correct casing.
+4. **Context suggestions:** type `I ` in EN, `jak ` in PL and `merhaba ` in TR. Verify the corresponding short next-word suggestions appear. Tap one and confirm it is inserted after the existing space with one additional trailing space.
+5. **No invented context:** type an uncommon word followed by a space. The strip must not show unrelated generic words as if they were predictions.
+6. **Spell-check fallback:** misspell a common word in each language. Show alternatives only when the active Android spell-checker flags a likely typo. Keep the original word visible as the first candidate.
+7. **Race handling:** type quickly, backspace, add punctuation, change language, switch fields and hide/reopen the IME while spell-check results are pending. An old candidate must never replace or appear for a newer word.
+8. **Candidate strip design:** inspect dark and light themes, long words, large display/font scaling and landscape. Candidate labels must remain legible, separated and easy to tap without reducing the key rows' usable height.
+9. **Insertion safety:** tap the current word, a prefix completion, a spelling correction and a next-word suggestion. Confirm no duplicated word, missing separator or double space appears.
+
+Record the Android system spell-checker and active keyboard language. The local lexicon is a small deterministic baseline, not a full language model; report missing or awkward suggestions as device feedback rather than assuming CI can measure language quality.
