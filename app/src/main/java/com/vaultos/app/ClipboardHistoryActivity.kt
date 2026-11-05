@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -49,7 +50,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.vaultos.app.data.ClipboardHistoryEntry
-import com.vaultos.app.data.VaultDatabase
 import com.vaultos.app.storage.ClipboardHistoryRepository
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
@@ -66,7 +66,6 @@ class ClipboardHistoryActivity : ComponentActivity() {
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 private fun ClipboardHistoryScreen(activity: ClipboardHistoryActivity) {
-    val dao = remember { VaultDatabase.get(activity).dao() }
     val repository = remember { ClipboardHistoryRepository(activity) }
     val scope = rememberCoroutineScope()
     var query by remember { mutableStateOf("") }
