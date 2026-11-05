@@ -171,5 +171,5 @@ Record the Android system spell-checker and active keyboard language. The local 
 1. Enable private word learning in a normal text field. Type a distinctive phrase and commit words using space, punctuation and Enter. Confirm useful personal completions/next-word candidates appear after returning to a normal field.
 2. Repeat in password, email, URL, numeric, autocomplete and any field where suggestions are disabled. Confirm none of those words appear as personal completions or next-word predictions in a normal text field.
 3. Confirm learning is off after a fresh install; enable it explicitly, pause it, and verify no new words are learned while paused.
-4. Clear personal typing data from More and verify learned completions and word-pair predictions disappear. Confirm clipboard history is unchanged.
+4. Clear personal typing data from More and verify learned completions and word-pair predictions disappear. Confirm clipboard history is unchanged and the previous learning on/off preference is preserved.
 5. Confirm personal typing memory stays on-device and no network permission or remote typing service is introduced.
