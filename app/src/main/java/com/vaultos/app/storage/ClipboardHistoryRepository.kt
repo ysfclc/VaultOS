@@ -82,7 +82,7 @@ class ClipboardHistoryRepository(private val context: Context) {
     suspend fun delete(id: String) = dao.deleteClipboardHistory(id)
     suspend fun clearUnpinned() = dao.clearUnpinnedClipboardHistory()
 
-    private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it) }
+    private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it.toInt() and 0xff) }
 
     companion object { private const val PREVIEW_LIMIT = 420 }
 }
