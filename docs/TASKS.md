@@ -186,3 +186,16 @@ Phase 2 implementation is in release line 0.2.0. The Room 1→2 migration adds r
 - [ ] Install on Redmi Note 12 Pro 5G and verify that each pressed key is unmistakably visible, the popup preview follows touch, and missed/duplicate characters do not occur.
 - [ ] Test landscape, enlarged display/font, TalkBack, one-hand modes, theme, number row, emoji, Commands, clipboard, cursor swipe, sounds, haptics and Gboard switching.
 - [ ] Tune dimensions from real device feedback. Do not call the keyboard usable until this acceptance passes.
+
+
+## Phase 11 — recommendation quality and keyboard refinement (0.11.0)
+
+- [x] Add a deterministic local EN / PL / TR prefix lexicon so useful completions do not depend entirely on the phone's installed dictionary.
+- [x] Add curated next-word suggestions for common English, Polish and Turkish contexts; unknown contexts remain empty rather than inventing candidates.
+- [x] Keep the typed word visible in the candidate strip and show platform spell-checker alternatives only when Android flags a likely typo.
+- [x] Invalidate queued spell-check callbacks when the word changes, the user clears the current word, or the input field ends.
+- [x] Make selecting a completion commit the word and one trailing space consistently.
+- [x] Refine keyboard and candidate-strip colors, spacing, keycap radius and toolbar surfaces.
+- [x] Add unit tests for EN / PL / TR prefix completion, context suggestions, unknown contexts and short-prefix behavior.
+- [ ] Verify actual recommendation relevance and visual quality on Redmi Note 12 Pro 5G in ChatGPT, Chrome, WhatsApp and Notes.
+- [ ] Confirm no unwanted candidate insertion, duplicate spaces or stale spell-check replacement while typing quickly.
