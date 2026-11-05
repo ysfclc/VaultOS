@@ -552,16 +552,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                 prefs.edit().putBoolean(KEY_SMART_PUNCTUATION, !prefs.getBoolean(KEY_SMART_PUNCTUATION, true)).apply()
                 refreshKeyboard()
             },
-            (if (getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_AUTO_CAPITALIZE, true)) "Turn auto-capitalization off" else "Turn auto-capitalization on") to {
-                val prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
-                prefs.edit().putBoolean(KEY_AUTO_CAPITALIZE, !prefs.getBoolean(KEY_AUTO_CAPITALIZE, true)).apply()
-                refreshKeyboard()
-            },
-            (if (getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_SMART_PUNCTUATION, true)) "Turn double-space period off" else "Turn double-space period on") to {
-                val prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
-                prefs.edit().putBoolean(KEY_SMART_PUNCTUATION, !prefs.getBoolean(KEY_SMART_PUNCTUATION, true)).apply()
-                refreshKeyboard()
-            },
+
             "Paste latest saved text" to { pasteLatestText() },
             "Open clipboard History" to { openClipboardHistory() },
             "Emoji panel" to { emojiMode = true; clipboardMode = false; commandsMode = false; refreshKeyboard() },
