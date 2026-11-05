@@ -971,6 +971,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         spellChecker = null
         activeSpellCheckWord = ""
         currentSuggestions = emptyList()
+        activeSuggestionInputGeneration = -1
         spellCheckGeneration++
         if (isSafeForSuggestions(currentInputEditorInfo)) {
             val manager = getSystemService(Context.TEXT_SERVICES_MANAGER_SERVICE) as? TextServicesManager
