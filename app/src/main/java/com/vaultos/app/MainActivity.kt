@@ -1242,7 +1242,7 @@ private fun loadAppCatalogue(activity: MainActivity, archivedItems: List<VaultIt
                         )
                     }
                 }
-                Text("Type includes EN / PL / TR word completions, context suggestions and installed spell-checker corrections. Clips searches clipboard history; Cmd finds VaultOS content and inserts complete saved Text/Code. More contains keyboard controls and preferences.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Type includes EN / PL / TR completions, typo corrections, opt-in local word learning, personal dictionary, and next-word suggestions. Double-space punctuation and sentence capitalization are built in. Clips searches clipboard history; Cmd finds VaultOS content. More contains keyboard controls and privacy settings.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) { Text("Automatically save clipboard content"); Text("On when VaultOS is the active keyboard. Captures text and shared clipboard attachments; sensitive clips and password fields are skipped when detectable.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     Switch(
@@ -1318,7 +1318,7 @@ private fun loadAppCatalogue(activity: MainActivity, archivedItems: List<VaultIt
                 }) { Text("Scan storage now") }
             }
         }
-        Text("VaultOS 0.11.0 · Local-first · No account required", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("VaultOS 0.12.0 · Local-first · No account required", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
