@@ -1,6 +1,6 @@
 # VaultOS for Android
 
-**A local-first Android file library and manager (release 0.7.0).** This repository contains a native Kotlin/Jetpack Compose application, an optional capture keyboard, a DocumentsProvider, a private archive, local indexing, and manual external backup/restore.
+**A local-first Android file library and manager (release 0.8.0).** This repository contains a native Kotlin/Jetpack Compose application, an optional capture keyboard, a DocumentsProvider, a private archive, local indexing, and manual external backup/restore.
 
 ## What is implemented
 
