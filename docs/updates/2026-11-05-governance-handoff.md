@@ -168,3 +168,8 @@ Release: 0.12.0 / versionCode 12. CI is pending. Physical-device testing remains
 
 
 0.12.0 CI completed successfully in run `42054296162` on source commit `f84b4418ed739bfd21666e81e7fe3642b61cddf7`. Unit tests, lint, signed debug/release APK builds, signing verification and all three artifact uploads passed. Artifacts are available until 2026-12-05. Physical Redmi Note 12 Pro 5G acceptance is still outstanding.
+
+
+## Keyboard privacy patch — 0.12.1
+
+A review of the adaptive local typing assistant found that punctuation and Enter commit paths could call personal learning without checking the active editor field. All learning writes were consolidated behind `learnWord`, which rejects fields where suggestions are disabled (password, email, URL, numeric, autocomplete and related sensitive contexts). Automatic learning remains opt-in. Version 0.12.1 / versionCode 13 is queued for CI; device privacy regression checks are added to DEVICE-TEST-PLAN.md.
