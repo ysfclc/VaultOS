@@ -92,17 +92,19 @@ class VaultKeyboardService : InputMethodService() {
         toolbar.addView(actionButton("Hide", Color.rgb(55, 60, 69)) { requestHideSelf(0) }, weightParams(0.45f))
         root.addView(toolbar, LinearLayout.LayoutParams(-1, dp(43)))
         if (clipboardMode) {
-            clipboardSearchView = TextView(this).apply {
+            val searchView = TextView(this).apply {
                 setTextColor(Color.WHITE)
                 textSize = 12f
                 setPadding(dp(9), dp(5), dp(9), dp(5))
                 setBackgroundColor(Color.rgb(32, 40, 49))
                 text = clipboardSearchLabel()
             }
-            root.addView(clipboardSearchView, LinearLayout.LayoutParams(-1, dp(30)))
+            clipboardSearchView = searchView
+            root.addView(searchView, LinearLayout.LayoutParams(-1, dp(30)))
             val scroll = ScrollView(this).apply { isFillViewport = false }
-            clipboardList = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, dp(2), 0, dp(2)) }
-            scroll.addView(clipboardList)
+            val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, dp(2), 0, dp(2)) }
+            clipboardList = list
+            scroll.addView(list)
             root.addView(scroll, LinearLayout.LayoutParams(-1, dp(88)))
             renderClipboardEntries()
         } else {
@@ -142,8 +144,7 @@ class VaultKeyboardService : InputMethodService() {
         return root
     }
 
-    /** Reads the selected IME subtype from InputMethodManager (the service itself
-     * does not expose currentInputMethodSubtype as a member). */
+    /** The keyboard language is an explicit VaultOS preference, independent of the phone locale. */
     private fun selectedLanguageCode(): String = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         .getString(KEY_LANGUAGE, "en")?.lowercase(Locale.ROOT)?.takeIf { it in setOf("en", "pl", "tr") } ?: "en"
 
