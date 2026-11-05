@@ -1197,6 +1197,7 @@ private fun loadAppCatalogue(activity: MainActivity, archivedItems: List<VaultIt
 @Composable private fun SettingsPage(activity: MainActivity, repository: VaultRepository, permissionGranted: Boolean, backupLauncher: androidx.activity.result.ActivityResultLauncher<Uri?>, onMessage: (String) -> Unit) {
     val prefs = activity.getSharedPreferences(VaultKeyboardService.PREFS, Context.MODE_PRIVATE)
     var autoCapture by remember { mutableStateOf(prefs.getBoolean(VaultKeyboardService.KEY_AUTO_CAPTURE, true)) }
+    var keyboardLanguage by remember { mutableStateOf(prefs.getString(VaultKeyboardService.KEY_LANGUAGE, "en") ?: "en") }
     var busy by remember { mutableStateOf(false) }
     val backupTree = prefs.getString("backup_tree", null)
     Column(
@@ -1228,6 +1229,20 @@ private fun loadAppCatalogue(activity: MainActivity, archivedItems: List<VaultIt
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Capture keyboard", fontWeight = FontWeight.SemiBold)
                 Text("Enable and select VaultOS Capture Keyboard in Android settings. While it is active, clipboard changes can be captured automatically. Gboard cannot be monitored by a separate background app; switch back to Gboard at any time.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Keyboard language", fontWeight = FontWeight.Medium)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("en" to "English", "pl" to "Polski", "tr" to "Türkçe").forEach { (code, label) ->
+                        FilterChip(
+                            selected = keyboardLanguage == code,
+                            onClick = {
+                                keyboardLanguage = code
+                                prefs.edit().putString(VaultKeyboardService.KEY_LANGUAGE, code).apply()
+                            },
+                            label = { Text(label) }
+                        )
+                    }
+                }
+                Text("The keyboard also has an inline Clips mode: type a search using its keys, then tap a saved item to paste the complete text into the focused field.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) { Text("Automatically save clipboard content"); Text("On when VaultOS is the active keyboard. Captures text and shared clipboard attachments; sensitive clips and password fields are skipped when detectable.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     Switch(
