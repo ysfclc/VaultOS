@@ -19,7 +19,7 @@ class LocalTypingMemory(context: Context) {
         prefs.edit().putBoolean(KEY_ENABLED, enabled).apply()
     }
 
-    fun learn(language: String, word: String, previousWord: String = "", previousPreviousWord: String = "") {
+    fun learn(language: String, word: String, previousWord: String = "") {
         if (!isLearningEnabled()) return
         val code = languageCode(language)
         val normalized = normalize(word, code) ?: return
@@ -27,14 +27,9 @@ class LocalTypingMemory(context: Context) {
         val previous = normalize(previousWord, code)
         if (previous != null && previous != normalized) {
             increment(pairKey(code), "$previous$SEPARATOR$normalized", 1)
-            val previousPrevious = normalize(previousPreviousWord, code)
-            if (previousPrevious != null && previousPrevious != previous) {
-                increment(tripleKey(code), "$previousPrevious$SEPARATOR$previous$SEPARATOR$normalized", 1)
-            }
-        }
+         }
         trim(wordKey(code), MAX_WORDS)
         trim(pairKey(code), MAX_PAIRS)
-        trim(tripleKey(code), MAX_PAIRS)
     }
 
     /** Explicitly save a word even when automatic learning is disabled. */
@@ -66,27 +61,17 @@ class LocalTypingMemory(context: Context) {
         return values.keys().asSequence().toList()
     }
 
-    fun nextWords(language: String, previousWord: String, limit: Int = 3): List<String> =
-        nextWords(language, "", previousWord, limit)
-
-    fun nextWords(language: String, previousPreviousWord: String, previousWord: String, limit: Int = 3): List<String> {
+    fun nextWords(language: String, previousWord: String, limit: Int = 3): List<String> {
         val code = languageCode(language)
         val previous = normalize(previousWord, code) ?: return emptyList()
         if (limit <= 0) return emptyList()
-        val previousPrevious = normalize(previousPreviousWord, code)
-        val triples = read(tripleKey(code))
-        val contextual = if (previousPrevious == null) emptyList() else triples.keys().asSequence()
-            .filter { it.startsWith("$previousPrevious$SEPARATOR$previous$SEPARATOR") }
-            .sortedWith(compareByDescending<String> { triples.optInt(it, 0) }.thenBy { it })
-            .map { it.substringAfterLast(SEPARATOR) }
-            .toList()
         val pairs = read(pairKey(code))
-        val fallback = pairs.keys().asSequence()
+        return pairs.keys().asSequence()
             .filter { it.startsWith("$previous$SEPARATOR") }
             .sortedWith(compareByDescending<String> { pairs.optInt(it, 0) }.thenBy { it })
+            .take(limit)
             .map { it.substringAfter(SEPARATOR) }
             .toList()
-        return (contextual + fallback).distinct().take(limit)
     }
 
     fun clear() {
@@ -126,7 +111,6 @@ class LocalTypingMemory(context: Context) {
 
     private fun wordKey(code: String) = "words_$code"
     private fun pairKey(code: String) = "pairs_$code"
-    private fun tripleKey(code: String) = "triples_$code"
 
     private fun languageCode(value: String): String =
         value.lowercase(Locale.ROOT).takeIf { it in LANGUAGES } ?: "en"
