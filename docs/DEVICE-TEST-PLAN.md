@@ -164,3 +164,12 @@ Record the Android system spell-checker and active keyboard language. The local 
 9. **Sentence capitalization:** test first word, period, question mark, exclamation mark and Enter. Confirm next letter is uppercase; disable the setting and confirm normal lowercase behavior.
 10. **Double-space period:** type a sentence and tap space twice quickly. Verify the second space becomes a period plus one space. Test deliberate double spaces after a long pause, then disable the feature and confirm no conversion.
 11. **App compatibility:** repeat in ChatGPT, Chrome, WhatsApp and Notes, including portrait/landscape and larger font settings.
+
+
+## Phase 12.1 — personal typing privacy regression
+
+1. Enable private word learning in a normal text field. Type a distinctive phrase and commit words using space, punctuation and Enter. Confirm useful personal completions/next-word candidates appear after returning to a normal field.
+2. Repeat in password, email, URL, numeric, autocomplete and any field where suggestions are disabled. Confirm none of those words appear as personal completions or next-word predictions in a normal text field.
+3. Confirm learning is off after a fresh install; enable it explicitly, pause it, and verify no new words are learned while paused.
+4. Clear personal typing data from More and verify learned completions and word-pair predictions disappear. Confirm clipboard history is unchanged.
+5. Confirm personal typing memory stays on-device and no network permission or remote typing service is introduced.
