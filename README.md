@@ -1,6 +1,6 @@
 # VaultOS for Android
 
-**A local-first Android file library and manager (release 0.11.0).** This repository contains a native Kotlin/Jetpack Compose application, an optional capture keyboard, a DocumentsProvider, a private archive, local indexing, and manual external backup/restore.
+**A local-first Android file library and manager (release 0.12.1).** This repository contains a native Kotlin/Jetpack Compose application, an optional capture keyboard, a DocumentsProvider, a private archive, local indexing, and manual external backup/restore.
 
 ## What is implemented
 
@@ -170,3 +170,8 @@ Everyday typing also gains sentence capitalization and optional-by-default-on do
 
 
 Hosted CI for 0.12.0 passed in run `42054296162`: unit tests, lint, debug/release APK builds, signing verification and all APK/metadata artifact uploads succeeded. Physical Redmi acceptance remains outstanding.
+
+
+### 0.12.1 privacy hardening
+
+Personal word learning now passes through one safe-field guard at every commit boundary, including punctuation and Enter. Password, email, URL, numeric, autocomplete and other excluded editor fields cannot contribute words or word-pair counts. Automatic learning remains off by default. This patch does not change the Room schema or existing vault data.
