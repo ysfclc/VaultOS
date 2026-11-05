@@ -23,6 +23,15 @@
 - Import commits fetch and rebase against the latest branch head, retry non-conflicting push races, and stop without pushing if newer edits conflict.
 - README build/import instructions were updated to describe these safeguards.
 
+## API compatibility decision — implemented
+
+- Approved policy: minimum supported Android version is API 28.
+- `app/build.gradle.kts` now declares `minSdk = 28`.
+- README and signing documentation explain that Android 8/8.1 users are no longer supported and need to export data before moving to a supported device.
+- Both workflow copies report minimum SDK 28 in build metadata.
+- The first workflow attempt after the change (`41976573899`) failed before creating a job because the YAML file had a malformed duplicate tail. The tail was removed in commit `2b4865b45b19ffb1382d295983d88411d5ae35a6`; the workflow files are again exact mirrors (332 lines).
+- A clean CI run for that commit (`41976641135`) has been accepted and started. ZIP import and source checks passed; Java/SDK setup passed; Gradle setup was still in progress at the latest check. Do not call the API 28 build green until the run completes successfully.
+
 ## GOV-001 — still open
 
 The historical keystore remains tracked and Gradle still uses it for both debug and release. No replacement keystore or GitHub Actions signing secrets have been provisioned or verified. The old key has not been deleted and Git history has not been rewritten.
@@ -40,7 +49,8 @@ The historical keystore remains tracked and Gradle still uses it for both debug 
 
 ## Next actions
 
-1. Provision and verify replacement signing material and the required GitHub Actions secrets.
+1. Wait for CI run `41976641135` to finish and resolve any actual build failure.
+2. Provision and verify replacement signing material and the required GitHub Actions secrets.
 2. Generate the signing lineage from the historical certificate to the replacement certificate using Android Build Tools.
 3. Implement the v3 signing-lineage pipeline and test in-place updates on API 28, API 32, and API 33+ devices.
 4. Only after update continuity is proven, remove private signing material from the current tree and rewrite exposed Git history.
