@@ -45,13 +45,20 @@ class LocalTypingMemory(context: Context) {
         val code = languageCode(language)
         val normalized = prefix.trim().lowercase(locale(code))
         if (normalized.length < 2 || limit <= 0) return emptyList()
-        return read(wordKey(code)).keys()
+        val values = read(wordKey(code))
+        return values.keys()
             .asSequence()
             .filter { it.startsWith(normalized) && it != normalized }
-            .sortedWith(compareByDescending<String> { read(wordKey(code)).optInt(it, 0) }.thenBy { it })
+            .sortedWith(compareByDescending<String> { values.optInt(it, 0) }.thenBy { it })
             .take(limit)
             .map { preserveCase(prefix, it, code) }
             .toList()
+    }
+
+    fun dictionaryWords(language: String): List<String> {
+        val code = languageCode(language)
+        val values = read(wordKey(code))
+        return values.keys().asSequence().toList()
     }
 
     fun nextWords(language: String, previousWord: String, limit: Int = 3): List<String> {
