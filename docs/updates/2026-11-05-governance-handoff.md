@@ -158,3 +158,10 @@ Source build commit: `f66b1e068fc7b87162b11420907d987663d25369`.
 Hosted CI run: `42047330196` passed `clean testDebugUnitTest lintDebug assembleDebug assembleRelease`, persistent signing verification, APK preparation and all three artifact uploads. Artifacts: `VaultOS-debug-APK`, `VaultOS-release-APK`, `VaultOS-build-metadata`.
 
 Still not claimed: Gboard-level neural prediction, a full dictionary, learned personal typing model, or glide typing. The bundled vocabulary is a small deterministic baseline. Physical acceptance on the Redmi Note 12 Pro 5G is still required to judge real-world relevance, insertion behavior, touch accuracy and visual quality.
+
+
+## Keyboard follow-up — adaptive recommendations (2026-11-05, 0.12.0)
+
+The user confirmed that the 0.11 keyboard was better but recommendations and everyday usefulness still had substantial headroom. This iteration adds an optional on-device personal vocabulary and adjacent-word frequency model. Automatic learning is off by default. When enabled, only individual words and adjacent word-pair counts are retained; no sentences, editor contents or clipboard data are stored. Users can long-press the current word to add it to a personal dictionary without enabling automatic learning, and can clear the separate typing-memory store behind a confirmation prompt. Personal vocabulary contributes to prefix and typo candidates; learned word pairs influence next-word suggestions. Sentence capitalization and double-space period punctuation are also available and independently configurable.
+
+Release: 0.12.0 / versionCode 12. CI is pending. Physical-device testing remains required for persistence, privacy exclusions, candidate relevance and punctuation behavior. This remains a deterministic local-first typing assistant, not neural prediction or Gboard-equivalent language modelling.
