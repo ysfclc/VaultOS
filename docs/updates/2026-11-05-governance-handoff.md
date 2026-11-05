@@ -87,3 +87,9 @@ The historical keystore remains tracked and Gradle still uses it for both debug 
 2. Install the 0.7.0 APK on the Redmi Note 12 Pro 5G and complete the clipboard acceptance matrix.
 3. Continue Phase 2 keyboard work: language selector, suggestions/autocorrect, clipboard mode/search/pins inside the keyboard, settings and lifecycle tests.
 4. Resume GOV-001 only when the user has added the replacement keystore and signing secrets.
+### CI compile correction — run 59
+
+- Run `42025657002` reached Kotlin compilation and failed on three root causes: an invalid explicit Compose `Modifier.weight` import in `ClipboardHistoryActivity`, and a removed `VaultRepository` import still required by the keyboard's Paste saved action (the latter caused cascading type-inference errors).
+- Corrected both source imports and synchronized the workflow release summary to 0.7.0 / versionCode 7 in the same atomic commit `3def5b4f98b357b778613b5561a9fec148e98a99`.
+- Verified root `android-build.yml` and `.github/workflows/android-build.yml` are byte-identical after the correction.
+- New CI run `42026208055` is in progress for the corrected source. The phase remains unverified until it completes successfully.
