@@ -106,11 +106,18 @@ class VaultRepository(private val context: Context) {
         val bytes = text.toByteArray(Charsets.UTF_8)
         val hash = MessageDigest.getInstance("SHA-256").digest(bytes).toHex()
         val duplicate = dao.findHash(hash)
-        if (duplicate?.isArchived == true) return@withContext duplicate
+        val duplicateFile = duplicate?.archivedPath?.let(::File)
+        if (duplicate?.isArchived == true && duplicateFile?.isFile == true &&
+            duplicateFile.length() == bytes.size.toLong() && runCatching { sha256(duplicateFile) == hash }.getOrDefault(false)
+        ) return@withContext duplicate
         val id = UUID.randomUUID().toString()
         val dir = File(root, "text").apply { mkdirs() }
         val file = File(dir, "$id.txt")
         FileOutputStream(file).use { output -> output.write(bytes); output.fd.sync() }
+        if (file.length() != bytes.size.toLong() || sha256(file) != hash) {
+            file.delete()
+            throw IllegalStateException("Clipboard text failed its post-write integrity check")
+        }
         val title = text.lineSequence().firstOrNull()?.trim()?.take(90)?.ifBlank { "Copied text" } ?: "Copied text"
         val item = VaultItem(
             id, title, "text/plain", "Text", source, null, file.absolutePath,
@@ -386,15 +393,23 @@ class VaultRepository(private val context: Context) {
     suspend fun readFullText(item: VaultItem): String? = withContext(Dispatchers.IO) {
         if (item.category !in setOf("Text", "Code")) return@withContext item.textContent
         val file = item.archivedPath?.let(::File) ?: item.originalUri?.takeIf { it.startsWith("file:") }?.let { Uri.parse(it).path?.let(::File) }
-        if (file?.isFile == true) file.readText(Charsets.UTF_8)
-        else item.textContent?.takeIf { it.toByteArray(Charsets.UTF_8).size.toLong() >= item.sizeBytes }
+        if (file?.isFile == true) {
+            val bytes = file.readBytes()
+            val actualHash = MessageDigest.getInstance("SHA-256").digest(bytes).toHex()
+            if (bytes.size.toLong() != item.sizeBytes || (!item.sha256.isNullOrBlank() && actualHash != item.sha256)) return@withContext null
+            String(bytes, Charsets.UTF_8)
+        } else {
+            val fallback = item.textContent ?: return@withContext null
+            val bytes = fallback.toByteArray(Charsets.UTF_8)
+            if (bytes.size.toLong() == item.sizeBytes &&
+                (item.sha256.isNullOrBlank() || MessageDigest.getInstance("SHA-256").digest(bytes).toHex() == item.sha256)
+            ) fallback else null
+        }
     }
 
     suspend fun latestText(): String? = withContext(Dispatchers.IO) {
         val item = dao.latestTextItem() ?: return@withContext null
-        val file = item.archivedPath?.let(::File) ?: item.originalUri?.takeIf { it.startsWith("file:") }?.let { Uri.parse(it).path?.let(::File) }
-        if (file?.isFile == true) file.readText(Charsets.UTF_8)
-        else item.textContent?.takeIf { it.toByteArray(Charsets.UTF_8).size.toLong() >= item.sizeBytes }
+        readFullText(item)
     }
 
     suspend fun reindexText(itemId: String, file: File) = indexTextFile(itemId, file)
