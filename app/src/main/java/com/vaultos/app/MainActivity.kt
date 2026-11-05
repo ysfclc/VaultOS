@@ -1242,7 +1242,7 @@ private fun loadAppCatalogue(activity: MainActivity, archivedItems: List<VaultIt
                         )
                     }
                 }
-                Text("The keyboard also has an inline Clips mode: type a search using its keys, then tap a saved item to paste the complete text into the focused field.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Use Type for typing, Clips for searchable full clipboard history, and Cmd to search VaultOS content and insert complete saved Text/Code. More contains number-row, theme, one-hand, key preview, haptics, sound, size, emoji and autocorrect controls.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) { Text("Automatically save clipboard content"); Text("On when VaultOS is the active keyboard. Captures text and shared clipboard attachments; sensitive clips and password fields are skipped when detectable.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     Switch(
@@ -1318,7 +1318,7 @@ private fun loadAppCatalogue(activity: MainActivity, archivedItems: List<VaultIt
                 }) { Text("Scan storage now") }
             }
         }
-        Text("VaultOS 0.5.0 · Local-first · No account required", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("VaultOS 0.10.0 · Local-first · No account required", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

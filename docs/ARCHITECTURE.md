@@ -19,7 +19,7 @@
 - `MANAGE_EXTERNAL_STORAGE` is requested from the user because broad shared-storage browsing and indexing are core file-manager functions.
 - Android private app directories are excluded from recursive scans.
 - `MediaStore` observer and download-completed broadcast enqueue unique scan work. WorkManager's periodic scan is a catch-up mechanism; Android background work is not exact-time guaranteed.
-- `VaultKeyboardService` is a real InputMethodService. It receives clipboard-change callbacks only when selected as the default IME. The keyboard has basic QWERTY entry plus Capture, Paste saved and Vault actions. It has no network permission.
+- `VaultKeyboardService` is a real InputMethodService. It receives clipboard-change callbacks only when selected as the default IME. Version 0.10.0 provides QWERTY with visible pressed/preview states, EN/PL/TR switching, live spell-check, optional autocorrect, spacebar cursor movement, emoji, one-handed/theme/size controls, Clips history and a local Vault Cmd search/insert panel. It has no network permission.
 - `VaultDocumentsProvider` exposes the app-private archive through `ACTION_OPEN_DOCUMENT` / system document UI.
 
 ## Privacy boundary

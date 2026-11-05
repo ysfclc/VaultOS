@@ -172,10 +172,10 @@ Not yet accepted:
 
 The keyboard gained persistent EN / PL / TR selection and inline clipboard Clips mode with full-text search, pinning and complete-text insertion. Hosted CI passed in run `42027643930`; device acceptance remains open.
 
-## Phase 9 — daily-use keyboard (0.9.0)
+## Phase 10 — keyboard redesign (0.10.0)
 
-The basic IME has been replaced with a daily-use-oriented keyboard implementation: weighted QWERTY rows, shift/caps lock, number/symbol layer, punctuation, backspace, editor-aware Enter, long-press character alternatives, cursor arrows, word suggestions, optional autocorrect, adjustable key height and haptic feedback. The toolbar retains Capture, Clips, Paste, History, language selection, Android's IME picker and Hide.
+The user rejected 0.9.0 as unusable and specifically reported that key presses were not visually apparent. The redesign uses a compact one-row mode bar (Type / Clips / Cmd / language / More), high-contrast keycaps, stateful pressed color, ripple, touch-scale response and a popup key preview. The default key height is 50 dp and is adjustable. Additional functional controls include optional number row, light/dark themes, one-handed alignment, haptics, key sounds, emoji panel and spacebar cursor swipe.
 
-Autocorrect is off by default. Spell-checking is disabled for password, email, URL, non-text and no-suggestions editors. Suggestions are provided by Android's installed spell-checker and therefore depend on local language dictionaries being available.
+VaultOS-specific utility remains central: Clips searches/pins/pastes complete saved text; Cmd searches the local Vault catalogue and inserts full Text/Code records. English/Polish/Turkish switching and long-press alternatives remain. Spell-check suggestions request live words with stale callback sequencing; autocorrect is off by default and now requires the installed spell-checker to flag a likely typo.
 
-Hosted CI passed for the 0.9.0 release in run `42034432444`: unit-test task, lint, debug and release APK assembly, signing verification and all three artifact uploads succeeded. This is a source/build verification only. Physical typing quality, key sizing, language dictionaries, haptics, cursor behavior, Gboard switching and Xiaomi lifecycle behavior remain unverified on the Redmi Note 12 Pro 5G. Do not mark the keyboard accepted until those device checks are completed.
+The redesign borrows interaction patterns from mature keyboards (immediate key feedback, compact toolbar, resize/theme controls, multilingual support and clipboard utility) without claiming proprietary glide typing or prediction. Version 0.10.0 / versionCode 10 is in source. Hosted CI and physical Redmi acceptance are pending; do not call it usable until CI passes and the device matrix is completed.

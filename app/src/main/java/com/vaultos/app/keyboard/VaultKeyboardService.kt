@@ -3,8 +3,12 @@ package com.vaultos.app.keyboard
 import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.res.ColorStateList
 import android.content.Intent
 import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.RippleDrawable
+import android.graphics.drawable.StateListDrawable
 import android.inputmethodservice.InputMethodService
 import android.os.Build
 import android.os.Handler
@@ -13,6 +17,8 @@ import android.text.InputType
 import android.view.Gravity
 import android.view.HapticFeedbackConstants
 import android.view.KeyEvent
+import android.view.MotionEvent
+import android.view.SoundEffectConstants
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
@@ -29,6 +35,7 @@ import android.widget.Toast
 import com.vaultos.app.ClipboardHistoryActivity
 import com.vaultos.app.MainActivity
 import com.vaultos.app.data.ClipboardHistoryEntry
+import com.vaultos.app.data.VaultDatabase
 import com.vaultos.app.storage.ClipboardHistoryRepository
 import com.vaultos.app.storage.VaultRepository
 import kotlinx.coroutines.CoroutineScope
@@ -59,11 +66,19 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     private var clipboardSearchView: TextView? = null
     private var suggestionRow: LinearLayout? = null
     private var clipboardSearchRevision = 0
+    private var commandsMode = false
+    private var commandQuery = ""
+    private var commandList: LinearLayout? = null
+    private var commandSearchView: TextView? = null
+    private var commandSearchRevision = 0
+    private var emojiMode = false
+    private var keyPreviewPopup: PopupWindow? = null
     private var typedWord = StringBuilder()
     private var lastCommittedWord = ""
     private var inputGeneration = 0
     private var spellCheckGeneration = 0
     private var currentSuggestions: List<String> = emptyList()
+    private var activeSpellCheckWord = ""
 
     private val clipboardListener = ClipboardManager.OnPrimaryClipChangedListener {
         if (getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_AUTO_CAPTURE, true)) {
@@ -80,6 +95,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     override fun onDestroy() {
         clipboard?.removePrimaryClipChangedListener(clipboardListener)
         spellChecker?.close()
+        keyPreviewPopup?.dismiss()
         serviceScope.cancel()
         super.onDestroy()
     }
@@ -89,12 +105,18 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
         super.onStartInput(attribute, restarting)
         inputGeneration++
+        clipboardMode = false
+        commandsMode = false
+        emojiMode = false
+        clipboardQuery = ""
+        commandQuery = ""
         shifted = false
         capsLock = false
         symbols = false
         typedWord.clear()
         lastCommittedWord = ""
         currentSuggestions = emptyList()
+        activeSpellCheckWord = ""
         spellCheckGeneration++
         spellChecker?.close()
         spellChecker = null
@@ -106,6 +128,11 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         }
     }
 
+    override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
+        super.onStartInputView(info, restarting)
+        refreshKeyboard()
+    }
+
     override fun onFinishInput() {
         inputGeneration++
         typedWord.clear()
@@ -114,18 +141,25 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         spellCheckGeneration++
         spellChecker?.close()
         spellChecker = null
+        activeSpellCheckWord = ""
         super.onFinishInput()
     }
 
     override fun onGetSuggestions(results: Array<SuggestionsInfo>) {
-        val suggestions = results.firstOrNull()?.let { info ->
-            (0 until info.suggestionsCount).mapNotNull { index -> info.getSuggestionAt(index) }
-        }.orEmpty().distinct().take(3)
+        val info = results.firstOrNull() ?: return
+        if (info.cookie != spellCheckGeneration) return
+        val suggestions = (0 until info.suggestionsCount)
+            .mapNotNull { index -> info.getSuggestionAt(index) }
+            .distinct().take(3)
+        val looksLikeTypo = info.suggestionsAttributes and SuggestionsInfo.RESULT_ATTR_LOOKS_LIKE_TYPO != 0
+        val requestedWord = activeSpellCheckWord
         runOnMain {
+            val activeWord = typedWord.toString().ifBlank { lastCommittedWord }
+            if (requestedWord.isNotBlank() && !activeWord.equals(requestedWord, ignoreCase = true)) return@runOnMain
             currentSuggestions = suggestions
             renderSuggestions()
             if (getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_AUTOCORRECT, false) &&
-                suggestions.isNotEmpty() && lastCommittedWord.isNotBlank() && typedWord.isEmpty() &&
+                looksLikeTypo && suggestions.isNotEmpty() && lastCommittedWord.isNotBlank() && typedWord.isEmpty() &&
                 inputGeneration == activeSuggestionInputGeneration
             ) {
                 val replacement = suggestions.first()
@@ -152,112 +186,226 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     private fun buildKeyboard(): View {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(4), dp(4), dp(4), dp(5))
-            setBackgroundColor(Color.rgb(19, 24, 31))
+            setPadding(dp(4), dp(4), dp(4), dp(6))
+            setBackgroundColor(if (keyboardThemeDark()) Color.rgb(20, 25, 32) else Color.rgb(218, 224, 232))
         }
-        val top = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
-        addToolbarKey(top, "Capture", Color.rgb(31, 92, 69)) { captureClipboard(showToast = true) }
-        addToolbarKey(top, if (clipboardMode) "Keys" else "Clips", Color.rgb(37, 83, 67)) {
-            clipboardMode = !clipboardMode
-            if (!clipboardMode) clipboardQuery = ""
-            setInputView(buildKeyboard())
+        val top = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
         }
-        addToolbarKey(top, "Paste", Color.rgb(38, 69, 91)) { pasteLatestText() }
-        addToolbarKey(top, "History", Color.rgb(42, 55, 73)) { openClipboardHistory() }
-        root.addView(top, LinearLayout.LayoutParams(-1, dp(34)))
-
-        val tools = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
-        addToolbarKey(tools, selectedLanguageCode().uppercase(Locale.ROOT), Color.rgb(52, 61, 74)) { cycleKeyboardLanguage() }
-        addToolbarKey(tools, if (hapticsEnabled()) "Vib on" else "Vib off", Color.rgb(52, 61, 74)) { toggleHaptics() }
-        addToolbarKey(tools, "Size", Color.rgb(52, 61, 74)) { cycleKeyHeight() }
-        addToolbarKey(tools, if (autoCorrectEnabled()) "Auto on" else "Auto off", Color.rgb(52, 61, 74)) { toggleAutoCorrect() }
-        addToolbarKey(tools, "Switch", Color.rgb(52, 61, 74)) {
-            (getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager).showInputMethodPicker()
+        addToolbarKey(top, "Type", active = !clipboardMode && !commandsMode && !emojiMode, weight = 1.15f) {
+            clipboardMode = false; commandsMode = false; emojiMode = false; refreshKeyboard()
         }
-        addToolbarKey(tools, "Hide", Color.rgb(52, 61, 74)) { requestHideSelf(0) }
-        root.addView(tools, LinearLayout.LayoutParams(-1, dp(34)))
+        addToolbarKey(top, "Clips", active = clipboardMode, weight = 1.05f) {
+            clipboardMode = true; commandsMode = false; emojiMode = false; clipboardQuery = ""; refreshKeyboard()
+        }
+        addToolbarKey(top, "Cmd", active = commandsMode, weight = 0.9f) {
+            commandsMode = true; clipboardMode = false; emojiMode = false; commandQuery = ""; refreshKeyboard()
+        }
+        addToolbarKey(top, selectedLanguageCode().uppercase(Locale.ROOT), active = false, weight = 0.75f) {
+            cycleKeyboardLanguage()
+        }
+        addToolbarKey(top, "•••", active = false, weight = 0.7f) { showKeyboardTools(itAnchor = top.getChildAt(top.childCount - 1)) }
+        root.addView(top, LinearLayout.LayoutParams(-1, dp(42)))
 
         if (clipboardMode) {
             val searchView = TextView(this).apply {
-                setTextColor(Color.WHITE)
-                textSize = 12f
-                setPadding(dp(9), dp(5), dp(9), dp(5))
-                setBackgroundColor(Color.rgb(32, 40, 49))
+                setTextColor(if (keyboardThemeDark()) Color.WHITE else Color.rgb(28, 35, 44))
+                textSize = 13f
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(dp(12), dp(5), dp(12), dp(5))
+                background = keyBackground(wide = true, toolbar = true)
                 text = clipboardSearchLabel()
             }
             clipboardSearchView = searchView
-            root.addView(searchView, LinearLayout.LayoutParams(-1, dp(28)))
+            root.addView(searchView, LinearLayout.LayoutParams(-1, dp(32)).apply { setMargins(0, dp(3), 0, dp(3)) })
             val scroll = ScrollView(this).apply { isFillViewport = false }
             val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, dp(2), 0, dp(2)) }
             clipboardList = list
             scroll.addView(list)
-            root.addView(scroll, LinearLayout.LayoutParams(-1, dp(94)))
+            root.addView(scroll, LinearLayout.LayoutParams(-1, dp(86)))
             renderClipboardEntries()
-            addKeyRow(root, listOf("123", "ABC", "space", "⌫", "↵"), listOf(1.1f, 1.1f, 3.5f, 1.2f, 1.2f))
+            addTypingKeys(root)
             return root
         }
         clipboardList = null
         clipboardSearchView = null
 
+        if (commandsMode) {
+            val searchView = TextView(this).apply {
+                setTextColor(if (keyboardThemeDark()) Color.WHITE else Color.rgb(28, 35, 44))
+                textSize = 13f
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(dp(12), dp(5), dp(12), dp(5))
+                background = keyBackground(wide = true, toolbar = true)
+                text = commandSearchLabel()
+            }
+            commandSearchView = searchView
+            root.addView(searchView, LinearLayout.LayoutParams(-1, dp(32)).apply { setMargins(0, dp(3), 0, dp(3)) })
+            val scroll = ScrollView(this).apply { isFillViewport = false }
+            val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, dp(2), 0, dp(2)) }
+            commandList = list
+            scroll.addView(list)
+            root.addView(scroll, LinearLayout.LayoutParams(-1, dp(86)))
+            renderCommandEntries()
+            addTypingKeys(root)
+            return root
+        }
+        commandList = null
+        commandSearchView = null
+
+        if (emojiMode) {
+            val emojiRows = listOf(
+                listOf("😀", "😂", "🥰", "😍", "😊", "😉", "😎", "🤔"),
+                listOf("😭", "😅", "😴", "🥳", "🤯", "😡", "🙏", "👏"),
+                listOf("👍", "👎", "❤️", "🔥", "✨", "💯", "🎉", "🤝"),
+                listOf("🙂", "🙃", "😇", "🤗", "💪", "☕", "🚀", "🌍")
+            )
+            emojiRows.forEach { addKeyRow(root, it) }
+            val footer = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            addToolbarKey(footer, "ABC · Back to typing", active = true, weight = 1f) {
+                emojiMode = false; refreshKeyboard()
+            }
+            root.addView(footer, LinearLayout.LayoutParams(-1, dp(42)))
+            return root
+        }
+
         val suggestions = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
-            setBackgroundColor(Color.rgb(27, 34, 43))
+            setPadding(dp(3), dp(2), dp(3), dp(2))
+            setBackgroundColor(if (keyboardThemeDark()) Color.rgb(28, 35, 44) else Color.rgb(202, 210, 220))
         }
         suggestionRow = suggestions
-        root.addView(suggestions, LinearLayout.LayoutParams(-1, dp(31)))
+        root.addView(suggestions, LinearLayout.LayoutParams(-1, dp(36)).apply { setMargins(0, dp(2), 0, dp(3)) })
         renderSuggestions()
+        addTypingKeys(root)
+        return root
+    }
 
+    private fun addTypingKeys(root: LinearLayout) {
         if (symbols) {
             addKeyRow(root, listOf("1","2","3","4","5","6","7","8","9","0"))
             addKeyRow(root, listOf("@","#","$","%","&","-","+","(",")","/"))
             addKeyRow(root, listOf("=","*","\"","'",":",";","!","?","⌫"), listOf(1f,1f,1f,1f,1f,1f,1f,1f,1.5f))
             addKeyRow(root, listOf("ABC",",","space",".","↵"), listOf(1.2f,1f,4f,1f,1.3f))
         } else {
+            if (numberRowEnabled()) addKeyRow(root, listOf("1","2","3","4","5","6","7","8","9","0"))
             addKeyRow(root, listOf("q","w","e","r","t","y","u","i","o","p"))
             addKeyRow(root, listOf("a","s","d","f","g","h","j","k","l"), listOf(1.15f,1f,1f,1f,1f,1f,1f,1f,1.15f))
             addKeyRow(root, listOf("⇧","z","x","c","v","b","n","m","⌫"), listOf(1.45f,1f,1f,1f,1f,1f,1f,1f,1.45f))
             addKeyRow(root, listOf("?123",",","←","space","→",".","↵"), listOf(1.35f,0.8f,0.85f,3.4f,0.85f,0.8f,1.15f))
         }
-        return root
     }
 
-    private fun addToolbarKey(row: LinearLayout, label: String, color: Int, action: () -> Unit) {
+    private fun addToolbarKey(
+        row: LinearLayout,
+        label: String,
+        active: Boolean = false,
+        weight: Float = 1f,
+        action: () -> Unit
+    ) {
         val key = TextView(this).apply {
             text = label
-            textSize = 10f
+            textSize = if (label.length > 8) 10f else 11.5f
             gravity = Gravity.CENTER
-            setTextColor(Color.WHITE)
+            setTextColor(if (keyboardThemeDark()) Color.WHITE else Color.rgb(28, 35, 44))
             isSingleLine = true
-            setBackgroundColor(color)
-            setOnClickListener { tapFeedback(this); action() }
+            setPadding(dp(2), 0, dp(2), 0)
+            background = keyBackground(wide = true, active = active, toolbar = true)
+            setOnClickListener { tapFeedback(this); playKeySound(this); action() }
         }
-        row.addView(key, LinearLayout.LayoutParams(0, dp(30), 1f).apply {
-            setMargins(dp(2), dp(1), dp(2), dp(1))
+        row.addView(key, LinearLayout.LayoutParams(0, dp(38), weight).apply {
+            setMargins(dp(2), dp(2), dp(2), dp(2))
         })
     }
 
     private fun addKeyRow(root: LinearLayout, keys: List<String>, weights: List<Float> = keys.map { 1f }) {
-        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+        }
         keys.forEachIndexed { index, key ->
             val wide = key in setOf("space", "⇧", "⌫", "↵", "?123", "123", "ABC", "←", "→")
             val label = when (key) {
-                "space" -> "space"
+                "space" -> selectedLanguageLabel()
                 "⇧" -> if (capsLock) "⇪" else "⇧"
-                "?123" -> "?123"
                 else -> key
             }
             val keyView = TextView(this).apply {
                 text = if (!symbols && key.length == 1 && key[0].isLetter()) {
                     if (shifted || capsLock) key.uppercase(inputLocale()) else key
                 } else label
-                textSize = when (key) { "space" -> 10f; "←", "→", "⇧", "⇪", "⌫", "↵" -> 17f; else -> 16f }
+                textSize = when {
+                    key == "space" -> 10.5f
+                    key in setOf("←", "→", "⇧", "⇪", "⌫", "↵") -> 19f
+                    key.length > 1 -> 12f
+                    key.codePoints().toArray().any { it > 0xFFFF } -> 20f
+                    else -> 19f
+                }
                 gravity = Gravity.CENTER
-                setTextColor(Color.WHITE)
+                setTextColor(keyTextColors())
                 isSingleLine = true
                 setPadding(dp(1), 0, dp(1), 0)
-                setBackgroundColor(if (wide) Color.rgb(54, 67, 82) else Color.rgb(39, 48, 59))
-                setOnClickListener { tapFeedback(this); handleKey(key) }
+                background = keyBackground(wide = wide)
+                elevation = dp(1).toFloat()
+                contentDescription = when (key) {
+                    "⌫" -> "Backspace"
+                    "↵" -> "Enter"
+                    "⇧" -> "Shift"
+                    "space" -> "Space, hold and slide to move cursor"
+                    else -> key
+                }
+                setOnClickListener { tapFeedback(this); playKeySound(this); handleKey(key) }
+                setOnTouchListener { view, event ->
+                    when (event.actionMasked) {
+                        MotionEvent.ACTION_DOWN -> {
+                            view.scaleX = 0.96f
+                            view.scaleY = 0.96f
+                            view.translationZ = dp(4).toFloat()
+                            if (key.length == 1 && key != " ") showKeyPreview(view, text.toString())
+                        }
+                        MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                            view.scaleX = 1f
+                            view.scaleY = 1f
+                            view.translationZ = 0f
+                            mainHandler.postDelayed({ if (!view.isPressed) hideKeyPreview() }, 90)
+                        }
+                    }
+                    false
+                }
+                if (key == "space") {
+                    var startX = 0f
+                    var lastStep = 0
+                    var moved = false
+                    setOnTouchListener { view, event ->
+                        when (event.actionMasked) {
+                            MotionEvent.ACTION_DOWN -> {
+                                startX = event.rawX
+                                lastStep = 0
+                                moved = false
+                            }
+                            MotionEvent.ACTION_MOVE -> {
+                                val step = ((event.rawX - startX) / dp(18).toFloat()).toInt()
+                                val delta = step - lastStep
+                                if (delta != 0) {
+                                    repeat(kotlin.math.abs(delta).coerceAtMost(5)) {
+                                        sendCursorKey(if (delta > 0) KeyEvent.KEYCODE_DPAD_RIGHT else KeyEvent.KEYCODE_DPAD_LEFT)
+                                    }
+                                    lastStep = step
+                                    moved = true
+                                }
+                                if (moved) return@setOnTouchListener true
+                            }
+                            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                                view.scaleX = 1f
+                                view.scaleY = 1f
+                                if (moved) return@setOnTouchListener true
+                            }
+                        }
+                        false
+                    }
+                }
                 if (key.length == 1 && key[0].isLetter()) {
                     setOnLongClickListener {
                         showAlternates(this, alternativesFor(key))
@@ -271,41 +419,243 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                 }
             }
             row.addView(keyView, LinearLayout.LayoutParams(0, dp(keyHeight()), weights.getOrElse(index) { 1f }).apply {
-                setMargins(dp(2), dp(2), dp(2), dp(2))
+                setMargins(dp(2), dp(3), dp(2), dp(3))
             })
         }
-        root.addView(row, LinearLayout.LayoutParams(-1, dp(keyHeight() + 4)))
+        val side = oneHandedSide()
+        val width = if (side == 0) -1 else dp(((resources.displayMetrics.widthPixels / resources.displayMetrics.density) * 0.84f).toInt())
+        val params = LinearLayout.LayoutParams(width, dp(keyHeight() + 6))
+        params.gravity = when (side) { 1 -> Gravity.START; 2 -> Gravity.END; else -> Gravity.CENTER_HORIZONTAL }
+        root.addView(row, params)
+    }
+
+    private fun keyBackground(wide: Boolean, active: Boolean = false, toolbar: Boolean = false): RippleDrawable {
+        val dark = keyboardThemeDark()
+        val normalColor = when {
+            active -> if (dark) Color.rgb(43, 100, 79) else Color.rgb(190, 232, 211)
+            toolbar -> if (dark) Color.rgb(43, 53, 66) else Color.rgb(238, 242, 247)
+            wide -> if (dark) Color.rgb(62, 76, 93) else Color.rgb(190, 201, 214)
+            else -> if (dark) Color.rgb(43, 53, 66) else Color.rgb(250, 251, 253)
+        }
+        val pressedColor = if (dark) Color.rgb(154, 230, 193) else Color.rgb(116, 211, 170)
+        val strokeColor = if (dark) Color.rgb(83, 97, 114) else Color.rgb(176, 187, 200)
+        fun shape(color: Int) = GradientDrawable().apply {
+            setColor(color)
+            cornerRadius = dp(if (toolbar) 9 else 7).toFloat()
+            setStroke(dp(1), strokeColor)
+        }
+        val states = StateListDrawable().apply {
+            addState(intArrayOf(android.R.attr.state_pressed), shape(pressedColor))
+            addState(intArrayOf(), shape(normalColor))
+        }
+        val mask = GradientDrawable().apply {
+            setColor(Color.WHITE)
+            cornerRadius = dp(if (toolbar) 9 else 7).toFloat()
+        }
+        return RippleDrawable(ColorStateList.valueOf(Color.argb(90, 154, 230, 193)), states, mask)
+    }
+
+    private fun keyTextColors(): ColorStateList = ColorStateList(
+        arrayOf(intArrayOf(android.R.attr.state_pressed), intArrayOf()),
+        intArrayOf(
+            Color.rgb(17, 33, 27),
+            if (keyboardThemeDark()) Color.WHITE else Color.rgb(25, 32, 41)
+        )
+    )
+
+    private fun showKeyPreview(anchor: View, label: String) {
+        if (!keyPreviewEnabled()) return
+        hideKeyPreview()
+        val bubble = TextView(this).apply {
+            text = label
+            textSize = 30f
+            gravity = Gravity.CENTER
+            setTextColor(Color.rgb(18, 34, 28))
+            background = GradientDrawable().apply {
+                setColor(Color.rgb(154, 230, 193))
+                cornerRadius = dp(12).toFloat()
+                setStroke(dp(1), Color.WHITE)
+            }
+            elevation = dp(8).toFloat()
+        }
+        val popup = PopupWindow(bubble, dp(54), dp(58), false).apply {
+            isFocusable = false
+            isTouchable = false
+            setBackgroundDrawable(android.graphics.drawable.ColorDrawable(Color.TRANSPARENT))
+            elevation = dp(8).toFloat()
+        }
+        keyPreviewPopup = popup
+        popup.showAsDropDown(anchor, (anchor.width - dp(54)) / 2, -dp(keyHeight() + 60), Gravity.TOP)
+    }
+
+    private fun hideKeyPreview() {
+        keyPreviewPopup?.dismiss()
+        keyPreviewPopup = null
+    }
+
+    private fun playKeySound(view: View) {
+        if (getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_SOUND, false)) {
+            view.playSoundEffect(SoundEffectConstants.CLICK)
+        }
+    }
+
+    private fun showKeyboardTools(itAnchor: View) {
+        val menu = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(8), dp(8), dp(8), dp(8))
+            setBackgroundColor(if (keyboardThemeDark()) Color.rgb(31, 39, 49) else Color.rgb(245, 247, 250))
+        }
+        var popup: PopupWindow? = null
+        val prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
+        val actions = listOf<Pair<String, () -> Unit>>(
+            "Capture clipboard" to { captureClipboard(showToast = true) },
+            "Paste latest saved text" to { pasteLatestText() },
+            "Open clipboard History" to { openClipboardHistory() },
+            "Emoji panel" to { emojiMode = true; clipboardMode = false; commandsMode = false; refreshKeyboard() },
+            (if (numberRowEnabled()) "Hide number row" else "Show number row") to { prefs.edit().putBoolean(KEY_NUMBER_ROW, !numberRowEnabled()).apply(); refreshKeyboard() },
+            (if (keyPreviewEnabled()) "Turn key preview off" else "Turn key preview on") to { prefs.edit().putBoolean(KEY_KEY_PREVIEW, !keyPreviewEnabled()).apply() },
+            (if (hapticsEnabled()) "Turn vibration off" else "Turn vibration on") to { toggleHaptics() },
+            (if (keySoundsEnabled()) "Turn key sounds off" else "Turn key sounds on") to { prefs.edit().putBoolean(KEY_SOUND, !keySoundsEnabled()).apply(); refreshKeyboard() },
+            (if (keyboardThemeDark()) "Switch to light theme" else "Switch to dark theme") to { prefs.edit().putBoolean(KEY_THEME_DARK, !keyboardThemeDark()).apply(); refreshKeyboard() },
+            "Key height: ${keyHeight()} dp · change" to { cycleKeyHeight() },
+            "One-hand mode: ${oneHandedLabel()} · change" to { cycleOneHandedMode() },
+            (if (autoCorrectEnabled()) "Turn autocorrect off" else "Turn autocorrect on") to { toggleAutoCorrect() },
+            "Switch Android keyboard" to { (getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager).showInputMethodPicker() },
+            "Hide keyboard" to { requestHideSelf(0) }
+        )
+        actions.forEach { (label, action) ->
+            val item = TextView(this).apply {
+                text = label
+                textSize = 13f
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(dp(12), dp(8), dp(12), dp(8))
+                setTextColor(if (keyboardThemeDark()) Color.WHITE else Color.rgb(26, 34, 43))
+                background = keyBackground(wide = true, toolbar = true)
+                setOnClickListener { popup?.dismiss(); tapFeedback(this); action() }
+            }
+            menu.addView(item, LinearLayout.LayoutParams(-1, dp(42)).apply { bottomMargin = dp(3) })
+        }
+        val scroll = ScrollView(this).apply { addView(menu) }
+        popup = PopupWindow(scroll, dp(250), dp(350), true).apply {
+            isOutsideTouchable = true
+            setBackgroundDrawable(android.graphics.drawable.ColorDrawable(Color.TRANSPARENT))
+            elevation = dp(12).toFloat()
+            showAsDropDown(itAnchor, -dp(220), 0, Gravity.TOP)
+        }
+    }
+
+    private fun oneHandedSide(): Int = getSharedPreferences(PREFS, MODE_PRIVATE).getInt(KEY_ONE_HANDED, 0).coerceIn(0, 2)
+    private fun oneHandedLabel(): String = when (oneHandedSide()) { 1 -> "Left"; 2 -> "Right"; else -> "Off" }
+    private fun numberRowEnabled(): Boolean = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_NUMBER_ROW, false)
+    private fun keyPreviewEnabled(): Boolean = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_KEY_PREVIEW, true)
+    private fun keySoundsEnabled(): Boolean = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_SOUND, false)
+    private fun keyboardThemeDark(): Boolean = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_THEME_DARK, true)
+
+    private fun cycleOneHandedMode() {
+        getSharedPreferences(PREFS, MODE_PRIVATE).edit().putInt(KEY_ONE_HANDED, (oneHandedSide() + 1) % 3).apply()
+        refreshKeyboard()
+    }
+
+    private fun commandSearchLabel(): String =
+        if (commandQuery.isBlank()) "Search your Vault · type below" else "Vault search: $commandQuery"
+
+    private fun handleCommandSearchKey(key: String) {
+        when (key) {
+            "⌫" -> commandQuery = commandQuery.dropLast(1)
+            "space" -> commandQuery += " "
+            "↵" -> { renderCommandEntries(); return }
+            "⇧" -> { shifted = !shifted; refreshKeyboard(); return }
+            "?123", "123" -> { symbols = true; refreshKeyboard(); return }
+            "ABC" -> { symbols = false; refreshKeyboard(); return }
+            "←", "→" -> return
+            else -> commandQuery += if (shifted || capsLock) key.uppercase(inputLocale()) else key
+        }
+        if (key != "⇧" && shifted && !capsLock) shifted = false
+        commandSearchView?.text = commandSearchLabel()
+        renderCommandEntries()
+    }
+
+    private fun renderCommandEntries() {
+        val container = commandList ?: return
+        val query = commandQuery
+        val revision = ++commandSearchRevision
+        serviceScope.launch {
+            delay(90)
+            if (revision != commandSearchRevision || !commandsMode) return@launch
+            val dao = VaultDatabase.get(applicationContext).dao()
+            val entries = if (query.isBlank()) dao.observeAll().first() else dao.search(query).first()
+            if (revision != commandSearchRevision || !commandsMode || commandList !== container) return@launch
+            container.removeAllViews()
+            if (entries.isEmpty()) {
+                container.addView(TextView(this@VaultKeyboardService).apply {
+                    text = if (query.isBlank()) "Your Vault is empty" else "No matching items"
+                    setTextColor(if (keyboardThemeDark()) Color.LTGRAY else Color.DKGRAY)
+                    textSize = 12f
+                    gravity = Gravity.CENTER
+                }, LinearLayout.LayoutParams(-1, dp(42)))
+                return@launch
+            }
+            entries.take(3).forEach { entry ->
+                val item = TextView(this@VaultKeyboardService).apply {
+                    text = "${entry.name}  ·  ${entry.category}"
+                    textSize = 12f
+                    maxLines = 2
+                    gravity = Gravity.CENTER_VERTICAL
+                    setPadding(dp(10), dp(4), dp(10), dp(4))
+                    setTextColor(if (keyboardThemeDark()) Color.WHITE else Color.rgb(25, 32, 41))
+                    background = keyBackground(wide = true, toolbar = true)
+                    setOnClickListener {
+                        tapFeedback(this)
+                        if (entry.category in setOf("Text", "Code")) {
+                            serviceScope.launch {
+                                val text = runCatching { VaultRepository(applicationContext).readFullText(entry) }.getOrNull()
+                                if (!text.isNullOrEmpty()) {
+                                    insertText(text)
+                                    commandsMode = false
+                                    commandQuery = ""
+                                    refreshKeyboard()
+                                } else Toast.makeText(this@VaultKeyboardService, "Full text is unavailable", Toast.LENGTH_SHORT).show()
+                            }
+                        } else openVault()
+                    }
+                }
+                container.addView(item, LinearLayout.LayoutParams(-1, dp(42)).apply { bottomMargin = dp(3) })
+            }
+        }
     }
 
     private fun showAlternates(anchor: View, alternatives: List<String>) {
         if (alternatives.isEmpty()) return
+        hideKeyPreview()
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            setPadding(dp(4), dp(4), dp(4), dp(4))
-            setBackgroundColor(Color.rgb(63, 76, 91))
+            setPadding(dp(5), dp(5), dp(5), dp(5))
+            setBackgroundColor(if (keyboardThemeDark()) Color.rgb(31, 39, 49) else Color.rgb(235, 240, 246))
         }
         var popup: PopupWindow? = null
         alternatives.distinct().forEach { value ->
             val option = TextView(this).apply {
                 text = value
-                textSize = 20f
+                textSize = 22f
                 gravity = Gravity.CENTER
-                setTextColor(Color.WHITE)
+                setTextColor(if (keyboardThemeDark()) Color.WHITE else Color.rgb(25, 32, 41))
+                background = keyBackground(wide = true)
                 setPadding(dp(12), dp(8), dp(12), dp(8))
                 setOnClickListener {
                     tapFeedback(this)
+                    playKeySound(this)
                     currentInputConnection?.commitText(if (shifted || capsLock) value.uppercase(inputLocale()) else value, 1)
                     popup?.dismiss()
                     if (shifted && !capsLock) { shifted = false; refreshKeyboard() }
                 }
             }
-            content.addView(option, LinearLayout.LayoutParams(-2, dp(48)))
+            content.addView(option, LinearLayout.LayoutParams(-2, dp(52)).apply { setMargins(dp(2), 0, dp(2), 0) })
         }
         popup = PopupWindow(content, -2, -2, true).apply {
             isOutsideTouchable = true
-            elevation = dp(8).toFloat()
+            elevation = dp(12).toFloat()
             setBackgroundDrawable(android.graphics.drawable.ColorDrawable(Color.TRANSPARENT))
-            showAsDropDown(anchor, 0, -dp(keyHeight() + 58), Gravity.TOP)
+            showAsDropDown(anchor, -dp(18), -dp(keyHeight() + 58), Gravity.TOP)
         }
     }
 
@@ -344,6 +694,14 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
 
     private fun handleKey(key: String) {
         if (clipboardMode) { handleClipboardSearchKey(key); return }
+        if (commandsMode) { handleCommandSearchKey(key); return }
+        if (emojiMode) {
+            if (key == "⌫") currentInputConnection?.deleteSurroundingText(1, 0)
+            else if (key !in setOf("space", "↵")) currentInputConnection?.commitText(key, 1)
+            emojiMode = false
+            refreshKeyboard()
+            return
+        }
         when (key) {
             "⇧" -> {
                 when {
@@ -361,7 +719,8 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                 if (!selected.isNullOrEmpty()) connection.commitText("", 1)
                 else connection.deleteSurroundingText(1, 0)
                 if (typedWord.isNotEmpty()) typedWord.deleteCharAt(typedWord.length - 1)
-                currentSuggestions = emptyList()
+                lastCommittedWord = ""
+                requestWordSuggestions(typedWord.toString())
                 renderSuggestions()
             }
             "←" -> sendCursorKey(KeyEvent.KEYCODE_DPAD_LEFT)
@@ -378,13 +737,33 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
             else -> {
                 val value = if (shifted || capsLock) key.uppercase(inputLocale()) else key
                 currentInputConnection?.commitText(value, 1)
-                if (value.length == 1 && value[0].isLetter()) typedWord.append(value)
-                else typedWord.clear()
-                currentSuggestions = emptyList()
+                if (value.length == 1 && value[0].isLetter()) {
+                    typedWord.append(value)
+                    lastCommittedWord = ""
+                    requestWordSuggestions(typedWord.toString())
+                } else {
+                    typedWord.clear()
+                    lastCommittedWord = ""
+                    activeSpellCheckWord = ""
+                    currentSuggestions = emptyList()
+                }
                 renderSuggestions()
                 if (shifted && !capsLock) { shifted = false; refreshKeyboard() }
             }
         }
+    }
+
+    private fun requestWordSuggestions(word: String) {
+        if (word.length < 2 || !isSafeForSuggestions(currentInputEditorInfo) || spellChecker == null) {
+            activeSpellCheckWord = ""
+            currentSuggestions = emptyList()
+            renderSuggestions()
+            return
+        }
+        activeSpellCheckWord = word
+        spellCheckGeneration++
+        val requestId = spellCheckGeneration
+        spellChecker?.getSuggestions(arrayOf(TextInfo(word, requestId, requestId)), 3, false)
     }
 
     private fun commitSpace() {
@@ -392,10 +771,10 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         if (word.isNotBlank() && isSafeForSuggestions(currentInputEditorInfo)) {
             lastCommittedWord = word
             activeSuggestionInputGeneration = inputGeneration
-            spellCheckGeneration++
-            spellChecker?.getSuggestions(arrayOf(TextInfo(word)), 3, false)
+            requestWordSuggestions(word)
         } else {
             lastCommittedWord = ""
+            activeSpellCheckWord = ""
             currentSuggestions = emptyList()
         }
         currentInputConnection?.commitText(" ", 1)
@@ -404,13 +783,18 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     }
 
     private fun applySuggestion(value: String) {
-        val word = lastCommittedWord
+        val composingWord = typedWord.toString()
+        val committedWord = composingWord.isEmpty() && lastCommittedWord.isNotBlank()
+        val word = composingWord.ifBlank { lastCommittedWord }
         if (word.isBlank()) return
         currentInputConnection?.let { connection ->
-            connection.deleteSurroundingText(word.length + 1, 0)
-            connection.commitText("$value ", 1)
+            connection.deleteSurroundingText(word.length + if (committedWord) 1 else 0, 0)
+            connection.commitText(if (committedWord) "$value " else value, 1)
         }
+        typedWord.clear()
         lastCommittedWord = value
+        activeSpellCheckWord = ""
+        spellCheckGeneration++
         currentSuggestions = emptyList()
         renderSuggestions()
     }
@@ -418,8 +802,8 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     private fun renderSuggestions() {
         val row = suggestionRow ?: return
         row.removeAllViews()
-        val showCorrections = typedWord.isEmpty() && lastCommittedWord.isNotBlank() && currentSuggestions.isNotEmpty()
-        val candidates = if (showCorrections) currentSuggestions else listOf(typedWord.toString().ifBlank { selectedLanguageLabel() })
+        val showCorrections = currentSuggestions.isNotEmpty() && (typedWord.isNotEmpty() || lastCommittedWord.isNotBlank())
+        val candidates = if (showCorrections) currentSuggestions else listOf(typedWord.toString().ifBlank { lastCommittedWord.ifBlank { selectedLanguageLabel() } })
         candidates.take(3).forEach { candidate ->
             val item = TextView(this).apply {
                 text = candidate
@@ -442,6 +826,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, code))
         typedWord.clear()
         lastCommittedWord = ""
+        activeSpellCheckWord = ""
         currentSuggestions = emptyList()
         renderSuggestions()
     }
@@ -453,13 +838,15 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         val variation = inputType and InputType.TYPE_MASK_VARIATION
         if (inputClass != InputType.TYPE_CLASS_TEXT) return false
         if (inputType and InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS != 0) return false
+        if (inputType and InputType.TYPE_TEXT_FLAG_AUTO_COMPLETE != 0) return false
         if (variation in setOf(
                 InputType.TYPE_TEXT_VARIATION_PASSWORD,
                 InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD,
                 InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD,
                 InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS,
                 InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS,
-                InputType.TYPE_TEXT_VARIATION_URI
+                InputType.TYPE_TEXT_VARIATION_URI,
+                InputType.TYPE_TEXT_VARIATION_FILTER
             )
         ) return false
         return true
@@ -487,7 +874,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         refreshKeyboard()
     }
 
-    private fun keyHeight(): Int = getSharedPreferences(PREFS, MODE_PRIVATE).getInt(KEY_HEIGHT, 43).coerceIn(38, 54)
+    private fun keyHeight(): Int = getSharedPreferences(PREFS, MODE_PRIVATE).getInt(KEY_HEIGHT, 50).coerceIn(44, 60)
     private fun hapticsEnabled(): Boolean = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_HAPTICS, true)
     private fun autoCorrectEnabled(): Boolean = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_AUTOCORRECT, false)
 
@@ -502,7 +889,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     }
 
     private fun cycleKeyHeight() {
-        val sizes = listOf(40, 44, 48, 52)
+        val sizes = listOf(46, 50, 54, 58)
         val current = keyHeight()
         val next = sizes.firstOrNull { it > current } ?: sizes.first()
         getSharedPreferences(PREFS, MODE_PRIVATE).edit().putInt(KEY_HEIGHT, next).apply()
@@ -514,6 +901,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     }
 
     private fun refreshKeyboard() {
+        hideKeyPreview()
         setInputView(buildKeyboard())
     }
 
@@ -692,5 +1080,10 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         const val KEY_HAPTICS = "keyboard_haptics"
         const val KEY_HEIGHT = "keyboard_key_height"
         const val KEY_AUTOCORRECT = "keyboard_autocorrect"
+        const val KEY_NUMBER_ROW = "keyboard_number_row"
+        const val KEY_KEY_PREVIEW = "keyboard_key_preview"
+        const val KEY_SOUND = "keyboard_key_sound"
+        const val KEY_THEME_DARK = "keyboard_theme_dark"
+        const val KEY_ONE_HANDED = "keyboard_one_handed"
     }
 }

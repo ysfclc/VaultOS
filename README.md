@@ -1,6 +1,6 @@
 # VaultOS for Android
 
-**A local-first Android file library and manager (release 0.9.0).** This repository contains a native Kotlin/Jetpack Compose application, an optional capture keyboard, a DocumentsProvider, a private archive, local indexing, and manual external backup/restore.
+**A local-first Android file library and manager (release 0.10.0).** This repository contains a native Kotlin/Jetpack Compose application, an optional capture keyboard, a DocumentsProvider, a private archive, local indexing, and manual external backup/restore.
 
 ## What is implemented
 
@@ -132,21 +132,24 @@ Clipboard history stores the foreground editor package as context, the clipboard
 
 **Android limitation:** automatic capture requires VaultOS to be the selected input method. A normal Android app cannot silently monitor the clipboard while another keyboard is active. Manual capture remains available from inside VaultOS. The foreground editor package is context, not guaranteed origin attribution.
 
-CI and physical-device acceptance for 0.7.0 are pending.
+CI for 0.7.0 passed; physical-device acceptance remains pending.
 ## Phase 8 — keyboard integration (0.8.0)
 
 VaultOS introduced a persistent EN / PL / TR selector and an inline Clips mode. Search clipboard history from the keyboard, pin or unpin entries, and insert the complete verified text into the focused field without opening the app.
 
-## Phase 9 — daily-use keyboard (0.9.0)
+## Phase 10 — keyboard redesign (0.10.0)
 
-The keyboard has been rebuilt around a compact QWERTY layout rather than treating the clipboard toolbar as the product. It now includes:
+The previous custom keyboard was not accepted as a daily-use keyboard. This phase addresses the usability failure directly: every key now has a high-contrast keycap, a pressed-state color, a ripple, a tactile scale response and a large popup preview while held. The toolbar is a single compact row: Type, Clips, Cmd, language and More.
 
-- Standard QWERTY rows, shift and caps lock, a dedicated number/symbol layer, punctuation, backspace and editor-aware Enter/Search/Done behavior.
-- Long-press alternatives for Polish and Turkish characters, numbers and common punctuation.
-- Left/right cursor controls and a full-width space key.
-- Word suggestions using Android's installed spell-checker for the selected EN / PL / TR language.
-- Optional autocorrect, off by default. Suggestions and autocorrect are excluded from password, email, URL, non-text and no-suggestions fields.
-- Functional keyboard controls for haptics, key height and autocorrect, plus Android's system keyboard picker to switch back to Gboard.
-- Clipboard Capture, Paste saved, inline Clips search and full History access remain part of the keyboard.
+The keyboard now includes:
 
-Spell-check quality depends on the spell-checker dictionaries installed on the phone. CI verifies compilation, lint and APK packaging; real typing, language dictionaries, layout and Xiaomi IME behavior still require acceptance on the Redmi Note 12 Pro 5G.
+- Standard QWERTY with larger 50 dp default keys, adjustable 46/50/54/58 dp sizing and optional number row.
+- Clear pressed-state keycaps, ripple, key popup previews, optional system key sounds and haptics.
+- English, Polish and Turkish switching; long-press diacritics and punctuation alternatives.
+- Live Android spell-checker suggestions with request sequencing; autocorrect remains opt-in and only applies when the spell-checker marks a word as a likely typo.
+- Cursor movement by arrow keys or sliding horizontally across the spacebar.
+- Emoji panel, clipboard search/history/pinning/full-text paste, and a Cmd panel that searches VaultOS records and inserts complete saved text/code.
+- Dark/light themes and off/left/right one-handed layout.
+- A More menu for capture, paste, history, keyboard size, haptics, sound, key previews, number row, autocorrect, theme, one-hand mode and switching back to Gboard.
+
+The implementation is local-first. It does not claim to include glide typing or a proprietary next-word prediction engine. Spell-check quality still depends on installed Android dictionaries. CI build success is not proof of touch ergonomics; the Redmi Note 12 Pro 5G acceptance matrix remains mandatory.

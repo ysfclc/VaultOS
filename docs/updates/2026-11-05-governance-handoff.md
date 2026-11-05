@@ -126,3 +126,14 @@ Implemented in `VaultKeyboardService.kt`:
 CI verification: 0.9.0 release run `42034432444`, commit `9b2e8580b60f8c8039fff2969e2c852eff5817ab`. Unit-test task, lint, debug/release APK assembly, signing verification and debug/release/metadata artifact uploads passed. VersionCode 9 / versionName 0.9.0 artifacts are available from that run.
 
 Remaining: install and test on the Redmi Note 12 Pro 5G. In particular verify real typing, Polish/Turkish dictionaries, long-press alternatives, cursor movement, suggestions/autocorrect exclusions, haptics, key sizing and switching to Gboard. Build success does not prove typing usability. Signing-key rotation remains deferred by the user.
+
+
+## Keyboard usability redesign — 2026-11-05 (0.10.0)
+
+The user rejected the previous keyboard as unusable and specifically reported that it was not apparent which key had been pressed. The 0.10.0 redesign focuses first on touch feedback and touch accuracy: high-contrast keycaps, pressed-state color, ripple, press scale, a popup key preview and larger default keys. The previous two-row toolbar is consolidated into Type / Clips / Cmd / Language / More.
+
+Value-packed additions: optional number row, dark/light theme, one-handed left/right layout, key sounds, haptics, adjustable height, emoji panel, spacebar cursor swipe, live spell-check with stale-request sequencing, and safe opt-in autocorrect. Clips and local Vault Cmd modes are integrated: search/pin/paste full clipboard content and search the Vault catalogue to insert complete Text/Code records.
+
+Research references: SwiftKey documents keyboard resizing, toolbar customization, clipboard, themes and multilingual/Flow typing; HeliBoard documents offline dictionaries, customizable layouts/themes, clipboard history, one-handed/split modes and number pad. VaultOS adopts relevant interaction ideas but does not copy proprietary code or claim glide typing.
+
+Version 0.10.0 / versionCode 10 is source-complete pending hosted CI. Physical Redmi Note 12 Pro 5G acceptance remains mandatory, especially visible press feedback, popup positioning, touch accuracy and missed/duplicate key entry. Do not mark the keyboard accepted before these tests pass.

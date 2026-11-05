@@ -170,18 +170,19 @@ Phase 2 implementation is in release line 0.2.0. The Room 1→2 migration adds r
 - [x] Confirm hosted CI for 0.8.0 (run `42027643930`).
 - [ ] Complete the 0.8.0 device acceptance plan.
 
-## Phase 9 — daily-use keyboard (0.9.0)
 
-- [x] Replace default Android Button keys with compact, weighted touch keys and a standard QWERTY layout.
-- [x] Implement one-shot shift and double-tap caps lock.
-- [x] Add dedicated numbers/symbols layer, punctuation, backspace and editor-aware Enter behavior.
-- [x] Add long-press Polish and Turkish diacritics, number alternatives and punctuation alternatives.
-- [x] Add left/right cursor movement controls.
-- [x] Add Android spell-checker word suggestions using the selected EN / PL / TR locale.
-- [x] Add optional autocorrect, disabled by default, with exclusions for password, email, URL, non-text and no-suggestions fields.
-- [x] Add functional haptics and key-height controls.
-- [x] Keep Android's system IME picker available for switching back to Gboard.
-- [x] Preserve clipboard Capture, Paste saved, inline Clips, pinning and History.
-- [x] Confirm hosted CI for the 0.9.0 release (run `42034432444`; unit tests, lint, debug/release assembly, signature verification and all artifact uploads passed).
-- [ ] Verify actual typing, suggestions, language dictionaries, long-press alternatives, haptics, sizing and Gboard switching on Redmi Note 12 Pro 5G.
-- [ ] Tune key sizing/spacing from physical-device feedback before calling the keyboard daily-use accepted.
+## Phase 10 — keyboard redesign (0.10.0)
+
+- [x] Replace the two-row micro-toolbar with a single-row Type / Clips / Cmd / Language / More mode bar.
+- [x] Make key presses visible: high-contrast keycaps, stateful pressed colors, ripple feedback, press scale and popup key preview.
+- [x] Increase default key height to 50 dp and support 46 / 50 / 54 / 58 dp settings.
+- [x] Add optional number row, dark/light themes and off/left/right one-handed layout.
+- [x] Add optional system key sounds alongside configurable haptics and key preview.
+- [x] Add an emoji panel and cursor movement by sliding on the spacebar.
+- [x] Add a Vault Cmd panel that searches the local library and inserts complete saved Text/Code content.
+- [x] Add live spell-check requests with stale-result sequencing and only autocorrect when the spell-checker flags a likely typo.
+- [x] Preserve EN / PL / TR, long-press alternatives, Clips, clipboard capture, pinning, History and complete-text insertion.
+- [ ] Run the hosted 0.10.0 build and fix every compile/lint/test failure.
+- [ ] Install on Redmi Note 12 Pro 5G and verify that each pressed key is unmistakably visible, the popup preview follows touch, and missed/duplicate characters do not occur.
+- [ ] Test landscape, enlarged display/font, TalkBack, one-hand modes, theme, number row, emoji, Commands, clipboard, cursor swipe, sounds, haptics and Gboard switching.
+- [ ] Tune dimensions from real device feedback. Do not call the keyboard usable until this acceptance passes.

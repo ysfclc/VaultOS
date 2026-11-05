@@ -109,25 +109,26 @@ Run these tests on the Redmi Note 12 Pro 5G after selecting VaultOS Capture Keyb
 11. **Lifecycle and background:** with VaultOS selected, lock/unlock, hide/show the keyboard, switch apps and repeat clipboard capture. Record any vendor-specific delays or missed events.
 
 **Expected Android limitation:** automatic clipboard event capture is available only while VaultOS is the selected input method. Gboard-active copy events must not appear unless the user manually captures them from VaultOS.
-## Daily-use keyboard acceptance — 0.9.0
+## Keyboard redesign acceptance — 0.10.0
 
-Run on the Redmi Note 12 Pro 5G with VaultOS selected as the active IME. CI is not a substitute for this test.
+Run on the Redmi Note 12 Pro 5G. This is the acceptance gate for the redesign; a successful CI build is not enough.
 
-1. **Basic typing:** in Chrome, ChatGPT, WhatsApp and Notes, type full sentences at normal speed. Confirm every key commits exactly one character, the cursor remains stable and the keyboard does not close or rebuild unexpectedly.
-2. **QWERTY layout and spacing:** test the top, home and bottom letter rows in portrait and landscape. Confirm keys are reachable, row offsets feel natural, the space key is easy to hit, and the toolbar does not steal excessive height.
-3. **Shift/caps lock:** type lowercase, one uppercase character, then double-tap Shift for caps lock. Tap Shift again to turn caps lock fully off.
-4. **Polish long-press:** long-press a/c/e/l/n/o/s/z and enter ą ć ę ł ń ó ś ź ż. Verify both lower- and uppercase variants and confirm ordinary taps still enter the base letter.
-5. **Turkish long-press:** long-press g/i/s/u/o/c and enter ğ ı İ ş ü ö ç. Verify dotted/dotless I and uppercase variants.
-6. **Number alternatives and symbols:** long-press q–p to enter 1–0. Switch to ?123 and test every number/symbol row, punctuation and return to ABC.
-7. **Editing:** select text and press Backspace; test ordinary deletion, cursor-left/right movement, comma/period alternatives and selection behavior.
-8. **Editor actions:** test Enter in multiline Notes, and Search/Go/Done in corresponding fields. It must perform the editor action when requested rather than always inserting a newline.
-9. **Word suggestions:** test common correctly spelled and deliberately misspelled words in EN, PL and TR. Verify suggestions only appear when the installed Android spell-checker supports that locale; tapping a suggestion replaces the last completed word without deleting adjacent text.
-10. **Autocorrect:** confirm Auto is off after a fresh install. Turn it on deliberately and verify it corrects an obvious typo only. Turn it off again and verify no automatic replacement occurs.
-11. **Sensitive/editor exclusions:** in password, email, URL, numeric, code/no-suggestions and other non-text fields, confirm suggestions and autocorrect are suppressed. Confirm ordinary text fields still work.
-12. **Haptics and size:** toggle vibration off/on and cycle all key-height settings. Confirm the preference persists after hiding/reopening the keyboard and restarting VaultOS.
-13. **Keyboard switching:** tap Switch and select Gboard from Android's IME picker. Confirm Gboard becomes active. Reopen the picker and return to VaultOS.
-14. **Clipboard integration:** copy normal text while VaultOS is active and confirm it enters History. Search and paste a long saved clip from inline Clips mode, pin/unpin, and verify Paste inserts the latest captured text. Clipboard mode must not break the focused editor.
-15. **Small screen/accessibility:** test default and enlarged display/font sizes, TalkBack labels/focus, portrait and landscape. No toolbar action or key may become unreachable.
-16. **Lifecycle:** hide/show, switch apps, rotate, lock/unlock, force-stop/reopen and reboot. Confirm the keyboard recovers, the selected language and settings persist, and clipboard history remains available.
+1. **Visual press feedback:** tap each letter slowly and quickly. The key must visibly change color/scale on finger-down, show a popup preview above the key while held, and return cleanly on release. Verify the preview does not block adjacent keys or appear after release.
+2. **Touch accuracy:** type at least 500 characters in Chrome, ChatGPT, WhatsApp and Notes. Compare intended text with inserted text. Record missed, duplicated or neighboring-key characters; there must be no repeated refresh or keyboard collapse during ordinary typing.
+3. **Key visibility:** test default brightness, outdoor brightness, dark theme and light theme. Letter labels must remain legible; special keys must be visually distinct without looking like letters.
+4. **Key sizing:** test 46, 50, 54 and 58 dp. Confirm no overlap, clipping or unreachable bottom row. 50 dp should be usable without changing settings.
+5. **Number row:** enable/disable it from More. Confirm the preference persists and the layout does not compress keys below usable size.
+6. **Language:** switch EN / PL / TR from the top row. Type Polish "zażółć gęślą jaźń" and Turkish "İ ı ş Ş ğ Ğ ü Ü ö Ö ç Ç". Verify long-press alternatives and uppercase behavior.
+7. **Suggestions:** type misspelled and correct words in all three languages. Verify the installed dictionary provides relevant results and that stale suggestions never replace a newer word.
+8. **Autocorrect safety:** autocorrect is off by default. When enabled, only likely typos flagged by the spell-checker may be replaced. Test password, email, URL, numeric, autocomplete, filter and no-suggestions fields; suggestions/autocorrect must be suppressed.
+9. **Cursor control:** drag horizontally on the spacebar to move the cursor in both directions. Verify ordinary space taps still insert exactly one space.
+10. **One-handed mode:** cycle Off → Left → Right. Confirm every row remains aligned, reachable and accurately touchable; return to Off.
+11. **Theme and feedback:** switch dark/light; toggle key preview, haptics and system key sounds independently. Confirm settings persist after hiding/reopening the IME.
+12. **Emoji panel:** open from More, insert emoji into a text field, return to Type and verify no text is lost.
+13. **Clips mode:** search a long clipboard entry, pin/unpin, and insert the complete verified text. Check that key presses remain visible while searching.
+14. **Cmd mode:** search for a known text/code item by a term in its full content, select it and verify complete text insertion. Select a non-text item and confirm it opens the Vault app rather than inserting a preview.
+15. **Editor actions:** test Enter in multiline Notes and Search/Go/Done in relevant fields. Backspace, Shift, caps lock, symbols and punctuation must work.
+16. **Gboard switching:** open Android's IME picker, select Gboard, type, reopen picker and return to VaultOS.
+17. **Accessibility and lifecycle:** TalkBack focus/labels, large font/display size, portrait/landscape, rotate, lock/unlock, hide/show, switch apps, force-stop/reopen and reboot. No controls may disappear or become unreachable.
 
-Record model, Android/API, MIUI/HyperOS version, VaultOS version, language and spell-checker provider, layout size, and any missed keystrokes or crashes. Do not mark the keyboard daily-use accepted until the actual device run is complete.
+Record Android/API, MIUI/HyperOS, VaultOS build, display/font scaling, active spell-checker and any missed/duplicate keystrokes. Any failure in steps 1–4 blocks acceptance.
