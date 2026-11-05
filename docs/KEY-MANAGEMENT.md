@@ -44,3 +44,7 @@ The GitHub connector cannot read or verify GitHub Actions secret values. A succe
 ## Local development
 
 Never commit a keystore. Keep local signing material outside the repository and provide it through local Gradle properties or environment variables. Use the Android default debug signing identity for ordinary development; never sign debug APKs with a production or release key.
+
+## Deferred work status — 2026-11-05
+
+The owner has explicitly deferred the replacement-key migration and GitHub Actions secret provisioning until a later session. GOV-001 remains open but is not a blocker for the clipboard/keyboard product roadmap. Keep the historical signer and signing configuration unchanged until the replacement certificate lineage is generated and in-place update compatibility is verified. Do not remove the tracked historical keystore or rewrite Git history as part of unrelated product phases.
