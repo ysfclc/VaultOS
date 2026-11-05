@@ -191,6 +191,7 @@ Phase 2 implementation is in release line 0.2.0. The Room 1→2 migration adds r
 ## Phase 11 — recommendation quality and keyboard refinement (0.11.0)
 
 - [x] Add a deterministic local EN / PL / TR prefix lexicon so useful completions do not depend entirely on the phone's installed dictionary.
+- [x] Add conservative Damerau–Levenshtein typo candidates for nearby common words; keep exact known words out of the correction path.
 - [x] Add curated next-word suggestions for common English, Polish and Turkish contexts; unknown contexts remain empty rather than inventing candidates.
 - [x] Keep the typed word visible in the candidate strip and show platform spell-checker alternatives only when Android flags a likely typo.
 - [x] Invalidate queued spell-check callbacks when the word changes, the user clears the current word, or the input field ends.
