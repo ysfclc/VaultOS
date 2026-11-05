@@ -122,6 +122,25 @@ data class ItemMetadata(
     val extractedAt: Long
 )
 
+@Entity(
+    tableName = "clipboard_history",
+    indices = [Index("capturedAt"), Index("contentHash"), Index("foregroundPackage"), Index("isPinned")]
+)
+data class ClipboardHistoryEntry(
+    @PrimaryKey val id: String,
+    val itemId: String?,
+    val contentType: String,
+    val preview: String,
+    val foregroundPackage: String?,
+    val clipLabel: String?,
+    val mimeTypes: String,
+    val contentHash: String?,
+    val characterCount: Int,
+    val byteCount: Long,
+    val capturedAt: Long,
+    val isPinned: Boolean = false
+)
+
 data class DuplicateGroup(val hash: String, val itemCount: Int, val totalBytes: Long)
 
 @Dao
@@ -312,10 +331,31 @@ interface VaultDao {
     suspend fun allNow(): List<VaultItem>
 
     @Query("SELECT * FROM items WHERE isTrashed = 0 AND category IN ('Text','Code') ORDER BY createdAt DESC LIMIT 1")
+    @Query("SELECT * FROM clipboard_history ORDER BY isPinned DESC, capturedAt DESC")
+    fun observeClipboardHistory(): Flow<List<ClipboardHistoryEntry>>
+
+    @Query("SELECT * FROM clipboard_history WHERE preview LIKE '%' || :query || '%' OR foregroundPackage LIKE '%' || :query || '%' OR clipLabel LIKE '%' || :query || '%' OR mimeTypes LIKE '%' || :query || '%' ORDER BY isPinned DESC, capturedAt DESC")
+    fun searchClipboardHistory(query: String): Flow<List<ClipboardHistoryEntry>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertClipboardHistory(entry: ClipboardHistoryEntry)
+
+    @Query("UPDATE clipboard_history SET isPinned = :pinned WHERE id = :id")
+    suspend fun setClipboardPinned(id: String, pinned: Boolean)
+
+    @Query("DELETE FROM clipboard_history WHERE id = :id")
+    suspend fun deleteClipboardHistory(id: String)
+
+    @Query("DELETE FROM clipboard_history WHERE isPinned = 0")
+    suspend fun clearUnpinnedClipboardHistory()
+
+    @Query("SELECT COUNT(*) FROM clipboard_history")
+    fun clipboardHistoryCount(): Flow<Int>
+
     suspend fun latestTextItem(): VaultItem?
 }
 
-@Database(entities = [VaultItem::class, SearchChunk::class, UserTag::class, ItemTagCrossRef::class, UserCollection::class, CollectionItemCrossRef::class, SavedSearch::class, ItemMetadata::class], version = 3, exportSchema = false)
+@Database(entities = [VaultItem::class, SearchChunk::class, UserTag::class, ItemTagCrossRef::class, UserCollection::class, CollectionItemCrossRef::class, SavedSearch::class, ItemMetadata::class, ClipboardHistoryEntry::class], version = 4, exportSchema = false)
 abstract class VaultDatabase : RoomDatabase() {
     abstract fun dao(): VaultDao
 
@@ -345,6 +385,16 @@ abstract class VaultDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS clipboard_history (id TEXT NOT NULL PRIMARY KEY, itemId TEXT, contentType TEXT NOT NULL, preview TEXT NOT NULL, foregroundPackage TEXT, clipLabel TEXT, mimeTypes TEXT NOT NULL, contentHash TEXT, characterCount INTEGER NOT NULL, byteCount INTEGER NOT NULL, capturedAt INTEGER NOT NULL, isPinned INTEGER NOT NULL DEFAULT 0)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_clipboard_history_capturedAt ON clipboard_history(capturedAt)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_clipboard_history_contentHash ON clipboard_history(contentHash)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_clipboard_history_foregroundPackage ON clipboard_history(foregroundPackage)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_clipboard_history_isPinned ON clipboard_history(isPinned)")
+            }
+        }
+
         @Volatile private var INSTANCE: VaultDatabase? = null
 
         fun get(context: Context): VaultDatabase = INSTANCE ?: synchronized(this) {
@@ -352,7 +402,7 @@ abstract class VaultDatabase : RoomDatabase() {
                 context.applicationContext,
                 VaultDatabase::class.java,
                 "vaultos.db"
-            ).addMigrations(MIGRATION_1_2, MIGRATION_2_3).build().also { INSTANCE = it }
+            ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4).build().also { INSTANCE = it }
         }
     }
 }
