@@ -12,17 +12,21 @@ import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.Button
+import android.widget.ScrollView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import com.vaultos.app.MainActivity
 import com.vaultos.app.ClipboardHistoryActivity
 import com.vaultos.app.storage.ClipboardHistoryRepository
+import com.vaultos.app.data.ClipboardHistoryEntry
 import com.vaultos.app.storage.VaultRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.yield
 import java.util.Locale
 
@@ -35,6 +39,11 @@ class VaultKeyboardService : InputMethodService() {
     private var clipboard: ClipboardManager? = null
     private var shifted = false
     private var symbols = false
+    private var clipboardMode = false
+    private var clipboardQuery = ""
+    private var clipboardList: LinearLayout? = null
+    private var clipboardSearchView: TextView? = null
+    private var clipboardSearchRevision = 0
 
     private val clipboardListener = ClipboardManager.OnPrimaryClipChangedListener {
         if (getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_AUTO_CAPTURE, true)) {
@@ -69,17 +78,37 @@ class VaultKeyboardService : InputMethodService() {
             setBackgroundColor(Color.rgb(22, 27, 34))
         }
         val toolbar = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-        toolbar.addView(actionButton("Capture", Color.rgb(32, 91, 69)) { captureClipboard(showToast = true) }, weightParams(1f))
-        toolbar.addView(actionButton("History", Color.rgb(39, 78, 66)) { openClipboardHistory() }, weightParams(0.9f))
-        toolbar.addView(actionButton("Paste saved", Color.rgb(39, 78, 66)) { pasteLatestText() }, weightParams(1.15f))
-        toolbar.addView(actionButton("Vault", Color.rgb(39, 55, 75)) { openVault() }, weightParams(0.7f))
-        // Use the system picker on every supported API level. It avoids the API-28-only
-        // switchToNextInputMethod call and lets the user explicitly choose Gboard or VaultOS.
+        toolbar.addView(actionButton("Capture", Color.rgb(32, 91, 69)) { captureClipboard(showToast = true) }, weightParams(0.85f))
+        toolbar.addView(actionButton(if (clipboardMode) "Keys" else "Clips", Color.rgb(39, 78, 66)) {
+            clipboardMode = !clipboardMode
+            setInputView(buildKeyboard())
+        }, weightParams(0.75f))
+        toolbar.addView(actionButton("Paste", Color.rgb(39, 78, 66)) { pasteLatestText() }, weightParams(0.7f))
+        toolbar.addView(actionButton("History", Color.rgb(39, 55, 75)) { openClipboardHistory() }, weightParams(0.8f))
+        toolbar.addView(actionButton(selectedLanguageCode().uppercase(Locale.ROOT), Color.rgb(55, 60, 69)) { cycleKeyboardLanguage() }, weightParams(0.55f))
         toolbar.addView(actionButton("Switch", Color.rgb(55, 60, 69)) {
             (getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager).showInputMethodPicker()
-        }, weightParams(0.75f))
-        toolbar.addView(actionButton("Hide", Color.rgb(55, 60, 69)) { requestHideSelf(0) }, weightParams(0.6f))
+        }, weightParams(0.7f))
+        toolbar.addView(actionButton("Hide", Color.rgb(55, 60, 69)) { requestHideSelf(0) }, weightParams(0.45f))
         root.addView(toolbar, LinearLayout.LayoutParams(-1, dp(43)))
+        if (clipboardMode) {
+            clipboardSearchView = TextView(this).apply {
+                setTextColor(Color.WHITE)
+                textSize = 12f
+                setPadding(dp(9), dp(5), dp(9), dp(5))
+                setBackgroundColor(Color.rgb(32, 40, 49))
+                text = clipboardSearchLabel()
+            }
+            root.addView(clipboardSearchView, LinearLayout.LayoutParams(-1, dp(30)))
+            val scroll = ScrollView(this).apply { isFillViewport = false }
+            clipboardList = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, dp(2), 0, dp(2)) }
+            scroll.addView(clipboardList)
+            root.addView(scroll, LinearLayout.LayoutParams(-1, dp(88)))
+            renderClipboardEntries()
+        } else {
+            clipboardList = null
+            clipboardSearchView = null
+        }
 
         val rows = if (symbols) listOf(
             listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"),
@@ -115,11 +144,21 @@ class VaultKeyboardService : InputMethodService() {
 
     /** Reads the selected IME subtype from InputMethodManager (the service itself
      * does not expose currentInputMethodSubtype as a member). */
-    private fun currentInputLocaleTag(): String {
-        val manager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-        val subtypeLocale = manager.currentInputMethodSubtype?.locale
-        return subtypeLocale?.takeIf { it.isNotBlank() }
-            ?: resources.configuration.locales[0].toLanguageTag()
+    private fun selectedLanguageCode(): String = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        .getString(KEY_LANGUAGE, "en")?.lowercase(Locale.ROOT)?.takeIf { it in setOf("en", "pl", "tr") } ?: "en"
+
+    private fun currentInputLocaleTag(): String = when (selectedLanguageCode()) {
+        "pl" -> "pl-PL"
+        "tr" -> "tr-TR"
+        else -> "en-US"
+    }
+
+    private fun cycleKeyboardLanguage() {
+        val languages = listOf("en", "pl", "tr")
+        val current = selectedLanguageCode()
+        val next = languages[(languages.indexOf(current) + 1) % languages.size]
+        getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY_LANGUAGE, next).apply()
+        setInputView(buildKeyboard())
     }
 
     private fun languageKeys(): List<String> = when (currentInputLocaleTag().substringBefore('_').substringBefore('-').lowercase(Locale.ROOT)) {
@@ -131,6 +170,7 @@ class VaultKeyboardService : InputMethodService() {
     private fun inputLocale(): Locale = Locale.forLanguageTag(currentInputLocaleTag().replace('_', '-'))
 
     private fun handleKey(key: String) {
+        if (clipboardMode) { handleClipboardSearchKey(key); return }
         when (key) {
             "⇧" -> { shifted = !shifted; setInputView(buildKeyboard()) }
             "123" -> { symbols = true; setInputView(buildKeyboard()) }
@@ -154,6 +194,85 @@ class VaultKeyboardService : InputMethodService() {
         }
     }
 
+    private fun clipboardSearchLabel(): String = if (clipboardQuery.isBlank()) "Search clipboard · type with the keys below" else "Search: $clipboardQuery"
+
+    private fun handleClipboardSearchKey(key: String) {
+        when (key) {
+            "⌫" -> clipboardQuery = clipboardQuery.dropLast(1)
+            "space" -> clipboardQuery += " "
+            "↵" -> { clipboardMode = false; setInputView(buildKeyboard()); return }
+            "⇧" -> shifted = !shifted
+            "123" -> { symbols = true; setInputView(buildKeyboard()); return }
+            "ABC" -> { symbols = false; setInputView(buildKeyboard()); return }
+            else -> clipboardQuery += if (shifted) key.uppercase(inputLocale()) else key
+        }
+        if (key != "⇧" && shifted) shifted = false
+        clipboardSearchView?.text = clipboardSearchLabel()
+        renderClipboardEntries()
+    }
+
+    private fun renderClipboardEntries() {
+        val container = clipboardList ?: return
+        val query = clipboardQuery
+        val revision = ++clipboardSearchRevision
+        serviceScope.launch {
+            delay(90)
+            if (revision != clipboardSearchRevision || !clipboardMode) return@launch
+            val repository = ClipboardHistoryRepository(applicationContext)
+            val entries = if (query.isBlank()) repository.observe().first() else repository.search(query).first()
+            if (revision != clipboardSearchRevision || !clipboardMode || clipboardList !== container) return@launch
+            container.removeAllViews()
+            if (entries.isEmpty()) {
+                container.addView(TextView(this@VaultKeyboardService).apply {
+                    text = if (query.isBlank()) "No saved clips yet" else "No matching clips"
+                    setTextColor(Color.LTGRAY); textSize = 12f; gravity = Gravity.CENTER; setPadding(dp(8), dp(8), dp(8), dp(8))
+                }, LinearLayout.LayoutParams(-1, dp(44)))
+                return@launch
+            }
+            entries.take(3).forEach { entry ->
+                val row = LinearLayout(this@VaultKeyboardService).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setBackgroundColor(Color.rgb(29, 36, 44)) }
+                val preview = TextView(this@VaultKeyboardService).apply {
+                    text = entry.preview.replace("\\n", " ").take(110)
+                    setTextColor(Color.WHITE); textSize = 11f; maxLines = 2; setPadding(dp(7), dp(4), dp(4), dp(4))
+                    setOnClickListener { pasteClipboardEntry(entry) }
+                }
+                row.addView(preview, LinearLayout.LayoutParams(0, dp(48), 1f))
+                val paste = actionButton(if (entry.contentType == "text") "Paste" else "Open", Color.rgb(32, 91, 69)) {
+                    if (entry.contentType == "text") pasteClipboardEntry(entry) else openClipboardHistory()
+                }
+                row.addView(paste, LinearLayout.LayoutParams(dp(55), dp(38)))
+                val pin = actionButton(if (entry.isPinned) "★" else "☆", Color.rgb(55, 60, 69)) {
+                    serviceScope.launch { ClipboardHistoryRepository(applicationContext).setPinned(entry.id, !entry.isPinned); renderClipboardEntries() }
+                }
+                row.addView(pin, LinearLayout.LayoutParams(dp(40), dp(38)))
+                container.addView(row, LinearLayout.LayoutParams(-1, dp(50)).apply { bottomMargin = dp(3) })
+            }
+        }
+    }
+
+    private fun pasteClipboardEntry(entry: ClipboardHistoryEntry) {
+        serviceScope.launch {
+            val text = runCatching { ClipboardHistoryRepository(applicationContext).readText(entry) }.getOrNull()
+            if (text.isNullOrEmpty()) {
+                Toast.makeText(this@VaultKeyboardService, "This saved clip is unavailable", Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+            insertText(text)
+            clipboardMode = false
+            setInputView(buildKeyboard())
+        }
+    }
+
+    private suspend fun insertText(text: String): Int {
+        val connection = currentInputConnection ?: return 0
+        var inserted = 0
+        for (part in text.chunked(8_000)) {
+            if (!connection.commitText(part, 1)) break
+            inserted += part.length
+            yield()
+        }
+        return inserted
+    }
     private fun captureClipboard(showToast: Boolean) {
         val prefs = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         if (!showToast && !prefs.getBoolean(KEY_AUTO_CAPTURE, true)) return
@@ -200,18 +319,11 @@ class VaultKeyboardService : InputMethodService() {
     }
 
     private fun pasteLatestText() {
-        val connection = currentInputConnection ?: return
         serviceScope.launch {
             val text = runCatching { VaultRepository(applicationContext).latestText() }.getOrNull()
             if (text.isNullOrEmpty()) Toast.makeText(this@VaultKeyboardService, "No saved text found", Toast.LENGTH_SHORT).show()
             else {
-                // Avoid one oversized Binder transaction for a very long saved message.
-                var inserted = 0
-                for (part in text.chunked(8_000)) {
-                    if (!connection.commitText(part, 1)) break
-                    inserted += part.length
-                    yield()
-                }
+                val inserted = insertText(text)
                 Toast.makeText(this@VaultKeyboardService, "Inserted $inserted of ${text.length} characters", Toast.LENGTH_SHORT).show()
             }
         }
@@ -227,7 +339,7 @@ class VaultKeyboardService : InputMethodService() {
     }
 
     private fun actionButton(label: String, color: Int, click: () -> Unit) = Button(this).apply {
-        text = label; textSize = 12f; isAllCaps = false; setTextColor(Color.WHITE)
+        text = label; textSize = 10.5f; isAllCaps = false; setTextColor(Color.WHITE)
         setBackgroundTintList(android.content.res.ColorStateList.valueOf(color)); setOnClickListener { click() }
     }
 
@@ -237,5 +349,6 @@ class VaultKeyboardService : InputMethodService() {
     companion object {
         const val PREFS = "vaultos_preferences"
         const val KEY_AUTO_CAPTURE = "auto_capture_clipboard"
+        const val KEY_LANGUAGE = "keyboard_language"
     }
 }
