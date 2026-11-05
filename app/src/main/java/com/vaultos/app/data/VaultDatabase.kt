@@ -387,7 +387,7 @@ abstract class VaultDatabase : RoomDatabase() {
 
         private val MIGRATION_3_4 = object : Migration(3, 4) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("CREATE TABLE IF NOT EXISTS clipboard_history (id TEXT NOT NULL PRIMARY KEY, itemId TEXT, contentType TEXT NOT NULL, preview TEXT NOT NULL, foregroundPackage TEXT, clipLabel TEXT, mimeTypes TEXT NOT NULL, contentHash TEXT, characterCount INTEGER NOT NULL, byteCount INTEGER NOT NULL, capturedAt INTEGER NOT NULL, isPinned INTEGER NOT NULL DEFAULT 0)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS clipboard_history (id TEXT NOT NULL PRIMARY KEY, itemId TEXT, contentType TEXT NOT NULL, preview TEXT NOT NULL, foregroundPackage TEXT, clipLabel TEXT, mimeTypes TEXT NOT NULL, contentHash TEXT, characterCount INTEGER NOT NULL, byteCount INTEGER NOT NULL, capturedAt INTEGER NOT NULL, isPinned INTEGER NOT NULL)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_clipboard_history_capturedAt ON clipboard_history(capturedAt)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_clipboard_history_contentHash ON clipboard_history(contentHash)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_clipboard_history_foregroundPackage ON clipboard_history(foregroundPackage)")
