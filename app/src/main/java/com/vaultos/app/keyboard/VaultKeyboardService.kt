@@ -835,6 +835,8 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         val correcting = currentSuggestions.isNotEmpty() && (typed.isNotBlank() || lastCommittedWord.isNotBlank())
         val candidates = when {
             typed.isNotBlank() -> (listOf(typed) + currentSuggestions +
+                KeyboardSuggestionEngine.nearbyCorrections(selectedLanguageCode(), typed)
+                    .takeIf { currentSuggestions.isEmpty() }.orEmpty() +
                 KeyboardSuggestionEngine.completePrefix(selectedLanguageCode(), typed)).distinct().take(3)
             correcting -> (listOf(lastCommittedWord) + currentSuggestions).distinct().take(3)
             previousWordForPrediction.isNotBlank() ->
