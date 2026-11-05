@@ -93,3 +93,11 @@ The historical keystore remains tracked and Gradle still uses it for both debug 
 - Corrected both source imports and synchronized the workflow release summary to 0.7.0 / versionCode 7 in the same atomic commit `3def5b4f98b357b778613b5561a9fec148e98a99`.
 - Verified root `android-build.yml` and `.github/workflows/android-build.yml` are byte-identical after the correction.
 - New CI run `42026208055` is in progress for the corrected source. The phase remains unverified until it completes successfully.
+### CI verification — run 60 successful
+
+- Run `42026208055` completed with conclusion `success` for source commit `3def5b4f98b357b778613b5561a9fec148e98a99`.
+- `gradle --no-daemon clean testDebugUnitTest lintDebug assembleDebug assembleRelease` completed with `BUILD SUCCESSFUL`.
+- Signing-key verification passed; debug and release APKs were assembled and signed with the retained historical signer.
+- Artifacts uploaded: `VaultOS-debug-APK` (15,438,915 bytes), `VaultOS-release-APK` (11,587,443 bytes), and `VaultOS-build-metadata` (539 bytes).
+- Workflow run: https://github.com/ysfclc/VaultOS/actions/runs/42026208055
+- This confirms hosted compilation, unit-test task, lint, APK assembly and artifact upload. It does not substitute for physical-device acceptance.
