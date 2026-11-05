@@ -16,13 +16,13 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import com.vaultos.app.MainActivity
-import com.vaultos.app.storage.VaultRepository
+import com.vaultos.app.ClipboardHistoryActivity
+import com.vaultos.app.storage.ClipboardHistoryRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.yield
-import java.security.MessageDigest
 import java.util.Locale
 
 /**
@@ -34,7 +34,6 @@ class VaultKeyboardService : InputMethodService() {
     private var clipboard: ClipboardManager? = null
     private var shifted = false
     private var symbols = false
-    private var lastCaptureHash: String? = null
 
     private val clipboardListener = ClipboardManager.OnPrimaryClipChangedListener {
         if (getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_AUTO_CAPTURE, true)) {
@@ -70,6 +69,7 @@ class VaultKeyboardService : InputMethodService() {
         }
         val toolbar = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         toolbar.addView(actionButton("Capture", Color.rgb(32, 91, 69)) { captureClipboard(showToast = true) }, weightParams(1f))
+        toolbar.addView(actionButton("History", Color.rgb(39, 78, 66)) { openClipboardHistory() }, weightParams(0.9f))
         toolbar.addView(actionButton("Paste saved", Color.rgb(39, 78, 66)) { pasteLatestText() }, weightParams(1.15f))
         toolbar.addView(actionButton("Vault", Color.rgb(39, 55, 75)) { openVault() }, weightParams(0.7f))
         // Use the system picker on every supported API level. It avoids the API-28-only
@@ -178,15 +178,14 @@ class VaultKeyboardService : InputMethodService() {
             if (showToast) Toast.makeText(this, "This clipboard item cannot be imported", Toast.LENGTH_SHORT).show()
             return
         }
-        val signature = entries.joinToString("|") { (uri, text) -> uri?.toString() ?: MessageDigest.getInstance("SHA-256").digest(text.orEmpty().toByteArray(Charsets.UTF_8)).joinToString("") { b -> "%02x".format(b) } }
-        if (lastCaptureHash == signature) return
-        lastCaptureHash = signature
+        val mimeTypes = (0 until clip.description.mimeTypeCount).map { clip.description.getMimeType(it) }
+        val foregroundPackage = info?.packageName
         serviceScope.launch {
-            val repository = VaultRepository(applicationContext)
+            val repository = ClipboardHistoryRepository(applicationContext)
             val result = runCatching {
                 entries.forEach { (uri, text) ->
-                    if (uri != null) repository.importUri(uri, "Clipboard · Android file")
-                    else if (!text.isNullOrEmpty()) repository.saveText(text, "Clipboard · Android")
+                    if (uri != null) repository.captureUri(uri, foregroundPackage, label, mimeTypes)
+                    else if (!text.isNullOrEmpty()) repository.captureText(text, foregroundPackage, label, mimeTypes)
                 }
             }
             if (showToast) {
@@ -214,6 +213,10 @@ class VaultKeyboardService : InputMethodService() {
         }
     }
 
+    private fun openClipboardHistory() {
+        val intent = Intent(this, ClipboardHistoryActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        startActivity(intent)
+    }
     private fun openVault() {
         val intent = Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
         startActivity(intent)
