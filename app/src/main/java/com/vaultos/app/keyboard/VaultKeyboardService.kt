@@ -868,15 +868,21 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
             return
         }
         val typed = typedWord.toString()
-        val correcting = currentSuggestions.isNotEmpty() && (typed.isNotBlank() || lastCommittedWord.isNotBlank())
+        val memory = LocalTypingMemory(this)
+        val language = selectedLanguageCode()
+        val learnedVocabulary = memory.dictionaryWords(language)
+        val learnedCompletions = if (typed.isNotBlank()) memory.completions(language, typed, 5) else emptyList()
+        val localCorrections = if (typed.isNotBlank() && currentSuggestions.isEmpty()) {
+            KeyboardSuggestionEngine.nearbyCorrections(language, typed, additionalWords = learnedVocabulary)
+        } else emptyList()
+        val correcting = currentSuggestions.isNotEmpty() || localCorrections.isNotEmpty()
         val candidates = when {
-            typed.isNotBlank() -> (listOf(typed) + currentSuggestions +
-                KeyboardSuggestionEngine.nearbyCorrections(selectedLanguageCode(), typed)
-                    .takeIf { currentSuggestions.isEmpty() }.orEmpty() +
-                KeyboardSuggestionEngine.completePrefix(selectedLanguageCode(), typed)).distinct().take(3)
+            typed.isNotBlank() -> (listOf(typed) + currentSuggestions + localCorrections +
+                learnedCompletions + KeyboardSuggestionEngine.completePrefix(language, typed, additionalWords = learnedCompletions)).distinct().take(3)
             correcting -> (listOf(lastCommittedWord) + currentSuggestions).distinct().take(3)
             previousWordForPrediction.isNotBlank() ->
-                KeyboardSuggestionEngine.nextWordSuggestions(selectedLanguageCode(), previousWordForPrediction)
+                (memory.nextWords(language, previousWordForPrediction) +
+                    KeyboardSuggestionEngine.nextWordSuggestions(language, previousWordForPrediction)).distinct().take(3)
             else -> emptyList()
         }
 
@@ -918,6 +924,13 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                 )
                 setPadding(dp(5), 0, dp(5), 0)
                 if (isCurrent) background = suggestionPillBackground()
+                setOnLongClickListener {
+                    if (typed.isNotBlank() && candidate.equals(typed, ignoreCase = true)) {
+                        LocalTypingMemory(this@VaultKeyboardService).addToDictionary(selectedLanguageCode(), typed)
+                        Toast.makeText(this@VaultKeyboardService, "Added to personal dictionary", Toast.LENGTH_SHORT).show()
+                        true
+                    } else false
+                }
                 setOnClickListener {
                     when {
                         typed.isNotBlank() -> {
