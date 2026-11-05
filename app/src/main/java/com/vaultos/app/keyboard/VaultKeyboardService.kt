@@ -784,6 +784,29 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         spellChecker?.getSuggestions(arrayOf(TextInfo(word, requestId, requestId)), 3, false)
     }
 
+    private fun handleSmartSpace() {
+        val now = android.os.SystemClock.uptimeMillis()
+        if (getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_SMART_PUNCTUATION, true) &&
+            typedWord.isEmpty() && lastCommittedWord.isNotBlank() &&
+            lastSpaceAt > 0L && now - lastSpaceAt in 1L..500L
+        ) {
+            currentInputConnection?.deleteSurroundingText(1, 0)
+            currentInputConnection?.commitText(". ", 1)
+            typedWord.clear()
+            lastCommittedWord = ""
+            previousWordForPrediction = ""
+            currentSuggestions = emptyList()
+            activeSpellCheckWord = ""
+            spellCheckGeneration++
+            lastSpaceAt = 0L
+            shifted = true
+            refreshKeyboard()
+            return
+        }
+        commitSpace()
+        lastSpaceAt = now
+    }
+
     private fun commitSpace() {
         val word = typedWord.toString()
         if (word.isNotBlank() && isSafeForSuggestions(currentInputEditorInfo)) {
