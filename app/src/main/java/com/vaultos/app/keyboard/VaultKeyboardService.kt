@@ -781,7 +781,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                 lastCommittedWord = ""
                 previousWordForPrediction = ""
                 currentSuggestions = emptyList()
-                shifted = true
+                shifted = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_AUTO_CAPITALIZE, true)
                 lastSpaceAt = 0L
                 renderSuggestions()
                 refreshKeyboard()
