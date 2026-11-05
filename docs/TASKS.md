@@ -162,3 +162,16 @@ Phase 2 implementation is in release line 0.2.0. The Room 1→2 migration adds r
 - [x] Verify the persistent signing certificate step succeeds.
 - [x] Upload `VaultOS-debug-APK`, `VaultOS-release-APK` and `VaultOS-build-metadata` artifacts (run 60).
 - [ ] Install the APK on the Redmi Note 12 Pro 5G and complete the clipboard device acceptance matrix.
+## Phase 8 — keyboard usability (0.8.0)
+
+- [x] Add an explicit EN / PL / TR keyboard language selector, persisted across app restarts.
+- [x] Expose the same language preference in Settings.
+- [x] Add an inline Clips mode without leaving the focused text field.
+- [x] Search clipboard history from the keyboard itself using the keyboard's own keys (no fake EditText or system-clipboard workaround).
+- [x] Show recent/pinned matches and paste the complete verified text directly into the active input connection.
+- [x] Pin/unpin clipboard entries directly from the keyboard mode.
+- [x] Keep the full clipboard gallery available from the History action.
+- [ ] Add spelling suggestions and optional autocorrect with safe password/no-suggestions exclusions.
+- [ ] Add further keyboard settings (haptics/layout preferences) only when functional controls are implemented.
+- [ ] Complete keyboard lifecycle and device acceptance tests on the Redmi Note 12 Pro 5G.
+- [ ] Confirm 0.8.0 CI build and APK artifacts.
