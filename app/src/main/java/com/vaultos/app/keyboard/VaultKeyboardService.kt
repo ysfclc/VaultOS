@@ -1,5 +1,6 @@
 package com.vaultos.app.keyboard
 
+import android.app.AlertDialog
 import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Context
@@ -528,6 +529,18 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                 val memory = LocalTypingMemory(this)
                 memory.setLearningEnabled(!memory.isLearningEnabled())
                 refreshKeyboard()
+            },
+            "Clear local typing memory" to {
+                AlertDialog.Builder(this)
+                    .setTitle("Clear personal typing data?")
+                    .setMessage("This removes saved words and local word-pair counts from this device. It does not affect clipboard history.")
+                    .setNegativeButton("Cancel", null)
+                    .setPositiveButton("Clear") { _, _ ->
+                        LocalTypingMemory(this).clear()
+                        Toast.makeText(this, "Personal typing data cleared", Toast.LENGTH_SHORT).show()
+                        refreshKeyboard()
+                    }
+                    .show()
             },
             (if (getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_AUTO_CAPITALIZE, true)) "Turn auto-capitalization off" else "Turn auto-capitalization on") to {
                 val prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
