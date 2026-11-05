@@ -112,7 +112,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         emojiMode = false
         clipboardQuery = ""
         commandQuery = ""
-        shifted = true
+        shifted = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_AUTO_CAPITALIZE, true) && isSafeForSuggestions(attribute)
         capsLock = false
         lastSpaceAt = 0L
         symbols = false
@@ -529,6 +529,16 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                 memory.setLearningEnabled(!memory.isLearningEnabled())
                 refreshKeyboard()
             },
+            (if (getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_AUTO_CAPITALIZE, true)) "Turn auto-capitalization off" else "Turn auto-capitalization on") to {
+                val prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
+                prefs.edit().putBoolean(KEY_AUTO_CAPITALIZE, !prefs.getBoolean(KEY_AUTO_CAPITALIZE, true)).apply()
+                refreshKeyboard()
+            },
+            (if (getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_SMART_PUNCTUATION, true)) "Turn double-space period off" else "Turn double-space period on") to {
+                val prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
+                prefs.edit().putBoolean(KEY_SMART_PUNCTUATION, !prefs.getBoolean(KEY_SMART_PUNCTUATION, true)).apply()
+                refreshKeyboard()
+            },
             "Paste latest saved text" to { pasteLatestText() },
             "Open clipboard History" to { openClipboardHistory() },
             "Emoji panel" to { emojiMode = true; clipboardMode = false; commandsMode = false; refreshKeyboard() },
@@ -774,7 +784,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                     currentSuggestions = emptyList()
                 }
                 if (value in setOf(".", "?", "!")) {
-                    shifted = true
+                    shifted = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_AUTO_CAPITALIZE, true)
                     lastSpaceAt = 0L
                     refreshKeyboard()
                 } else if (shifted && !capsLock) {
@@ -814,7 +824,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
             activeSpellCheckWord = ""
             spellCheckGeneration++
             lastSpaceAt = 0L
-            shifted = true
+            shifted = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_AUTO_CAPITALIZE, true)
             refreshKeyboard()
             return
         }
@@ -1249,5 +1259,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         const val KEY_SOUND = "keyboard_key_sound"
         const val KEY_THEME_DARK = "keyboard_theme_dark"
         const val KEY_ONE_HANDED = "keyboard_one_handed"
+        const val KEY_AUTO_CAPITALIZE = "keyboard_auto_capitalize"
+        const val KEY_SMART_PUNCTUATION = "keyboard_smart_punctuation"
     }
 }
