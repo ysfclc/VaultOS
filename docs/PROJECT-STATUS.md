@@ -150,3 +150,21 @@ On-device semantic indexing is not included in this release. It remains disabled
 - Local verification: 18 unit tests passed (0 failures); lint 0 errors / 16 warnings; debug and release APKs assembled; both APK signatures match the preserved certificate SHA-256 digest c5b0c6c49ff6ca525558c2fecfa11dff54fba50f9083482cd869af4759e78b23.
 - APK metadata: com.vaultos.app, versionCode 6, versionName 0.6.0, minSdk 26, targetSdk 35.
 - GitHub Actions and all physical-device acceptance remain outstanding.
+
+## Current product phase — 2026-11-05 (0.7.0 clipboard history)
+
+Implemented in source:
+- Room schema v4 clipboard-history event table and non-destructive migration from v3.
+- Separate history events from deduplicated payload storage, so repeated identical copies retain distinct recency/history.
+- Clipboard metadata: foreground editor package context, label, MIME types, SHA-256, character count, byte count and timestamp.
+- Multi-item clipboard capture with per-item failure isolation.
+- Searchable clipboard gallery with full-text search through existing chunk index, full-text copy, pinning, individual event deletion and clear-unpinned actions.
+- Gallery entry points in the main app and VaultOS keyboard.
+- SHA-256 and byte-count checks for text archive writes, duplicate reuse and readback; latest paste uses the latest clipboard event.
+- Password-field exclusion and Android 13+ sensitive-clip exclusion.
+
+Not yet accepted:
+- GitHub Actions build for the latest source commit `6c7274fd92b23d4407703638eda9e899a0636e7e` is pending.
+- Physical Redmi Note 12 Pro 5G clipboard, keyboard lifecycle and long-text acceptance remains outstanding.
+- Automatic capture still requires VaultOS to be the selected IME; manual capture is available inside the app.
+- Signing migration GOV-001 is deferred until the user provisions replacement key material and Actions secrets. Keep the historical key in place until update continuity is proven.
