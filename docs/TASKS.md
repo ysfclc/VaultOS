@@ -201,3 +201,20 @@ Phase 2 implementation is in release line 0.2.0. The Room 1→2 migration adds r
 - [x] Run hosted 0.11.0 CI in run `42047330196`: unit tests, lint, debug/release APK assembly, persistent signing verification and all three artifact uploads passed.
 - [ ] Verify actual recommendation relevance and visual quality on Redmi Note 12 Pro 5G in ChatGPT, Chrome, WhatsApp and Notes.
 - [ ] Confirm no unwanted candidate insertion, duplicate spaces or stale spell-check replacement while typing quickly.
+
+
+## Phase 12 — adaptive local typing assistant (0.12.0)
+
+- [x] Add a private local vocabulary store, separate from clipboard history and Vault content.
+- [x] Keep automatic learning off by default and require explicit opt-in from the keyboard More menu.
+- [x] Store individual words and adjacent-word counts only; do not persist sentences or complete editor contents.
+- [x] Add a long-press action on the current word to save it to the personal dictionary.
+- [x] Merge personal words into prefix completions and offline typo candidates.
+- [x] Rank next-word suggestions using locally learned adjacent-word frequencies before static fallbacks.
+- [x] Add a confirmation before clearing the local typing-memory store.
+- [x] Add sentence capitalization and double-space period, each independently configurable from More.
+- [ ] Verify learned words persist after restart and remain isolated by EN / PL / TR.
+- [ ] Verify learning is excluded from password, email, URL, numeric, autocomplete, filter and no-suggestions fields.
+- [ ] Verify clearing typing memory leaves clipboard history and Vault content untouched.
+- [ ] Verify punctuation and capitalization in ChatGPT, Chrome, WhatsApp and Notes.
+- [ ] Evaluate recommendation relevance after several days of normal use on Redmi Note 12 Pro 5G.
