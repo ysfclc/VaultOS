@@ -182,14 +182,17 @@ class VaultKeyboardService : InputMethodService() {
         val foregroundPackage = info?.packageName
         serviceScope.launch {
             val repository = ClipboardHistoryRepository(applicationContext)
-            val result = runCatching {
-                entries.forEach { (uri, text) ->
+            val outcomes = entries.map { (uri, text) ->
+                runCatching {
                     if (uri != null) repository.captureUri(uri, foregroundPackage, label, mimeTypes)
                     else if (!text.isNullOrEmpty()) repository.captureText(text, foregroundPackage, label, mimeTypes)
+                    else null
                 }
             }
             if (showToast) {
-                val message = if (result.isSuccess) "Saved ${entries.size} clipboard item(s)" else "Could not save clipboard content"
+                val saved = outcomes.count { it.isSuccess && it.getOrNull() != null }
+                val failed = outcomes.size - saved
+                val message = if (failed == 0) "Saved $saved clipboard item(s)" else "Saved $saved · failed $failed"
                 Toast.makeText(this@VaultKeyboardService, message, Toast.LENGTH_SHORT).show()
             }
         }
