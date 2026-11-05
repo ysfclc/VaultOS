@@ -330,7 +330,6 @@ interface VaultDao {
     @Query("SELECT * FROM items ORDER BY createdAt DESC")
     suspend fun allNow(): List<VaultItem>
 
-    @Query("SELECT * FROM items WHERE isTrashed = 0 AND category IN ('Text','Code') ORDER BY createdAt DESC LIMIT 1")
     @Query("SELECT * FROM clipboard_history ORDER BY isPinned DESC, capturedAt DESC")
     fun observeClipboardHistory(): Flow<List<ClipboardHistoryEntry>>
 
@@ -352,6 +351,7 @@ interface VaultDao {
     @Query("SELECT COUNT(*) FROM clipboard_history")
     fun clipboardHistoryCount(): Flow<Int>
 
+    @Query("SELECT * FROM items WHERE isTrashed = 0 AND category IN ('Text','Code') ORDER BY createdAt DESC LIMIT 1")
     suspend fun latestTextItem(): VaultItem?
 }
 
