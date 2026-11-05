@@ -1,6 +1,6 @@
 # VaultOS for Android
 
-**A local-first Android file library and manager (release 0.10.0).** This repository contains a native Kotlin/Jetpack Compose application, an optional capture keyboard, a DocumentsProvider, a private archive, local indexing, and manual external backup/restore.
+**A local-first Android file library and manager (release 0.11.0).** This repository contains a native Kotlin/Jetpack Compose application, an optional capture keyboard, a DocumentsProvider, a private archive, local indexing, and manual external backup/restore.
 
 ## What is implemented
 
@@ -153,3 +153,10 @@ The keyboard now includes:
 - A More menu for capture, paste, history, keyboard size, haptics, sound, key previews, number row, autocorrect, theme, one-hand mode and switching back to Gboard.
 
 The implementation is local-first. It does not claim to include glide typing or a proprietary next-word prediction engine. Spell-check quality still depends on installed Android dictionaries. Hosted CI passed in run `42041620803` (unit-test task, lint, debug/release assembly, signing verification and APK artifact uploads). Build success is not proof of touch ergonomics; the Redmi Note 12 Pro 5G acceptance matrix remains mandatory.
+
+
+## Phase 11 — useful multilingual suggestions (0.11.0)
+
+The keyboard's previous recommendation strip depended almost entirely on the Android system spell-checker. That produced weak or empty results on devices without a matching dictionary and did not offer next-word suggestions. Version 0.11.0 adds a small deterministic on-device EN / PL / TR lexicon for prefix completions and a curated set of common next-word pairs. The Android spell-checker is retained for likely-typo corrections, but ordinary dictionary alternatives are no longer presented as corrections. The suggestion strip now keeps the word being typed visible and separates it from alternatives with a quieter visual treatment.
+
+This is deliberately a lightweight local baseline, not a neural prediction model, a learned personal dictionary, or Gboard-level language modelling. No typed text is sent off-device. Suggestions remain suppressed in password, email, URL, numeric, autocomplete, filter and no-suggestions fields.
