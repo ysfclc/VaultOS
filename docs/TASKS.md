@@ -182,6 +182,6 @@ Phase 2 implementation is in release line 0.2.0. The Room 1→2 migration adds r
 - [x] Add functional haptics and key-height controls.
 - [x] Keep Android's system IME picker available for switching back to Gboard.
 - [x] Preserve clipboard Capture, Paste saved, inline Clips, pinning and History.
-- [x] Confirm hosted CI for the rebuilt keyboard (run `42032766808`; unit tests, lint, debug/release assembly, signature verification and artifact uploads passed).
+- [x] Confirm hosted CI for the 0.9.0 release (run `42034432444`; unit tests, lint, debug/release assembly, signature verification and all artifact uploads passed).
 - [ ] Verify actual typing, suggestions, language dictionaries, long-press alternatives, haptics, sizing and Gboard switching on Redmi Note 12 Pro 5G.
 - [ ] Tune key sizing/spacing from physical-device feedback before calling the keyboard daily-use accepted.

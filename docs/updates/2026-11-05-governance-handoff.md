@@ -123,6 +123,6 @@ Implemented in `VaultKeyboardService.kt`:
 - Kept Android's IME picker for switching back to Gboard.
 - Preserved automatic clipboard capture while selected, Capture, Paste saved, inline Clips search, pinning and full History.
 
-CI verification: run `42032766808`, commit `c229a51a5deb05cb26ba9479a9949e95b6f87391`. Unit-test task, lint, debug/release APK assembly, signing verification and debug/release/metadata artifact uploads passed. APKs are version 0.8.0 at this verification point; the 0.9.0 version bump is recorded in the release commit.
+CI verification: 0.9.0 release run `42034432444`, commit `9b2e8580b60f8c8039fff2969e2c852eff5817ab`. Unit-test task, lint, debug/release APK assembly, signing verification and debug/release/metadata artifact uploads passed. VersionCode 9 / versionName 0.9.0 artifacts are available from that run.
 
 Remaining: install and test on the Redmi Note 12 Pro 5G. In particular verify real typing, Polish/Turkish dictionaries, long-press alternatives, cursor movement, suggestions/autocorrect exclusions, haptics, key sizing and switching to Gboard. Build success does not prove typing usability. Signing-key rotation remains deferred by the user.
