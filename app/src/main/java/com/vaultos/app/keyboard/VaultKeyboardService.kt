@@ -112,8 +112,9 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         emojiMode = false
         clipboardQuery = ""
         commandQuery = ""
-        shifted = false
+        shifted = true
         capsLock = false
+        lastSpaceAt = 0L
         symbols = false
         typedWord.clear()
         lastCommittedWord = ""
@@ -739,7 +740,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
             }
             "←" -> sendCursorKey(KeyEvent.KEYCODE_DPAD_LEFT)
             "→" -> sendCursorKey(KeyEvent.KEYCODE_DPAD_RIGHT)
-            "space" -> commitSpace()
+            "space" -> handleSmartSpace()
             "↵" -> {
                 val action = currentInputEditorInfo?.imeOptions?.and(EditorInfo.IME_MASK_ACTION) ?: EditorInfo.IME_ACTION_NONE
                 if (action != EditorInfo.IME_ACTION_NONE && action != EditorInfo.IME_ACTION_UNSPECIFIED) currentInputConnection?.performEditorAction(action)
