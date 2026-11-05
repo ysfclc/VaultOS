@@ -749,7 +749,10 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                 lastCommittedWord = ""
                 previousWordForPrediction = ""
                 currentSuggestions = emptyList()
+                shifted = true
+                lastSpaceAt = 0L
                 renderSuggestions()
+                refreshKeyboard()
             }
             else -> {
                 val value = if (shifted || capsLock) key.uppercase(inputLocale()) else key
@@ -765,8 +768,15 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                     activeSpellCheckWord = ""
                     currentSuggestions = emptyList()
                 }
+                if (value in setOf(".", "?", "!")) {
+                    shifted = true
+                    lastSpaceAt = 0L
+                    refreshKeyboard()
+                } else if (shifted && !capsLock) {
+                    shifted = false
+                    refreshKeyboard()
+                }
                 renderSuggestions()
-                if (shifted && !capsLock) { shifted = false; refreshKeyboard() }
             }
         }
     }
