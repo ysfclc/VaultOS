@@ -168,3 +168,16 @@ Not yet accepted:
 - Physical Redmi Note 12 Pro 5G clipboard, keyboard lifecycle and long-text acceptance remains outstanding.
 - Automatic capture still requires VaultOS to be the selected IME; manual capture is available inside the app.
 - Signing migration GOV-001 is deferred until the user provisions replacement key material and Actions secrets. Keep the historical key in place until update continuity is proven.
+## Phase 8 — keyboard usability (0.8.0), in progress
+
+Implemented in source:
+- Explicit EN / PL / TR keyboard language selector; preference persists in VaultOS settings and keyboard toolbar.
+- Inline Clips mode in the IME, with search input driven by the keyboard's own keys rather than an internal EditText.
+- Recent/pinned clipboard matches shown inside the keyboard; full text is read from the verified archive and inserted into the focused field in bounded chunks.
+- Pin/unpin directly from the keyboard; full gallery remains available from History.
+
+Still open:
+- Spelling suggestions and optional autocorrect with exclusions for password, URL, code and no-suggestions fields.
+- Additional keyboard settings and physical lifecycle/accessibility testing.
+- 0.8.0 CI build for source commit `282e268a14a3b97e75c0d1e0f215d18ea9329177` is queued as run `42027643930`.
+- Physical Redmi Note 12 Pro 5G acceptance remains outstanding.
