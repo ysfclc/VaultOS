@@ -68,7 +68,14 @@ jobs:
           fi
 
           # Never accept private signing material from a source archive.
-          SIGNING_MATERIAL="$(find "$PROJECT_DIR" -type f | grep -Ei '\\.(jks|keystore|p12|pfx|pk8|key)
+          # Never accept private signing material from a source archive.
+          SIGNING_MATERIAL="$(find "$PROJECT_DIR" -type f -print | grep -Ei '\\.(jks|keystore|p12|pfx|pk8|key)$' || true)"
+          if [ -n "$SIGNING_MATERIAL" ] || [ -d "$PROJECT_DIR/signing" ]; then
+            echo "Source ZIP contains signing material. Remove the signing/ directory and private key files before uploading." >&2
+            printf '%s\n' "$SIGNING_MATERIAL" >&2
+            exit 1
+          fi
+
           # Reject the known stale package before it can reach Gradle lint.
           KEYBOARD_FILE="$PROJECT_DIR/app/src/main/java/com/vaultos/app/keyboard/VaultKeyboardService.kt"
           if [ ! -f "$KEYBOARD_FILE" ]; then
