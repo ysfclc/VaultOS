@@ -139,7 +139,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         }
     }
 
-    override fun onGetSentenceSuggestions(results: Array<SentenceSuggestionsInfo>, sequence: Int) {
+    override fun onGetSentenceSuggestions(results: Array<SentenceSuggestionsInfo>) {
         // Sentence-level results are not requested; word suggestions are used instead.
     }
 
@@ -242,11 +242,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         keys.forEachIndexed { index, key ->
             val wide = key in setOf("space", "⇧", "⌫", "↵", "?123", "123", "ABC", "←", "→")
             val label = when (key) {
-                "space" -> "English · space".takeIf { selectedLanguageCode() == "en" } ?: when (selectedLanguageCode()) {
-                    "pl" -> "Polski · space"
-                    "tr" -> "Türkçe · space"
-                    else -> "space"
-                }
+                "space" -> "space"
                 "⇧" -> if (capsLock) "⇪" else "⇧"
                 "?123" -> "?123"
                 else -> key
@@ -350,7 +346,11 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         if (clipboardMode) { handleClipboardSearchKey(key); return }
         when (key) {
             "⇧" -> {
-                if (shifted) capsLock = !capsLock else shifted = true
+                when {
+                    capsLock -> { capsLock = false; shifted = false }
+                    shifted -> { capsLock = true }
+                    else -> shifted = true
+                }
                 refreshKeyboard()
             }
             "?123", "123" -> { symbols = true; refreshKeyboard() }
@@ -393,7 +393,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
             lastCommittedWord = word
             activeSuggestionInputGeneration = inputGeneration
             spellCheckGeneration++
-            spellChecker?.getSuggestions(TextInfo(word), 3, false)
+            spellChecker?.getSuggestions(arrayOf(TextInfo(word)), 3, false)
         } else {
             lastCommittedWord = ""
             currentSuggestions = emptyList()
@@ -418,15 +418,16 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     private fun renderSuggestions() {
         val row = suggestionRow ?: return
         row.removeAllViews()
-        val candidates = if (currentSuggestions.isEmpty()) listOf(typedWord.toString().ifBlank { selectedLanguageLabel() }) else currentSuggestions
-        candidates.take(3).forEachIndexed { index, candidate ->
+        val showCorrections = typedWord.isEmpty() && lastCommittedWord.isNotBlank() && currentSuggestions.isNotEmpty()
+        val candidates = if (showCorrections) currentSuggestions else listOf(typedWord.toString().ifBlank { selectedLanguageLabel() })
+        candidates.take(3).forEach { candidate ->
             val item = TextView(this).apply {
                 text = candidate
                 textSize = 13f
                 gravity = Gravity.CENTER
-                setTextColor(if (index == 0 && currentSuggestions.isEmpty()) Color.LTGRAY else Color.WHITE)
+                setTextColor(if (!showCorrections) Color.LTGRAY else Color.WHITE)
                 setPadding(dp(8), 0, dp(8), 0)
-                setOnClickListener { if (currentSuggestions.isNotEmpty()) applySuggestion(candidate) }
+                setOnClickListener { if (showCorrections) applySuggestion(candidate) }
             }
             row.addView(item, LinearLayout.LayoutParams(0, -1, 1f))
         }
@@ -439,6 +440,10 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     private fun sendCursorKey(code: Int) {
         currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, code))
         currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, code))
+        typedWord.clear()
+        lastCommittedWord = ""
+        currentSuggestions = emptyList()
+        renderSuggestions()
     }
 
     private fun isSafeForSuggestions(info: EditorInfo?): Boolean {
