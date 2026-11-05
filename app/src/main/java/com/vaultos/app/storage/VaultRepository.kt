@@ -410,7 +410,8 @@ class VaultRepository(private val context: Context) {
     suspend fun latestText(): String? = withContext(Dispatchers.IO) {
         val latestCapture = dao.latestClipboardText()
         val capturedItem = latestCapture?.itemId?.let { dao.getById(it) }
-        if (capturedItem != null) return@withContext readFullText(capturedItem)
+        val capturedText = capturedItem?.let { readFullText(it) }
+        if (!capturedText.isNullOrEmpty()) return@withContext capturedText
         val item = dao.latestTextItem() ?: return@withContext null
         readFullText(item)
     }
