@@ -75,7 +75,9 @@ class LocalTypingMemory(context: Context) {
     }
 
     fun clear() {
-        prefs.edit().clear().apply()
+        // Clearing learned data must not silently change the user's opt-in setting.
+        val learningEnabled = isLearningEnabled()
+        prefs.edit().clear().putBoolean(KEY_ENABLED, learningEnabled).apply()
     }
 
     private fun increment(key: String, item: String, amount: Int) {
