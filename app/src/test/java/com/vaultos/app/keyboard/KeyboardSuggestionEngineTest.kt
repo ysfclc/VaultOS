@@ -61,6 +61,20 @@ class KeyboardSuggestionEngineTest {
     }
 
     @Test
+    fun expandedVocabularyCoversEverydayProductAndDeviceTerms() {
+        assertTrue(KeyboardSuggestionEngine.completePrefix("en", "app").contains("application"))
+        assertTrue(KeyboardSuggestionEngine.completePrefix("pl", "pot").contains("potrzebuję"))
+        assertTrue(KeyboardSuggestionEngine.completePrefix("tr", "gere").contains("gerçekten"))
+    }
+
+    @Test
+    fun expandedContextUsesTheCurrentPreviousWord() {
+        assertEquals(listOf("not", "sure", "going"), KeyboardSuggestionEngine.nextWordSuggestions("en", "I'm"))
+        assertEquals(listOf("pomocy", "tego", "więcej"), KeyboardSuggestionEngine.nextWordSuggestions("pl", "potrzebuję"))
+        assertEquals(listOf("yardım", "göre", "bir"), KeyboardSuggestionEngine.nextWordSuggestions("tr", "BANA"))
+    }
+
+    @Test
     fun unknownContextDoesNotInventSuggestions() {
         assertTrue(KeyboardSuggestionEngine.nextWordSuggestions("en", "qzxv").isEmpty())
     }
