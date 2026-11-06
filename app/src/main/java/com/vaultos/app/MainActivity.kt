@@ -204,7 +204,7 @@ private fun VaultApp(activity: MainActivity, repository: VaultRepository, resume
                     actions = {
                         IconButton(onClick = { captureClipboard(activity, repository, onMessage = { message = it }) }) { Icon(Icons.Default.ContentPaste, "Capture clipboard") }
                         IconButton(onClick = { activity.startActivity(Intent(activity, ClipboardHistoryActivity::class.java)) }) { Icon(Icons.Default.History, "Clipboard history") }
-                        IconButton(onClick = { searchMode = !searchMode; if (!searchMode) query = "" }) { Icon(Icons.Default.Search, "Search") }
+                        IconButton(onClick = { if (searchMode) query = ""; searchMode = !searchMode }) { Icon(Icons.Default.Search, "Search") }
                         IconButton(onClick = { importLauncher.launch(arrayOf("*/*")) }) { Icon(Icons.Default.Add, "Import files") }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF0B0D10))
@@ -248,8 +248,48 @@ private fun VaultApp(activity: MainActivity, repository: VaultRepository, resume
                         }) { Icon(Icons.Default.BookmarkAdd, null); Spacer(Modifier.width(6.dp)); Text("Save search") }
                     }
                 }
-                val visible = if (searchMode && query.isNotBlank()) searchItems else items
-                when (page) {
+                if (searchMode) {
+                    when {
+                        query.isBlank() -> EmptyState(
+                            "Search your library",
+                            "Search file names, full text, tags and extracted metadata. Results stay on this device."
+                        )
+                        searchItems.isEmpty() -> EmptyState(
+                            "No matches found",
+                            "Try another file name, phrase, tag or metadata term."
+                        )
+                        else -> Column(
+                            Modifier.fillMaxSize().padding(top = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Search results", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                                Text(
+                                    "${searchItems.size} MATCHES",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            LazyColumn(
+                                Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(7.dp),
+                                contentPadding = PaddingValues(bottom = 12.dp)
+                            ) {
+                                items(searchItems, key = { it.id }) { item ->
+                                    ItemRow(
+                                        item,
+                                        onClick = { showItem = item },
+                                        onPin = { activity.lifecycleScope.launch { repository.setPinned(item, !item.isPinned) } }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                } else when (page) {
                     Page.Home -> HomePage(
                         count = count,
                         bytes = bytes,
@@ -262,8 +302,8 @@ private fun VaultApp(activity: MainActivity, repository: VaultRepository, resume
                         onCapture = { captureClipboard(activity, repository) { message = it } },
                         onGrantAccess = { openStorageSettings(activity) }
                     )
-                    Page.Incoming -> ItemList(visible, onItem = { showItem = it }, onPin = { item, pinned -> activity.lifecycleScope.launch { repository.setPinned(item, pinned) } })
-                    Page.Files -> FilesPage(activity, repository, visible.filter { it.category != "Text" }, trashItems, permissionGranted, onItem = { showItem = it }, onPermission = { openStorageSettings(activity) }, onMessage = { message = it })
+                    Page.Incoming -> ItemList(items, onItem = { showItem = it }, onPin = { item, pinned -> activity.lifecycleScope.launch { repository.setPinned(item, pinned) } })
+                    Page.Files -> FilesPage(activity, repository, items.filter { it.category != "Text" }, trashItems, permissionGranted, onItem = { showItem = it }, onPermission = { openStorageSettings(activity) }, onMessage = { message = it })
                     Page.Collections -> CollectionsPage(
                         dao = dao,
                         items = items,
