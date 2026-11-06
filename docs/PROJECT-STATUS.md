@@ -204,6 +204,7 @@ Implemented on branch `ux-reset/0.13.0`:
 
 - Five-item primary navigation: Home, Library, Files, Organize and More. Installed apps and Settings are accessible through the More hub.
 - Contextual home setup card routes directly to Android's all-files-access screen while explaining the non-destructive initial index.
+- Global search now takes over the content area from every tab, displays the actual matching library items, shows a result count, and distinguishes an empty query from no matches.
 - Keyboard toolbar labels are explicit (Type / Clips / Vault / language / Tools); the Tools panel is grouped, scrollable and sized to the available display.
 - Increased keyboard press scale/depth feedback, held-key preview size, toolbar height and touch targets in Clips mode.
 - Word-pair suggestions now use the word immediately before the active cursor, reading at most 80 characters transiently from safe text fields; that context is not persisted.
