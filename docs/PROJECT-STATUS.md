@@ -1,6 +1,6 @@
 # VaultOS — project status
 
-**Release line:** 0.12.1 · **Application ID:** `com.vaultos.app` · **Target:** Redmi Note 12 Pro 5G
+**Release line:** 0.13.0 · **Application ID:** `com.vaultos.app` · **Target:** Redmi Note 12 Pro 5G
 
 ## Product contract
 
@@ -196,3 +196,19 @@ Implemented: opt-in local personal vocabulary (off by default), long-press to ad
 ## Phase 12.1 — privacy hardening (0.12.1)
 
 All personal typing-memory writes now use one guard that checks the active editor type before persisting a word or adjacent-word count. This closes punctuation and Enter commit paths that could otherwise bypass the safe-field check. Automatic learning remains off by default; personal word pinning is still an explicit user action. Version 0.12.1 / versionCode 13 passed hosted CI in run `42079070087`: unit tests, lint, signed debug/release APK assembly, signing verification and all artifact uploads succeeded. Physical Redmi acceptance remains pending.
+
+
+## Current product phase — 2026-11-06 (0.13.0 usability reset)
+
+Implemented on branch `ux-reset/0.13.0`:
+
+- Five-item primary navigation: Home, Library, Files, Organize and More. Installed apps and Settings are accessible through the More hub.
+- Contextual home setup card routes directly to Android's all-files-access screen while explaining the non-destructive initial index.
+- Keyboard toolbar labels are explicit (Type / Clips / Vault / language / Tools); the Tools panel is grouped, scrollable and sized to the available display.
+- Increased keyboard press scale/depth feedback, held-key preview size, toolbar height and touch targets in Clips mode.
+- Word-pair suggestions now use the word immediately before the active cursor, reading at most 80 characters transiently from safe text fields; that context is not persisted.
+- Expanded offline EN / PL / TR lexicon/context pairs and regression cases.
+
+Version: 0.13.0 / versionCode 14. Application ID, Room schema, user data and existing signing identity are unchanged.
+
+Verification state: source and test changes are committed to the feature branch. Hosted CI and physical Redmi acceptance are pending; this is not yet a device-verified usability release. The existing signing identity is intentionally retained to preserve update installation continuity.
