@@ -238,7 +238,10 @@ Phase 2 implementation is in release line 0.2.0. The Room 1→2 migration adds r
 - [x] Use transient pre-cursor context for next-word suggestions only in safe text fields.
 - [x] Broaden offline EN / PL / TR vocabulary and context examples.
 - [x] Add unit regression tests for new multilingual vocabulary and context pairs.
-- [ ] Confirm hosted CI passes tests, lint, APK assembly and signing verification on branch `ux-reset/0.13.0`.
+- [x] Confirm hosted CI run [42261718395](https://github.com/ysfclc/VaultOS/actions/runs/42261718395) passes unit tests, lint, signed debug/release assembly, checksum preparation and private draft release publishing.
+- [x] Verify both APK variants against the retained signing certificate SHA-256 digest `c5b0c6c49ff6ca525558c2fecfa11dff54fba50f9083482cd869af4759e78b23`.
+- [x] Publish signed release APK, debug APK, checksums and build metadata in [the private VaultOS 0.13.0 draft release](https://github.com/ysfclc/VaultOS/releases/tag/untagged-04b4086aa81185969695).
+- [ ] Install the APK on the phone and complete physical usability acceptance.
 - [ ] Install the signed 0.13.0 APK as an in-place update on Redmi Note 12 Pro 5G.
 - [ ] Verify navigation discoverability, initial storage permission setup, keyboard touch accuracy, suggestions after cursor movement/paste, menu reachability, TalkBack, large text and landscape.
 - [ ] Only mark keyboard/app usability accepted after the physical-device checklist passes.
