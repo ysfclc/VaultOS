@@ -64,7 +64,7 @@ class KeyboardSuggestionEngineTest {
     fun expandedVocabularyCoversEverydayProductAndDeviceTerms() {
         assertTrue(KeyboardSuggestionEngine.completePrefix("en", "app").contains("application"))
         assertTrue(KeyboardSuggestionEngine.completePrefix("pl", "pot").contains("potrzebuję"))
-        assertTrue(KeyboardSuggestionEngine.completePrefix("tr", "gere").contains("gerçekten"))
+        assertTrue(KeyboardSuggestionEngine.completePrefix("tr", "ger").contains("gerçekten"))
     }
 
     @Test
