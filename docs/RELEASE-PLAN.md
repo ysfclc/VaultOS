@@ -32,13 +32,17 @@ Deterministic EN / PL / TR prefix completion, conservative offline typo candidat
 
 Opt-in local personal vocabulary and adjacent-word learning; long-press to add a personal dictionary entry; learned words used in prefix completions and typo candidates; learned word pairs influence next-word ranking; confirmation-gated clear-memory action; sentence capitalization; double-space period punctuation. Learning is off by default and stores only words and pair counts, never sentences or full editor contents. Physical-device quality, persistence and sensitive-field exclusions remain acceptance gates.
 
+## 0.13.0 — daily usability reset
+
+Five-item primary navigation with a More hub, contextual first-run storage onboarding, and a more understandable keyboard control bar. The keyboard Tools panel is grouped and constrained to the available display; key-down response and touch targets are stronger; next-word candidates use transient pre-cursor context in safe fields; offline EN / PL / TR coverage and regression tests are expanded. Keep the existing application ID, Room data and signing identity for in-place updates. Physical-device acceptance remains mandatory.
+
 ## 1.0.0 — device-verified product
 
 Signed release process, GitHub-hosted CI verification, migration/restore tests, accessibility and performance review, measured Xiaomi background behavior, and documented Android-version compatibility. See docs/RELEASE-1.0-GATE.md; 1.0.0 is not complete until physical-device checks pass.
 
 ## Compatibility baseline
 
-- Minimum SDK: 26 (Android 8.0).
+- Minimum SDK: 28 (Android 9).
 - Compile/target SDK: 35.
 - Java/Kotlin bytecode target: 17.
 - Build: Android Gradle Plugin 8.7.3, Gradle 8.9, Kotlin 2.0.21.
