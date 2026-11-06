@@ -1,6 +1,6 @@
 # VaultOS for Android
 
-**A local-first Android file library and manager (release 0.12.1).** This repository contains a native Kotlin/Jetpack Compose application, an optional capture keyboard, a DocumentsProvider, a private archive, local indexing, and manual external backup/restore.
+**A local-first Android file library and manager (release 0.13.0).** This repository contains a native Kotlin/Jetpack Compose application, an optional capture keyboard, a DocumentsProvider, a private archive, local indexing, and manual external backup/restore.
 
 ## What is implemented
 
@@ -178,3 +178,17 @@ Personal word learning now passes through one safe-field guard at every commit b
 
 
 **0.12.1 verification:** hosted CI run [42079070087](https://github.com/ysfclc/VaultOS/actions/runs/42079070087) passed unit tests, lint, signed debug/release APK assembly, signing verification and all artifact uploads. Physical Redmi acceptance remains outstanding.
+
+
+## Phase 13 — usability reset (0.13.0)
+
+This release addresses the daily navigation and keyboard friction directly:
+
+- The primary app navigation is reduced to Home, Library, Files, Organize and More. Installed apps and Settings are grouped under More instead of occupying permanent bottom-bar space.
+- Home now exposes the all-files-access setup action in context, explains what it enables, and makes clear that the first index does not move or duplicate existing originals.
+- The keyboard toolbar uses explicit Type / Clips / Vault / language / Tools labels. The former dots-only menu is now a grouped, scrollable Tools panel with larger touch rows and screen-constrained sizing.
+- Key-down feedback is stronger, the held-key preview is larger, and the spacebar has a visible press response.
+- Next-word suggestions inspect only a short, transient window immediately before the cursor in safe text fields. This improves context after cursor movement and paste without saving the surrounding sentence.
+- The local EN / PL / TR vocabulary and context-pair baseline has been broadened, with regression tests for added examples.
+
+This remains an offline deterministic keyboard. It does **not** claim glide typing or Gboard-equivalent neural prediction. Physical touch accuracy, suggestion relevance, accessibility and layout still require acceptance on the Redmi Note 12 Pro 5G.
