@@ -231,6 +231,7 @@ Phase 2 implementation is in release line 0.2.0. The Room 1→2 migration adds r
 - [x] Reduce the primary app bottom navigation to Home, Library, Files, Organize and More.
 - [x] Move Installed apps and Settings & permissions into a dedicated More hub.
 - [x] Show an actionable all-files-access onboarding card on Home when permission is missing; explain that initial indexing preserves existing source files.
+- [x] Render global search results and distinct empty/no-match states from any current navigation destination; show result count and item actions.
 - [x] Rename ambiguous keyboard Cmd / dots controls to Vault / Tools.
 - [x] Replace the flat keyboard Tools popup with grouped sections, larger rows and display-bounded scroll behavior.
 - [x] Increase held-key scale/depth feedback and popup preview size; add visible spacebar down/up feedback.
