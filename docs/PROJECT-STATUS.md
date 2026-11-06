@@ -212,4 +212,4 @@ Implemented on branch `ux-reset/0.13.0`:
 
 Version: 0.13.0 / versionCode 14. Application ID, Room schema, user data and existing signing identity are unchanged.
 
-Verification state: source and test changes are committed to the feature branch. Hosted CI and physical Redmi acceptance are pending; this is not yet a device-verified usability release. The existing signing identity is intentionally retained to preserve update installation continuity.
+Verification state: hosted CI run [42261718395](https://github.com/ysfclc/VaultOS/actions/runs/42261718395) passed unit tests, lint, signed debug/release APK assembly, checksum preparation and private draft release publishing. APK signer SHA-256 matches the retained certificate: `c5b0c6c49ff6ca525558c2fecfa11dff54fba50f9083482cd869af4759e78b23`. The signed release APK is attached at [VaultOS-release.apk](https://github.com/ysfclc/VaultOS/releases/download/untagged-04b4086aa81185969695/VaultOS-release.apk). Physical phone acceptance is still pending; this is not yet a device-verified usability release. The existing signing identity is intentionally retained to preserve update installation continuity.
