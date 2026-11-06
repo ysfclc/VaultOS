@@ -35,10 +35,10 @@ Android intentionally does not allow an ordinary background application to inter
 ## Redmi Note 12 Pro 5G setup
 
 1. Install the **VaultOS-release-APK** from the GitHub Actions workflow artifact. Keep using this workflow-built release APK for later updates; it is signed with the persistent VaultOS certificate.
-2. Open VaultOS → **Settings & permissions** → **Grant all-files access**. In Android's special app access screen, enable *Allow access to manage all files* for VaultOS.
+2. Open VaultOS → **More** → **Settings & permissions** → **Grant all-files access**. In Android's special app access screen, enable *Allow access to manage all files* for VaultOS.
 3. Return to VaultOS and use **Scan storage now**. The first scan indexes existing accessible storage; it does not duplicate it into the archive. It can take time on a device with many files and continues in resumable background batches.
 4. For automatic clipboard capture, open **Manage keyboards**, enable **VaultOS Capture Keyboard**, then select it as the active keyboard. This replaces Gboard while selected. Android will show its normal security warning for third-party keyboards. Enable **Automatically save copied text** only when you are comfortable with that behavior. Gboard remains installed and can be selected again at any time.
-5. The keyboard toolbar includes **Switch** to move to the next installed keyboard (normally Gboard), and **Hide** to dismiss the keyboard. You can also change keyboards through Android settings at any time.
+5. The keyboard toolbar uses **Type**, **Clips**, **Vault**, language and **Tools**. Open **Tools → Android → Switch keyboard** to choose another installed keyboard (normally Gboard), or **Hide keyboard** to dismiss it. You can also change keyboards through Android settings at any time.
 6. For better Xiaomi background reliability, allow VaultOS autostart if your ROM exposes that setting and set its battery policy to *No restrictions*. This improves the chance of timely scans but cannot override Android/MIUI scheduling decisions.
 7. Choose an external backup folder in VaultOS Settings and use **Back up now**. **Restore backup** can rebuild the archive and catalogue from that backup.
 
@@ -148,9 +148,9 @@ The keyboard now includes:
 - English, Polish and Turkish switching; long-press diacritics and punctuation alternatives.
 - Live Android spell-checker suggestions with request sequencing; autocorrect remains opt-in and only applies when the spell-checker marks a word as a likely typo.
 - Cursor movement by arrow keys or sliding horizontally across the spacebar.
-- Emoji panel, clipboard search/history/pinning/full-text paste, and a Cmd panel that searches VaultOS records and inserts complete saved text/code.
+- Emoji panel, clipboard search/history/pinning/full-text paste, and a Vault panel that searches VaultOS records and inserts complete saved text/code.
 - Dark/light themes and off/left/right one-handed layout.
-- A More menu for capture, paste, history, keyboard size, haptics, sound, key previews, number row, autocorrect, theme, one-hand mode and switching back to Gboard.
+- A grouped Tools panel for capture, paste, history, typing behavior, keyboard appearance, one-hand mode and Android keyboard switching.
 
 The implementation is local-first. It does not claim to include glide typing or a proprietary next-word prediction engine. Spell-check quality still depends on installed Android dictionaries. Hosted CI passed in run `42041620803` (unit-test task, lint, debug/release assembly, signing verification and APK artifact uploads). Build success is not proof of touch ergonomics; the Redmi Note 12 Pro 5G acceptance matrix remains mandatory.
 
