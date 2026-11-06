@@ -276,31 +276,37 @@ jobs:
             echo "Minimum SDK: 28"
           } > BUILD-INFO.txt
 
-      - name: Upload installable debug APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: VaultOS-debug-APK
-          path: dist/VaultOS-debug.apk
-          if-no-files-found: error
-          retention-days: 30
-
-      - name: Upload signed release APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: VaultOS-release-APK
-          path: dist/VaultOS-release.apk
-          if-no-files-found: error
-          retention-days: 30
-
-      - name: Upload checksum and build information
-        uses: actions/upload-artifact@v4
-        with:
-          name: VaultOS-build-metadata
-          path: |
+      - name: Publish signed APKs as a private draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="vaultos-0.13.0-build-${GITHUB_RUN_NUMBER}"
+          TITLE="VaultOS 0.13.0 · build ${GITHUB_RUN_NUMBER}"
+          NOTES="Signed VaultOS 0.13.0 APKs from commit ${GITHUB_SHA}. This is a private draft/pre-release build for in-place device testing. Install over the existing VaultOS app; do not uninstall first."
+          ASSETS=(
+            dist/VaultOS-release.apk
+            dist/VaultOS-debug.apk
             dist/SHA256SUMS.txt
             dist/BUILD-INFO.txt
-          if-no-files-found: error
-          retention-days: 30
+          )
+
+          # GitHub Actions artifact storage can be quota-limited. Release assets
+          # are the durable download path for signed APKs and are not Actions artifacts.
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "${ASSETS[@]}" --clobber
+            gh release edit "$TAG" --draft --prerelease --title "$TITLE"
+          else
+            gh release create "$TAG" "${ASSETS[@]}" \
+              --draft --prerelease \
+              --title "$TITLE" \
+              --notes "$NOTES" \
+              --target "$GITHUB_SHA"
+          fi
+
+          RELEASE_URL="$(gh release view "$TAG" --json url --jq .url)"
+          echo "- Draft release with signed APKs: $RELEASE_URL" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Add build summary
         if: always()
