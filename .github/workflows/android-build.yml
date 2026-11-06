@@ -325,13 +325,3 @@ jobs:
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Upload reports if build fails
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: VaultOS-build-reports
-          path: |
-            app/build/reports/
-            app/build/test-results/
-          if-no-files-found: ignore
-          retention-days: 7
