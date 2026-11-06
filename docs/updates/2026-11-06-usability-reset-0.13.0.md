@@ -42,5 +42,6 @@ This phase narrows the work to the app's everyday entry/navigation flow and the 
 
 - Changes are on branch `ux-reset/0.13.0`.
 - The build workflow is triggered by application-source changes and runs unit tests, lint, signed debug/release APK assembly and signing verification.
-- Hosted CI run: [42259973306](https://github.com/ysfclc/VaultOS/actions/runs/42259973306).
+- Initial hosted build run: [42259973306](https://github.com/ysfclc/VaultOS/actions/runs/42259973306) completed tests, lint, signed APK assembly and signing verification; Actions artifact uploads failed because the repository quota was exhausted.
+- The workflow was then changed to publish APKs, checksums and build metadata as assets on a private draft GitHub Release. The latest run will be recorded once it completes.
 - CI is not a substitute for physical device testing. The new 0.13.0 Redmi acceptance matrix is in `docs/DEVICE-TEST-PLAN.md`; touch accuracy, large-font layout, TalkBack, cursor-context usefulness and real app navigation must be observed before accepting the product as usable.
