@@ -180,6 +180,12 @@ Personal word learning now passes through one safe-field guard at every commit b
 **0.12.1 verification:** hosted CI run [42079070087](https://github.com/ysfclc/VaultOS/actions/runs/42079070087) passed unit tests, lint, signed debug/release APK assembly, signing verification and all artifact uploads. Physical Redmi acceptance remains outstanding.
 
 
+## VaultOS 0.13.0 build
+
+Hosted CI run [42261718395](https://github.com/ysfclc/VaultOS/actions/runs/42261718395) passed unit tests, lint, signed debug/release APK assembly and signing verification. The signed APKs and checksums are attached to the [private draft release](https://github.com/ysfclc/VaultOS/releases/tag/untagged-04b4086aa81185969695).
+
+Install [VaultOS-release.apk](https://github.com/ysfclc/VaultOS/releases/download/untagged-04b4086aa81185969695/VaultOS-release.apk) over the existing VaultOS installation. **Do not uninstall first**; the application ID and signing identity are preserved. Physical device usability acceptance remains open.
+
 ## Phase 13 — usability reset (0.13.0)
 
 This release addresses the daily navigation and keyboard friction directly:
