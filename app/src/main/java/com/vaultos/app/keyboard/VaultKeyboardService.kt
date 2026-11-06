@@ -215,14 +215,14 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         addToolbarKey(top, "Clips", active = clipboardMode, weight = 1.05f) {
             clipboardMode = true; commandsMode = false; emojiMode = false; clipboardQuery = ""; refreshKeyboard()
         }
-        addToolbarKey(top, "Cmd", active = commandsMode, weight = 0.9f) {
+        addToolbarKey(top, "Vault", active = commandsMode, weight = 0.98f) {
             commandsMode = true; clipboardMode = false; emojiMode = false; commandQuery = ""; refreshKeyboard()
         }
         addToolbarKey(top, selectedLanguageCode().uppercase(Locale.ROOT), active = false, weight = 0.75f) {
             cycleKeyboardLanguage()
         }
-        addToolbarKey(top, "•••", active = false, weight = 0.7f) { showKeyboardTools(itAnchor = top.getChildAt(top.childCount - 1)) }
-        root.addView(top, LinearLayout.LayoutParams(-1, dp(42)))
+        addToolbarKey(top, "Tools", active = false, weight = 0.9f) { showKeyboardTools(itAnchor = top.getChildAt(top.childCount - 1)) }
+        root.addView(top, LinearLayout.LayoutParams(-1, dp(46)))
 
         if (clipboardMode) {
             val searchView = TextView(this).apply {
@@ -293,7 +293,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
             setBackgroundColor(if (keyboardThemeDark()) Color.rgb(18, 22, 29) else Color.rgb(232, 237, 243))
         }
         suggestionRow = suggestions
-        root.addView(suggestions, LinearLayout.LayoutParams(-1, dp(36)).apply { setMargins(0, dp(2), 0, dp(3)) })
+        root.addView(suggestions, LinearLayout.LayoutParams(-1, dp(40)).apply { setMargins(0, dp(2), 0, dp(3)) })
         renderSuggestions()
         addTypingKeys(root)
         return root
@@ -331,7 +331,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
             background = keyBackground(wide = true, active = active, toolbar = true)
             setOnClickListener { tapFeedback(this); playKeySound(this); action() }
         }
-        row.addView(key, LinearLayout.LayoutParams(0, dp(38), weight).apply {
+        row.addView(key, LinearLayout.LayoutParams(0, dp(42), weight).apply {
             setMargins(dp(2), dp(2), dp(2), dp(2))
         })
     }
@@ -376,9 +376,9 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                 setOnTouchListener { view, event ->
                     when (event.actionMasked) {
                         MotionEvent.ACTION_DOWN -> {
-                            view.scaleX = 0.96f
-                            view.scaleY = 0.96f
-                            view.translationZ = dp(4).toFloat()
+                            view.scaleX = 0.92f
+                            view.scaleY = 0.92f
+                            view.translationZ = dp(7).toFloat()
                             if (key.length == 1 && key != " ") showKeyPreview(view, text.toString())
                         }
                         MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
@@ -400,6 +400,10 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                                 startX = event.rawX
                                 lastStep = 0
                                 moved = false
+                                view.scaleX = 0.94f
+                                view.scaleY = 0.94f
+                                view.translationZ = dp(5).toFloat()
+                                tapFeedback(view)
                             }
                             MotionEvent.ACTION_MOVE -> {
                                 val step = ((event.rawX - startX) / dp(18).toFloat()).toInt()
@@ -416,6 +420,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                                 view.scaleX = 1f
                                 view.scaleY = 1f
+                                view.translationZ = 0f
                                 if (moved) return@setOnTouchListener true
                             }
                         }
@@ -484,7 +489,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         hideKeyPreview()
         val bubble = TextView(this).apply {
             text = label
-            textSize = 30f
+            textSize = 34f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(18, 34, 28))
             background = GradientDrawable().apply {
@@ -494,14 +499,14 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
             }
             elevation = dp(8).toFloat()
         }
-        val popup = PopupWindow(bubble, dp(54), dp(58), false).apply {
+        val popup = PopupWindow(bubble, dp(62), dp(66), false).apply {
             isFocusable = false
             isTouchable = false
             setBackgroundDrawable(android.graphics.drawable.ColorDrawable(Color.TRANSPARENT))
             elevation = dp(8).toFloat()
         }
         keyPreviewPopup = popup
-        popup.showAsDropDown(anchor, (anchor.width - dp(54)) / 2, -dp(keyHeight() + 60), Gravity.TOP)
+        popup.showAsDropDown(anchor, (anchor.width - dp(62)) / 2, -dp(keyHeight() + 68), Gravity.TOP)
     }
 
     private fun hideKeyPreview() {
@@ -516,79 +521,123 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     }
 
     private fun showKeyboardTools(itAnchor: View) {
+        val dark = keyboardThemeDark()
         val menu = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(8), dp(8), dp(8), dp(8))
-            setBackgroundColor(if (keyboardThemeDark()) Color.rgb(31, 39, 49) else Color.rgb(245, 247, 250))
+            setPadding(dp(10), dp(8), dp(10), dp(8))
+            setBackgroundColor(if (dark) Color.rgb(20, 26, 34) else Color.rgb(247, 249, 252))
         }
         var popup: PopupWindow? = null
         val prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
-        val actions = listOf<Pair<String, () -> Unit>>(
-            "Capture clipboard" to { captureClipboard(showToast = true) },
-            (if (LocalTypingMemory(this).isLearningEnabled()) "Pause private word learning" else "Learn my words on this device") to {
-                val memory = LocalTypingMemory(this)
-                memory.setLearningEnabled(!memory.isLearningEnabled())
-                refreshKeyboard()
-            },
-            "Clear local typing memory" to {
-                AlertDialog.Builder(this)
-                    .setTitle("Clear personal typing data?")
-                    .setMessage("This removes saved words and local word-pair counts from this device. It does not affect clipboard history.")
-                    .setNegativeButton("Cancel", null)
-                    .setPositiveButton("Clear") { _, _ ->
-                        LocalTypingMemory(this).clear()
-                        Toast.makeText(this, "Personal typing data cleared", Toast.LENGTH_SHORT).show()
-                        refreshKeyboard()
-                    }
-                    .show()
-            },
-            (if (getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_AUTO_CAPITALIZE, true)) "Turn auto-capitalization off" else "Turn auto-capitalization on") to {
-                val prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
-                prefs.edit().putBoolean(KEY_AUTO_CAPITALIZE, !prefs.getBoolean(KEY_AUTO_CAPITALIZE, true)).apply()
-                refreshKeyboard()
-            },
-            (if (getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_SMART_PUNCTUATION, true)) "Turn double-space period off" else "Turn double-space period on") to {
-                val prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
-                prefs.edit().putBoolean(KEY_SMART_PUNCTUATION, !prefs.getBoolean(KEY_SMART_PUNCTUATION, true)).apply()
-                refreshKeyboard()
-            },
 
-            "Paste latest saved text" to { pasteLatestText() },
-            "Open clipboard History" to { openClipboardHistory() },
-            "Emoji panel" to { emojiMode = true; clipboardMode = false; commandsMode = false; refreshKeyboard() },
-            (if (numberRowEnabled()) "Hide number row" else "Show number row") to { prefs.edit().putBoolean(KEY_NUMBER_ROW, !numberRowEnabled()).apply(); refreshKeyboard() },
-            (if (keyPreviewEnabled()) "Turn key preview off" else "Turn key preview on") to { prefs.edit().putBoolean(KEY_KEY_PREVIEW, !keyPreviewEnabled()).apply() },
-            (if (hapticsEnabled()) "Turn vibration off" else "Turn vibration on") to { toggleHaptics() },
-            (if (keySoundsEnabled()) "Turn key sounds off" else "Turn key sounds on") to { prefs.edit().putBoolean(KEY_SOUND, !keySoundsEnabled()).apply(); refreshKeyboard() },
-            (if (keyboardThemeDark()) "Switch to light theme" else "Switch to dark theme") to { prefs.edit().putBoolean(KEY_THEME_DARK, !keyboardThemeDark()).apply(); refreshKeyboard() },
-            "Key height: ${keyHeight()} dp · change" to { cycleKeyHeight() },
-            "One-hand mode: ${oneHandedLabel()} · change" to { cycleOneHandedMode() },
-            (if (autoCorrectEnabled()) "Turn autocorrect off" else "Turn autocorrect on") to { toggleAutoCorrect() },
-            "Switch Android keyboard" to { (getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager).showInputMethodPicker() },
-            "Hide keyboard" to { requestHideSelf(0) }
-        )
-        actions.forEach { (label, action) ->
-            val item = TextView(this).apply {
+        fun section(label: String) {
+            menu.addView(TextView(this).apply {
                 text = label
-                textSize = 13f
+                textSize = 10f
+                letterSpacing = 0.12f
                 gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(12), dp(8), dp(12), dp(8))
-                setTextColor(if (keyboardThemeDark()) Color.WHITE else Color.rgb(26, 34, 43))
-                background = keyBackground(wide = true, toolbar = true)
-                setOnClickListener { popup?.dismiss(); tapFeedback(this); action() }
-            }
-            menu.addView(item, LinearLayout.LayoutParams(-1, dp(42)).apply { bottomMargin = dp(3) })
+                setPadding(dp(8), dp(8), dp(8), dp(3))
+                setTextColor(if (dark) Color.rgb(145, 166, 184) else Color.rgb(91, 108, 126))
+            }, LinearLayout.LayoutParams(-1, dp(30)))
         }
-        val scroll = ScrollView(this).apply { addView(menu) }
-        popup = PopupWindow(scroll, dp(250), dp(350), true).apply {
+
+        fun item(label: String, action: () -> Unit) {
+            val row = TextView(this).apply {
+                text = label
+                textSize = 13.5f
+                gravity = Gravity.CENTER_VERTICAL
+                minHeight = dp(48)
+                setPadding(dp(12), dp(7), dp(12), dp(7))
+                setTextColor(if (dark) Color.rgb(240, 245, 250) else Color.rgb(27, 38, 51))
+                background = keyBackground(wide = true, toolbar = true)
+                setOnClickListener {
+                    popup?.dismiss()
+                    tapFeedback(this)
+                    action()
+                }
+            }
+            menu.addView(row, LinearLayout.LayoutParams(-1, dp(48)).apply {
+                bottomMargin = dp(3)
+            })
+        }
+
+        section("CAPTURE & VAULT")
+        item("Capture current clipboard") { captureClipboard(showToast = true) }
+        item("Paste latest saved text") { pasteLatestText() }
+        item("Open clipboard history") { openClipboardHistory() }
+
+        section("PERSONAL TYPING")
+        item(if (LocalTypingMemory(this).isLearningEnabled()) "Pause private word learning" else "Enable private word learning") {
+            val memory = LocalTypingMemory(this)
+            memory.setLearningEnabled(!memory.isLearningEnabled())
+            refreshKeyboard()
+        }
+        item("Clear personal typing data") {
+            AlertDialog.Builder(this)
+                .setTitle("Clear personal typing data?")
+                .setMessage("This removes saved words and local word-pair counts from this device. It does not affect clipboard history or Vault files.")
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Clear") { _, _ ->
+                    LocalTypingMemory(this).clear()
+                    Toast.makeText(this, "Personal typing data cleared", Toast.LENGTH_SHORT).show()
+                    refreshKeyboard()
+                }
+                .show()
+        }
+
+        section("TYPING BEHAVIOUR")
+        item(if (prefs.getBoolean(KEY_AUTO_CAPITALIZE, true)) "Turn sentence capitalization off" else "Turn sentence capitalization on") {
+            prefs.edit().putBoolean(KEY_AUTO_CAPITALIZE, !prefs.getBoolean(KEY_AUTO_CAPITALIZE, true)).apply()
+            refreshKeyboard()
+        }
+        item(if (prefs.getBoolean(KEY_SMART_PUNCTUATION, true)) "Turn double-space period off" else "Turn double-space period on") {
+            prefs.edit().putBoolean(KEY_SMART_PUNCTUATION, !prefs.getBoolean(KEY_SMART_PUNCTUATION, true)).apply()
+            refreshKeyboard()
+        }
+        item(if (autoCorrectEnabled()) "Turn autocorrect off" else "Turn autocorrect on") { toggleAutoCorrect() }
+
+        section("KEYBOARD LOOK & FEEL")
+        item(if (numberRowEnabled()) "Hide number row" else "Show number row") {
+            prefs.edit().putBoolean(KEY_NUMBER_ROW, !numberRowEnabled()).apply()
+            refreshKeyboard()
+        }
+        item("Key size · ${keyHeight()} dp · change") { cycleKeyHeight() }
+        item(if (keyboardThemeDark()) "Switch to light theme" else "Switch to dark theme") {
+            prefs.edit().putBoolean(KEY_THEME_DARK, !keyboardThemeDark()).apply()
+            refreshKeyboard()
+        }
+        item("One-hand mode · ${oneHandedLabel()} · change") { cycleOneHandedMode() }
+        item(if (keyPreviewEnabled()) "Turn key preview off" else "Turn key preview on") {
+            prefs.edit().putBoolean(KEY_KEY_PREVIEW, !keyPreviewEnabled()).apply()
+            refreshKeyboard()
+        }
+        item(if (hapticsEnabled()) "Turn vibration off" else "Turn vibration on") { toggleHaptics() }
+        item(if (keySoundsEnabled()) "Turn key sounds off" else "Turn key sounds on") {
+            prefs.edit().putBoolean(KEY_SOUND, !keySoundsEnabled()).apply()
+            refreshKeyboard()
+        }
+
+        section("ANDROID")
+        item("Switch keyboard") {
+            (getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager).showInputMethodPicker()
+        }
+        item("Hide keyboard") { requestHideSelf(0) }
+
+        val scroll = ScrollView(this).apply {
+            isFillViewport = false
+            addView(menu)
+        }
+        val popupWidth = minOf(dp(320), (resources.displayMetrics.widthPixels - dp(24)).coerceAtLeast(dp(220)))
+        val popupHeight = minOf(dp(460), (resources.displayMetrics.heightPixels - dp(120)).coerceAtLeast(dp(280)))
+        popup = PopupWindow(scroll, popupWidth, popupHeight, true).apply {
             isOutsideTouchable = true
             setBackgroundDrawable(android.graphics.drawable.ColorDrawable(Color.TRANSPARENT))
-            elevation = dp(12).toFloat()
-            showAsDropDown(itAnchor, -dp(220), 0, Gravity.TOP)
+            elevation = dp(14).toFloat()
+            showAsDropDown(itAnchor, itAnchor.width - popupWidth, 0, Gravity.TOP)
         }
     }
 
-    private fun oneHandedSide(): Int = getSharedPreferences(PREFS, MODE_PRIVATE).getInt(KEY_ONE_HANDED, 0).coerceIn(0, 2)
+        private fun oneHandedSide(): Int = getSharedPreferences(PREFS, MODE_PRIVATE).getInt(KEY_ONE_HANDED, 0).coerceIn(0, 2)
     private fun oneHandedLabel(): String = when (oneHandedSide()) { 1 -> "Left"; 2 -> "Right"; else -> "Off" }
     private fun numberRowEnabled(): Boolean = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_NUMBER_ROW, false)
     private fun keyPreviewEnabled(): Boolean = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_KEY_PREVIEW, true)
@@ -601,7 +650,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     }
 
     private fun commandSearchLabel(): String =
-        if (commandQuery.isBlank()) "Search your Vault · type below" else "Vault search: $commandQuery"
+        if (commandQuery.isBlank()) "Find in Vault · type below" else "Vault search: $commandQuery"
 
     private fun handleCommandSearchKey(key: String) {
         when (key) {
@@ -919,13 +968,16 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
             KeyboardSuggestionEngine.nearbyCorrections(language, typed, additionalWords = learnedVocabulary)
         } else emptyList()
         val correcting = currentSuggestions.isNotEmpty() || localCorrections.isNotEmpty()
+        // Read only a short, transient window from the active safe text field. This keeps
+        // predictions aligned with the real cursor after edits, pastes or cursor movement.
+        val contextualWord = contextWordBeforeCursor().ifBlank { previousWordForPrediction }
         val candidates = when {
             typed.isNotBlank() -> (listOf(typed) + currentSuggestions + localCorrections +
                 learnedCompletions + KeyboardSuggestionEngine.completePrefix(language, typed, additionalWords = learnedCompletions)).distinct().take(3)
             correcting -> (listOf(lastCommittedWord) + currentSuggestions).distinct().take(3)
-            previousWordForPrediction.isNotBlank() ->
-                (memory.nextWords(language, previousWordForPrediction) +
-                    KeyboardSuggestionEngine.nextWordSuggestions(language, previousWordForPrediction)).distinct().take(3)
+            contextualWord.isNotBlank() ->
+                (memory.nextWords(language, contextualWord) +
+                    KeyboardSuggestionEngine.nextWordSuggestions(language, contextualWord)).distinct().take(3)
             else -> emptyList()
         }
 
@@ -996,6 +1048,16 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
             setColor(if (dark) Color.rgb(37, 62, 57) else Color.rgb(210, 239, 225))
             cornerRadius = dp(9).toFloat()
         }
+    }
+
+    private fun contextWordBeforeCursor(): String {
+        if (!isSafeForSuggestions(currentInputEditorInfo)) return ""
+        val before = currentInputConnection?.getTextBeforeCursor(80, 0)?.toString().orEmpty()
+        val normalized = before.trimEnd()
+        return Regex("""[\p{L}][\p{L}'’\-]*$""")
+            .find(normalized)?.value
+            ?.lowercase(inputLocale())
+            .orEmpty()
     }
 
     private fun applyNextWordSuggestion(value: String) {
@@ -1107,7 +1169,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     }
 
     private fun clipboardSearchLabel(): String =
-        if (clipboardQuery.isBlank()) "Search clipboard · type below" else "Search: $clipboardQuery"
+        if (clipboardQuery.isBlank()) "Find in clipboard · type below" else "Search: $clipboardQuery"
 
     private fun handleClipboardSearchKey(key: String) {
         when (key) {
@@ -1147,32 +1209,33 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                 val row = LinearLayout(this@VaultKeyboardService).apply {
                     orientation = LinearLayout.HORIZONTAL
                     gravity = Gravity.CENTER_VERTICAL
-                    setBackgroundColor(Color.rgb(29, 36, 44))
+                    setBackgroundColor(if (keyboardThemeDark()) Color.rgb(29, 36, 44) else Color.rgb(238, 242, 247))
                 }
                 val preview = TextView(this@VaultKeyboardService).apply {
                     text = entry.preview.replace("\n", " ").take(100)
-                    setTextColor(Color.WHITE); textSize = 11f; maxLines = 2
+                    setTextColor(if (keyboardThemeDark()) Color.WHITE else Color.rgb(30, 39, 51)); textSize = 11.5f; maxLines = 2
                     setPadding(dp(7), dp(4), dp(4), dp(4))
                     setOnClickListener { pasteClipboardEntry(entry) }
                 }
-                row.addView(preview, LinearLayout.LayoutParams(0, dp(46), 1f))
+                row.addView(preview, LinearLayout.LayoutParams(0, dp(52), 1f))
                 row.addView(toolbarButton(if (entry.contentType == "text") "Paste" else "Open") {
                     if (entry.contentType == "text") pasteClipboardEntry(entry) else openClipboardHistory()
-                }, LinearLayout.LayoutParams(dp(54), dp(36)))
+                }, LinearLayout.LayoutParams(dp(58), dp(44)))
                 row.addView(toolbarButton(if (entry.isPinned) "★" else "☆") {
                     serviceScope.launch {
                         ClipboardHistoryRepository(applicationContext).setPinned(entry.id, !entry.isPinned)
                         renderClipboardEntries()
                     }
-                }, LinearLayout.LayoutParams(dp(38), dp(36)))
-                container.addView(row, LinearLayout.LayoutParams(-1, dp(48)).apply { bottomMargin = dp(3) })
+                }, LinearLayout.LayoutParams(dp(42), dp(44)))
+                container.addView(row, LinearLayout.LayoutParams(-1, dp(54)).apply { bottomMargin = dp(3) })
             }
         }
     }
 
     private fun toolbarButton(label: String, action: () -> Unit) = TextView(this).apply {
-        text = label; gravity = Gravity.CENTER; textSize = 11f; setTextColor(Color.WHITE)
-        setBackgroundColor(Color.rgb(48, 62, 76))
+        text = label; gravity = Gravity.CENTER; textSize = 11f
+        setTextColor(if (keyboardThemeDark()) Color.WHITE else Color.rgb(28, 38, 50))
+        background = keyBackground(wide = true)
         setOnClickListener { tapFeedback(this); action() }
     }
 
