@@ -173,3 +173,23 @@ Record the Android system spell-checker and active keyboard language. The local 
 3. Confirm learning is off after a fresh install; enable it explicitly, pause it, and verify no new words are learned while paused.
 4. Clear personal typing data from More and verify learned completions and word-pair predictions disappear. Confirm clipboard history is unchanged and the previous learning on/off preference is preserved.
 5. Confirm personal typing memory stays on-device and no network permission or remote typing service is introduced.
+
+
+## Phase 13 — app and keyboard usability acceptance (0.13.0)
+
+Run after installing the 0.13.0 release APK over the existing VaultOS installation. Do not uninstall first.
+
+1. **Update safety:** confirm Android performs an in-place package update; verify previous files, clipboard history, tags, collections and settings remain.
+2. **Primary navigation:** confirm exactly five main destinations are visible: Home, Library, Files, Organize and More. Open More, then Installed apps and Settings; confirm the More destination remains selected and Back/navigation returns predictably.
+3. **Global search:** open Search from Home, Library, Files, Organize and More. In each case type a known file name and a phrase from the middle of a long-text item; confirm the same global matches appear. Clear the query, confirm the search prompt returns, then search a nonexistent term and confirm the no-matches message is distinct. Open a result and confirm its details; pin/unpin a result and confirm state updates.
+4. **First-run storage onboarding:** on a test install or after permission revocation, confirm Home explains all-files access and the Enable action opens the correct Android settings screen. Grant access, return, and confirm the state updates. Confirm indexing leaves original device files in place.
+5. **Keyboard toolbar:** confirm Type, Clips, Vault, language and Tools are legible and independently tappable at the phone's normal display/font scale.
+6. **Touch response:** type 500 characters across ChatGPT, Chrome, WhatsApp and Notes. On finger-down verify visible key scale/color/depth and popup position; check missed, duplicated or neighboring-key input. Confirm spacebar feedback does not break ordinary space insertion or cursor-drag.
+7. **Tools panel:** open Tools; check Capture & Vault, Personal Typing, Typing Behaviour, Keyboard Look & Feel and Android sections. Scroll to the bottom, trigger each setting, and verify the panel stays inside the display at normal and enlarged font sizes.
+8. **Context after cursor movement:** type two different preceding words, move the cursor after each, add a space and compare the candidate strip. Confirm it uses the word before the actual cursor rather than stale keyboard state.
+9. **Context after paste:** paste a sentence in a normal safe text field, leave a trailing space and verify candidates correspond to the final word before the cursor. Confirm no sentence or surrounding text is stored by the context lookup.
+10. **Sensitive editor boundary:** repeat cursor/paste tests in password, email, URL, numeric and no-suggestions fields. Contextual suggestions and learning must remain suppressed.
+11. **Language regression:** test EN, PL and TR new word completions and phrase contexts; verify diacritics and casing. Check that selecting a suggestion inserts one word and one trailing space.
+12. **Accessibility / layout:** test TalkBack focus order, label announcements, landscape, large font/display scale and gesture navigation. No bottom-bar control, popup row or primary keyboard key may become unreachable.
+
+Record the Android/API version, MIUI/HyperOS version, VaultOS build, font/display scaling, active keyboard, and any key errors. Build success is not evidence of device usability. Any failure in steps 2–7 blocks acceptance.

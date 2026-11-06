@@ -25,7 +25,19 @@ object KeyboardSuggestionEngine {
             "see", "so", "some", "something", "than", "time", "to", "today", "too", "up",
             "use", "usable", "very", "want", "was", "way", "we", "well", "were", "work", "yes",
             "actually", "better", "build", "elegant", "experience", "keyboard", "maybe",
-            "recommendation", "recommendations", "should", "suggestion", "suggestions"
+            "recommendation", "recommendations", "should", "suggestion", "suggestions",
+            "application", "apps", "available", "back", "between", "browser", "business",
+            "call", "change", "check", "choose", "clear", "come", "conversation", "copy",
+            "could", "currently", "details", "different", "download", "easy", "edit", "email",
+            "everything", "exactly", "file", "files", "final", "folder", "following", "free",
+            "full", "happy", "important", "information", "install", "instead", "job", "keep",
+            "learn", "learning", "library", "link", "list", "long", "looking", "love", "meeting",
+            "message", "minute", "mobile", "money", "move", "music", "myself", "near", "number",
+            "once", "option", "people", "phone", "photo", "possible", "probably", "problem",
+            "product", "project", "quick", "ready", "reason", "record", "save", "saved", "search",
+            "send", "settings", "share", "simple", "start", "storage", "take", "thank", "thing",
+            "together", "try", "understand", "update", "version", "watch", "week", "welcome",
+            "whatever", "without", "write", "wrong"
         ),
         "pl" to listOf(
             "nie", "tak", "to", "jest", "że", "się", "na", "do", "i", "w", "z", "za",
@@ -36,7 +48,19 @@ object KeyboardSuggestionEngine {
             "mój", "moja", "moje", "my", "nad", "nas", "nasz", "nasza", "nasze", "nic",
             "od", "oraz", "po", "pod", "proszę", "przez", "przy", "sam", "są", "ten",
             "ta", "te", "tego", "tej", "teraz", "też", "tylko", "trzeba", "tutaj",
-            "wszystko", "wy", "zawsze", "że", "żeby"
+            "wszystko", "wy", "zawsze", "że", "żeby",
+            "adres", "aplikacja", "aplikacje", "będę", "będziemy", "bez", "chciałbym",
+            "chciałabym", "chcę", "chyba", "dalej", "dlatego", "dostęp", "dostępny", "dużo",
+            "działa", "działać", "firmie", "folder", "gotowe", "informacje", "instalacja",
+            "jutro", "karta", "każdy", "klawiatura", "kolejny", "komputer", "koniec", "konto",
+            "korzystać", "krótko", "możesz", "możliwe", "muszę", "myślę", "najlepiej",
+            "naprawdę", "następnie", "nawet", "niestety", "nowy", "obecnie", "oczywiście",
+            "odpowiedź", "ogólnie", "otworzyć", "pamiętać", "pewnie", "pierwszy", "plik",
+            "pliki", "podoba", "podczas", "pomoc", "pomocy", "ponieważ", "potrzebuję",
+            "problem", "przede", "przyszłość", "razem", "robić", "rozumiem", "rzeczy",
+            "sprawdzić", "strona", "super", "szczególnie", "także", "twój", "twoja", "twoje",
+            "udało", "używać", "ważne", "więcej", "właśnie", "wygląda", "wtedy", "zrobić",
+            "zobaczyć", "znowu", "został"
         ),
         "tr" to listOf(
             "bir", "bu", "ben", "sen", "ve", "çok", "daha", "değil", "için", "ile",
@@ -45,7 +69,16 @@ object KeyboardSuggestionEngine {
             "iyi", "nasıl", "ne", "neden", "nerede", "olabilir", "oldu", "olmak",
             "olarak", "onun", "sonra", "şey", "şimdi", "tamam", "teşekkür", "teşekkürler",
             "tüm", "var", "veya", "ya", "yani", "yap", "yapmak", "yeni", "yine", "yok",
-            "zaman", "zaten", "merhaba", "merak", "müsait", "lütfen", "görüşürüz"
+            "zaman", "zaten", "merhaba", "merak", "müsait", "lütfen", "görüşürüz",
+            "acil", "açık", "adres", "arkadaş", "başka", "başladı", "bekliyorum", "belki",
+            "bence", "beraber", "birlikte", "bulmak", "burada", "büyük", "çalışıyor",
+            "çalışmak", "doğru", "düşünüyorum", "elbette", "farklı", "fakat", "fiyat",
+            "gerekli", "gerçekten", "gönder", "hafta", "hala", "hemen", "herhangi", "herkes",
+            "hiç", "ihtiyaç", "iletişim", "iş", "işte", "kadar", "kaldı", "kendi",
+            "kesinlikle", "kolay", "konu", "kullanım", "kullanmak", "lazım", "mesaj",
+            "mümkün", "mutlu", "nasılsın", "olacak", "olur", "önemli", "özellikle",
+            "paylaş", "program", "proje", "şimdilik", "şöyle", "tamamen", "tekrar",
+            "uygun", "yardım", "yapabilir", "yeterli"
         )
     )
 
@@ -70,7 +103,25 @@ object KeyboardSuggestionEngine {
             "will" to listOf("be", "do", "have"),
             "not" to listOf("sure", "a", "the"),
             "see" to listOf("you", "it", "what"),
-            "hello" to listOf("there", "how", "again")
+            "hello" to listOf("there", "how", "again"),
+            "i'm" to listOf("not", "sure", "going"),
+            "are" to listOf("you", "we", "they"),
+            "could" to listOf("you", "we", "be"),
+            "do" to listOf("you", "we", "that"),
+            "does" to listOf("it", "that", "this"),
+            "if" to listOf("you", "we", "it"),
+            "just" to listOf("want", "need", "think"),
+            "know" to listOf("what", "that", "you"),
+            "like" to listOf("to", "it", "this"),
+            "make" to listOf("it", "sure", "sense"),
+            "need" to listOf("to", "a", "some"),
+            "please" to listOf("let", "send", "check"),
+            "should" to listOf("be", "we", "i"),
+            "there" to listOf("is", "are", "was"),
+            "want" to listOf("to", "you", "me"),
+            "when" to listOf("you", "we", "is"),
+            "where" to listOf("is", "are", "you"),
+            "with" to listOf("the", "you", "me")
         ),
         "pl" to mapOf(
             "jak" to listOf("się", "jest", "to"),
@@ -84,7 +135,18 @@ object KeyboardSuggestionEngine {
             "mam" to listOf("pytanie", "nadzieję", "to"),
             "w" to listOf("tym", "pracy", "domu"),
             "na" to listOf("pewno", "razie", "przykład"),
-            "co" to listOf("jest", "robisz", "myślisz")
+            "co" to listOf("jest", "robisz", "myślisz"),
+            "będę" to listOf("w", "miał", "mogła"),
+            "chcę" to listOf("się", "to", "zrobić"),
+            "dzisiaj" to listOf("mam", "jest", "będzie"),
+            "jest" to listOf("to", "bardzo", "dobrze"),
+            "jestem" to listOf("w", "tu", "pewny"),
+            "możesz" to listOf("mi", "to", "sprawdzić"),
+            "muszę" to listOf("to", "już", "iść"),
+            "potrzebuję" to listOf("pomocy", "tego", "więcej"),
+            "proszę" to listOf("o", "sprawdzić", "daj"),
+            "właśnie" to listOf("tak", "teraz", "to"),
+            "zrobić" to listOf("to", "jeszcze", "tak")
         ),
         "tr" to mapOf(
             "ben" to listOf("de", "bugün", "sana"),
@@ -97,7 +159,17 @@ object KeyboardSuggestionEngine {
             "iyi" to listOf("günler", "olur", "mi"),
             "teşekkürler" to listOf("çok", "sana", "ederim"),
             "için" to listOf("teşekkürler", "çok", "önemli"),
-            "tamam" to listOf("olur", "anlaştık", "teşekkürler")
+            "tamam" to listOf("olur", "anlaştık", "teşekkürler"),
+            "bana" to listOf("yardım", "göre", "bir"),
+            "bir" to listOf("şey", "daha", "süre"),
+            "bugün" to listOf("çok", "müsait", "ne"),
+            "daha" to listOf("iyi", "fazla", "sonra"),
+            "gerçekten" to listOf("çok", "iyi", "değil"),
+            "istiyorum" to listOf("ama", "ve", "sadece"),
+            "lütfen" to listOf("bana", "bir", "yardım"),
+            "şimdi" to listOf("ne", "çok", "tamam"),
+            "sonra" to listOf("görüşürüz", "konuşuruz", "yaparız"),
+            "yardım" to listOf("eder", "lazım", "istiyorum")
         )
     )
 

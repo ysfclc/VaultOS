@@ -155,7 +155,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private enum class Page(val label: String) { Home("Home"), Incoming("Incoming"), Files("Files"), Collections("Collections"), Apps("Apps"), Settings("Settings") }
+private enum class Page(val label: String) { Home("Home"), Incoming("Library"), Files("Files"), Collections("Organize"), More("More"), Apps("Apps"), Settings("Settings") }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -204,7 +204,7 @@ private fun VaultApp(activity: MainActivity, repository: VaultRepository, resume
                     actions = {
                         IconButton(onClick = { captureClipboard(activity, repository, onMessage = { message = it }) }) { Icon(Icons.Default.ContentPaste, "Capture clipboard") }
                         IconButton(onClick = { activity.startActivity(Intent(activity, ClipboardHistoryActivity::class.java)) }) { Icon(Icons.Default.History, "Clipboard history") }
-                        IconButton(onClick = { searchMode = !searchMode; if (!searchMode) query = "" }) { Icon(Icons.Default.Search, "Search") }
+                        IconButton(onClick = { if (searchMode) query = ""; searchMode = !searchMode }) { Icon(Icons.Default.Search, "Search") }
                         IconButton(onClick = { importLauncher.launch(arrayOf("*/*")) }) { Icon(Icons.Default.Add, "Import files") }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF0B0D10))
@@ -212,7 +212,7 @@ private fun VaultApp(activity: MainActivity, repository: VaultRepository, resume
             },
             bottomBar = {
                 NavigationBar(containerColor = Color(0xFF11151A)) {
-                    listOf(Page.Home, Page.Incoming, Page.Files, Page.Collections, Page.Apps, Page.Settings).forEach { p ->
+                    listOf(Page.Home, Page.Incoming, Page.Files, Page.Collections, Page.More).forEach { p ->
                         val icon = when (p) {
                             Page.Home -> Icons.Default.Home
                             Page.Incoming -> Icons.Default.Inbox
@@ -220,8 +220,10 @@ private fun VaultApp(activity: MainActivity, repository: VaultRepository, resume
                             Page.Collections -> Icons.Default.Bookmarks
                             Page.Apps -> Icons.Default.Android
                             Page.Settings -> Icons.Default.Settings
+                            Page.More -> Icons.Default.MoreHoriz
                         }
-                        NavigationBarItem(selected = page == p, onClick = { page = p }, icon = { Icon(icon, p.label) }, label = { Text(p.label) })
+                        val selected = if (p == Page.More) page in setOf(Page.More, Page.Apps, Page.Settings) else page == p
+                        NavigationBarItem(selected = selected, onClick = { page = p }, icon = { Icon(icon, p.label) }, label = { Text(p.label) })
                     }
                 }
             },
@@ -246,11 +248,62 @@ private fun VaultApp(activity: MainActivity, repository: VaultRepository, resume
                         }) { Icon(Icons.Default.BookmarkAdd, null); Spacer(Modifier.width(6.dp)); Text("Save search") }
                     }
                 }
-                val visible = if (searchMode && query.isNotBlank()) searchItems else items
-                when (page) {
-                    Page.Home -> HomePage(count, bytes, storageAvailable(), items.take(8), onPage = { page = it }, onItem = { showItem = it }, onImport = { importLauncher.launch(arrayOf("*/*")) }, onCapture = { captureClipboard(activity, repository) { message = it } })
-                    Page.Incoming -> ItemList(visible, onItem = { showItem = it }, onPin = { item, pinned -> activity.lifecycleScope.launch { repository.setPinned(item, pinned) } })
-                    Page.Files -> FilesPage(activity, repository, visible.filter { it.category != "Text" }, trashItems, permissionGranted, onItem = { showItem = it }, onPermission = { openStorageSettings(activity) }, onMessage = { message = it })
+                if (searchMode) {
+                    when {
+                        query.isBlank() -> EmptyState(
+                            "Search your library",
+                            "Search file names, full text, tags and extracted metadata. Results stay on this device."
+                        )
+                        searchItems.isEmpty() -> EmptyState(
+                            "No matches found",
+                            "Try another file name, phrase, tag or metadata term."
+                        )
+                        else -> Column(
+                            Modifier.fillMaxSize().padding(top = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Search results", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                                Text(
+                                    "${searchItems.size} MATCHES",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            LazyColumn(
+                                Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(7.dp),
+                                contentPadding = PaddingValues(bottom = 12.dp)
+                            ) {
+                                items(searchItems, key = { it.id }) { item ->
+                                    ItemRow(
+                                        item,
+                                        onClick = { showItem = item },
+                                        onPin = { activity.lifecycleScope.launch { repository.setPinned(item, !item.isPinned) } }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                } else when (page) {
+                    Page.Home -> HomePage(
+                        count = count,
+                        bytes = bytes,
+                        available = storageAvailable(),
+                        recent = items.take(8),
+                        permissionGranted = permissionGranted,
+                        onPage = { page = it },
+                        onItem = { showItem = it },
+                        onImport = { importLauncher.launch(arrayOf("*/*")) },
+                        onCapture = { captureClipboard(activity, repository) { message = it } },
+                        onGrantAccess = { openStorageSettings(activity) }
+                    )
+                    Page.Incoming -> ItemList(items, onItem = { showItem = it }, onPin = { item, pinned -> activity.lifecycleScope.launch { repository.setPinned(item, pinned) } })
+                    Page.Files -> FilesPage(activity, repository, items.filter { it.category != "Text" }, trashItems, permissionGranted, onItem = { showItem = it }, onPermission = { openStorageSettings(activity) }, onMessage = { message = it })
                     Page.Collections -> CollectionsPage(
                         dao = dao,
                         items = items,
@@ -260,6 +313,7 @@ private fun VaultApp(activity: MainActivity, repository: VaultRepository, resume
                         onItem = { showItem = it },
                         onMessage = { message = it }
                     )
+                    Page.More -> MorePage(onApps = { page = Page.Apps }, onSettings = { page = Page.Settings })
                     Page.Apps -> AppsPage(activity, repository, onMessage = { message = it })
                     Page.Settings -> SettingsPage(activity, repository, permissionGranted, backupLauncher, onMessage = { message = it })
                 }
@@ -338,7 +392,7 @@ private fun VaultApp(activity: MainActivity, repository: VaultRepository, resume
 }
 
 @Composable
-private fun HomePage(count: Int, bytes: Long, available: Long, recent: List<VaultItem>, onPage: (Page) -> Unit, onItem: (VaultItem) -> Unit, onImport: () -> Unit, onCapture: () -> Unit) {
+private fun HomePage(count: Int, bytes: Long, available: Long, recent: List<VaultItem>, permissionGranted: Boolean, onPage: (Page) -> Unit, onItem: (VaultItem) -> Unit, onImport: () -> Unit, onCapture: () -> Unit, onGrantAccess: () -> Unit) {
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Spacer(Modifier.height(4.dp))
         Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF18251F)), shape = RoundedCornerShape(22.dp)) {
@@ -357,6 +411,31 @@ private fun HomePage(count: Int, bytes: Long, available: Long, recent: List<Vaul
             QuickTile("Import", Icons.Default.Add, Modifier.weight(1f), onImport)
             QuickTile("Browse", Icons.Default.FolderOpen, Modifier.weight(1f)) { onPage(Page.Files) }
         }
+        if (!permissionGranted) {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF17212B)),
+                shape = RoundedCornerShape(18.dp)
+            ) {
+                Row(
+                    Modifier.fillMaxWidth().padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(11.dp)
+                ) {
+                    Icon(Icons.Default.FolderOpen, null, tint = Color(0xFF8DBBFF), modifier = Modifier.size(26.dp))
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text("Connect your device library", fontWeight = FontWeight.SemiBold)
+                        Text(
+                            "Allow VaultOS to index your shared folders and make existing files searchable. Your originals stay where they are.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    FilledTonalButton(onClick = onGrantAccess, contentPadding = PaddingValues(horizontal = 12.dp)) {
+                        Text("Enable")
+                    }
+                }
+            }
+        }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text("Recently added", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
             TextButton(onClick = { onPage(Page.Incoming) }) { Text("See all") }
@@ -364,6 +443,65 @@ private fun HomePage(count: Int, bytes: Long, available: Long, recent: List<Vaul
         if (recent.isEmpty()) EmptyState("Your library starts here", "Share a file to VaultOS or import documents, photos, APKs and text.")
         else LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 12.dp)) {
             items(recent, key = { it.id }) { item -> ItemRow(item, onClick = { onItem(item) }) }
+        }
+    }
+}
+
+@Composable
+private fun MorePage(onApps: () -> Unit, onSettings: () -> Unit) {
+    Column(
+        Modifier.fillMaxSize().padding(top = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text("More tools", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Text(
+            "Manage installed apps, permissions and how VaultOS works on this phone.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Card(
+            Modifier.fillMaxWidth().clickable(onClick = onApps),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF151A20)),
+            shape = RoundedCornerShape(18.dp)
+        ) {
+            Row(
+                Modifier.fillMaxWidth().padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Icon(Icons.Default.Android, null, tint = Color(0xFF9AE6C1), modifier = Modifier.size(30.dp))
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text("Installed apps & APKs", fontWeight = FontWeight.SemiBold)
+                    Text(
+                        "Compare installed versions and archive app package components.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        Card(
+            Modifier.fillMaxWidth().clickable(onClick = onSettings),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF151A20)),
+            shape = RoundedCornerShape(18.dp)
+        ) {
+            Row(
+                Modifier.fillMaxWidth().padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Icon(Icons.Default.Settings, null, tint = Color(0xFF8DBBFF), modifier = Modifier.size(30.dp))
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text("Settings & permissions", fontWeight = FontWeight.SemiBold)
+                    Text(
+                        "Storage access, capture keyboard, backup and device integration.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
     }
 }
@@ -1318,7 +1456,7 @@ private fun loadAppCatalogue(activity: MainActivity, archivedItems: List<VaultIt
                 }) { Text("Scan storage now") }
             }
         }
-        Text("VaultOS 0.12.1 · Local-first · No account required", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("VaultOS 0.13.0 · Local-first · No account required", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

@@ -1,6 +1,6 @@
 # VaultOS for Android
 
-**A local-first Android file library and manager (release 0.12.1).** This repository contains a native Kotlin/Jetpack Compose application, an optional capture keyboard, a DocumentsProvider, a private archive, local indexing, and manual external backup/restore.
+**A local-first Android file library and manager (release 0.13.0).** This repository contains a native Kotlin/Jetpack Compose application, an optional capture keyboard, a DocumentsProvider, a private archive, local indexing, and manual external backup/restore.
 
 ## What is implemented
 
@@ -11,7 +11,7 @@ See `docs/PROJECT-STATUS.md`, `docs/TASKS.md`, and `docs/RELEASE-PLAN.md` for th
 - **Private archive:** incoming files are copied into app-private storage. The original shared-storage file is not moved or deleted.
 - **Existing-storage index:** after the user grants all-files access, the first scan records accessible existing files without copying them. Later discoveries are copied into the archive; originals remain in their existing folders.
 - **Resumable scanning:** the initial device-library baseline scans readable shared storage in bounded batches and stores its pending directory queue. Routine catch-up uses MediaStore generation numbers on Android 11+ (and modification timestamps on older versions) rather than repeatedly walking every folder. MediaStore notifications and supported DownloadManager completion events request a scan; a 15-minute periodic job is the catch-up mechanism.
-- **Unified library:** categories, full-text search, pinned items, recent items, archive status, file details, and device/vault folder browsing.
+- **Unified library:** categories, full-text search, pinned items, recent items, archive status, file details, and device/vault folder browsing. Search is global: it shows matching items regardless of the selected bottom navigation destination, with distinct empty-query and no-match states.
 - **Personal organization:** create tags and collections, assign them to items, surface related files, inspect duplicate groups using existing SHA-256 hashes, and save/reopen searches.
 - **Local metadata:** on request, extract available metadata from images, PDFs, DOCX/ODT, audio/video, APKs and text. Extraction runs on-device and does not alter source files.
 - **Long text:** complete UTF-8 text is stored as a file. Search uses chunked text indexing; the Room row only holds a small preview. The capture keyboard has a **Paste saved** action which inserts the complete most-recent saved text directly into the focused input connection, bypassing the normal clipboard preview/history UI.
@@ -34,11 +34,11 @@ Android intentionally does not allow an ordinary background application to inter
 
 ## Redmi Note 12 Pro 5G setup
 
-1. Install the **VaultOS-release-APK** from the GitHub Actions workflow artifact. Keep using this workflow-built release APK for later updates; it is signed with the persistent VaultOS certificate.
-2. Open VaultOS → **Settings & permissions** → **Grant all-files access**. In Android's special app access screen, enable *Allow access to manage all files* for VaultOS.
+1. Install the **VaultOS-release.apk** attached to the private draft release linked in the successful GitHub Actions run summary. Keep using this workflow-built APK for later updates; it is signed with the persistent VaultOS certificate.
+2. Open VaultOS → **More** → **Settings & permissions** → **Grant all-files access**. In Android's special app access screen, enable *Allow access to manage all files* for VaultOS.
 3. Return to VaultOS and use **Scan storage now**. The first scan indexes existing accessible storage; it does not duplicate it into the archive. It can take time on a device with many files and continues in resumable background batches.
 4. For automatic clipboard capture, open **Manage keyboards**, enable **VaultOS Capture Keyboard**, then select it as the active keyboard. This replaces Gboard while selected. Android will show its normal security warning for third-party keyboards. Enable **Automatically save copied text** only when you are comfortable with that behavior. Gboard remains installed and can be selected again at any time.
-5. The keyboard toolbar includes **Switch** to move to the next installed keyboard (normally Gboard), and **Hide** to dismiss the keyboard. You can also change keyboards through Android settings at any time.
+5. The keyboard toolbar uses **Type**, **Clips**, **Vault**, language and **Tools**. Open **Tools → Android → Switch keyboard** to choose another installed keyboard (normally Gboard), or **Hide keyboard** to dismiss it. You can also change keyboards through Android settings at any time.
 6. For better Xiaomi background reliability, allow VaultOS autostart if your ROM exposes that setting and set its battery policy to *No restrictions*. This improves the chance of timely scans but cannot override Android/MIUI scheduling decisions.
 7. Choose an external backup folder in VaultOS Settings and use **Back up now**. **Restore backup** can rebuild the archive and catalogue from that backup.
 
@@ -61,7 +61,7 @@ The supplied workflow is available in both places:
 - standalone copy: `android-build.yml`
 - GitHub Actions location: `.github/workflows/android-build.yml`
 
-For the Memo-style ZIP update flow, first add the standalone YAML at .github/workflows/android-build.yml (this alone does not start a build). Then create an incoming/ folder and upload the archive as incoming/VaultOS-source.zip. The workflow imports the archive only when incoming/VaultOS-source.zip itself is added or modified (or when you manually dispatch the workflow); ordinary code and documentation pushes never replay a stale ZIP. It validates the archive, rejects private signing material, extracts the project while preserving the repository's signing/ directory and protected workflow files, creates an import note under docs/updates/, safely rebases its import commit onto the latest branch head, then tests and builds. If the import conflicts with newer edits, it stops without overwriting them and asks for a refreshed ZIP. Both workflow copies (.github/workflows/android-build.yml and the root android-build.yml mirror) are exact mirrors and are excluded from ZIP extraction. Keep the filename stable; replacing the ZIP with new contents is detected by SHA-256. When a release changes the workflow YAML itself, replace both YAML copies separately before uploading the source ZIP; the importer intentionally excludes these protected workflow files. The current source package includes the matching updated copies. Alternatively, upload/extract the source ZIP yourself and run **Actions → VaultOS Android Build → Run workflow**. The workflow runs unit tests and lint before building both signed variants. It publishes `VaultOS-release-APK` (recommended for normal installation/update), `VaultOS-debug-APK`, and a `VaultOS-build-metadata` artifact containing checksums and build information. GitHub packages each uploaded artifact in a ZIP.
+For the Memo-style ZIP update flow, first add the standalone YAML at .github/workflows/android-build.yml (this alone does not start a build). Then create an incoming/ folder and upload the archive as incoming/VaultOS-source.zip. The workflow imports the archive only when incoming/VaultOS-source.zip itself is added or modified (or when you manually dispatch the workflow); ordinary code and documentation pushes never replay a stale ZIP. It validates the archive, rejects private signing material, extracts the project while preserving the repository's signing/ directory and protected workflow files, creates an import note under docs/updates/, safely rebases its import commit onto the latest branch head, then tests and builds. If the import conflicts with newer edits, it stops without overwriting them and asks for a refreshed ZIP. Both workflow copies (.github/workflows/android-build.yml and the root android-build.yml mirror) are exact mirrors and are excluded from ZIP extraction. Keep the filename stable; replacing the ZIP with new contents is detected by SHA-256. When a release changes the workflow YAML itself, replace both YAML copies separately before uploading the source ZIP; the importer intentionally excludes these protected workflow files. The current source package includes the matching updated copies. Alternatively, upload/extract the source ZIP yourself and run **Actions → VaultOS Android Build → Run workflow**. The workflow runs unit tests and lint before building both signed variants. It publishes a private draft/pre-release entry with `VaultOS-release.apk` (recommended for normal installation/update), `VaultOS-debug.apk`, checksums and build information. The workflow summary links directly to that draft release. This uses GitHub Release assets instead of Actions artifacts, so a full Actions artifact-storage quota does not block APK delivery.
 
 ## Data and backup notes
 
@@ -148,9 +148,9 @@ The keyboard now includes:
 - English, Polish and Turkish switching; long-press diacritics and punctuation alternatives.
 - Live Android spell-checker suggestions with request sequencing; autocorrect remains opt-in and only applies when the spell-checker marks a word as a likely typo.
 - Cursor movement by arrow keys or sliding horizontally across the spacebar.
-- Emoji panel, clipboard search/history/pinning/full-text paste, and a Cmd panel that searches VaultOS records and inserts complete saved text/code.
+- Emoji panel, clipboard search/history/pinning/full-text paste, and a Vault panel that searches VaultOS records and inserts complete saved text/code.
 - Dark/light themes and off/left/right one-handed layout.
-- A More menu for capture, paste, history, keyboard size, haptics, sound, key previews, number row, autocorrect, theme, one-hand mode and switching back to Gboard.
+- A grouped Tools panel for capture, paste, history, typing behavior, keyboard appearance, one-hand mode and Android keyboard switching.
 
 The implementation is local-first. It does not claim to include glide typing or a proprietary next-word prediction engine. Spell-check quality still depends on installed Android dictionaries. Hosted CI passed in run `42041620803` (unit-test task, lint, debug/release assembly, signing verification and APK artifact uploads). Build success is not proof of touch ergonomics; the Redmi Note 12 Pro 5G acceptance matrix remains mandatory.
 
@@ -178,3 +178,23 @@ Personal word learning now passes through one safe-field guard at every commit b
 
 
 **0.12.1 verification:** hosted CI run [42079070087](https://github.com/ysfclc/VaultOS/actions/runs/42079070087) passed unit tests, lint, signed debug/release APK assembly, signing verification and all artifact uploads. Physical Redmi acceptance remains outstanding.
+
+
+## VaultOS 0.13.0 build
+
+Hosted CI run [42261718395](https://github.com/ysfclc/VaultOS/actions/runs/42261718395) passed unit tests, lint, signed debug/release APK assembly and signing verification. The signed APKs and checksums are attached to the [private draft release](https://github.com/ysfclc/VaultOS/releases/tag/untagged-04b4086aa81185969695).
+
+Install [VaultOS-release.apk](https://github.com/ysfclc/VaultOS/releases/download/untagged-04b4086aa81185969695/VaultOS-release.apk) over the existing VaultOS installation. **Do not uninstall first**; the application ID and signing identity are preserved. Physical device usability acceptance remains open.
+
+## Phase 13 — usability reset (0.13.0)
+
+This release addresses the daily navigation and keyboard friction directly:
+
+- The primary app navigation is reduced to Home, Library, Files, Organize and More. Installed apps and Settings are grouped under More instead of occupying permanent bottom-bar space.
+- Home now exposes the all-files-access setup action in context, explains what it enables, and makes clear that the first index does not move or duplicate existing originals.
+- The keyboard toolbar uses explicit Type / Clips / Vault / language / Tools labels. The former dots-only menu is now a grouped, scrollable Tools panel with larger touch rows and screen-constrained sizing.
+- Key-down feedback is stronger, the held-key preview is larger, and the spacebar has a visible press response.
+- Next-word suggestions inspect only a short, transient window immediately before the cursor in safe text fields. This improves context after cursor movement and paste without saving the surrounding sentence.
+- The local EN / PL / TR vocabulary and context-pair baseline has been broadened, with regression tests for added examples.
+
+This remains an offline deterministic keyboard. It does **not** claim glide typing or Gboard-equivalent neural prediction. Physical touch accuracy, suggestion relevance, accessibility and layout still require acceptance on the Redmi Note 12 Pro 5G.
