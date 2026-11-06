@@ -224,3 +224,20 @@ Phase 2 implementation is in release line 0.2.0. The Room 1→2 migration adds r
 - [x] Route every personal-learning write through a safe-editor-field guard, including punctuation and Enter boundaries.
 - [x] Complete 0.12.1 hosted CI in run `42079070087`: unit tests, lint, debug/release APK assembly, signing verification and all three artifact uploads passed.
 - [ ] Complete physical Redmi privacy/prediction acceptance.
+
+
+## Phase 13 — usability reset (0.13.0)
+
+- [x] Reduce the primary app bottom navigation to Home, Library, Files, Organize and More.
+- [x] Move Installed apps and Settings & permissions into a dedicated More hub.
+- [x] Show an actionable all-files-access onboarding card on Home when permission is missing; explain that initial indexing preserves existing source files.
+- [x] Rename ambiguous keyboard Cmd / dots controls to Vault / Tools.
+- [x] Replace the flat keyboard Tools popup with grouped sections, larger rows and display-bounded scroll behavior.
+- [x] Increase held-key scale/depth feedback and popup preview size; add visible spacebar down/up feedback.
+- [x] Use transient pre-cursor context for next-word suggestions only in safe text fields.
+- [x] Broaden offline EN / PL / TR vocabulary and context examples.
+- [x] Add unit regression tests for new multilingual vocabulary and context pairs.
+- [ ] Confirm hosted CI passes tests, lint, APK assembly and signing verification on branch `ux-reset/0.13.0`.
+- [ ] Install the signed 0.13.0 APK as an in-place update on Redmi Note 12 Pro 5G.
+- [ ] Verify navigation discoverability, initial storage permission setup, keyboard touch accuracy, suggestions after cursor movement/paste, menu reachability, TalkBack, large text and landscape.
+- [ ] Only mark keyboard/app usability accepted after the physical-device checklist passes.
