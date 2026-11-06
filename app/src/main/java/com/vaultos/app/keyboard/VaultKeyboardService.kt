@@ -1034,7 +1034,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                         correcting -> {
                             if (!candidate.equals(lastCommittedWord, ignoreCase = true)) applySuggestion(candidate)
                         }
-                        else -> applyNextWordSuggestion(candidate)
+                        else -> applyNextWordSuggestion(candidate, contextualWord)
                     }
                 }
             }
@@ -1060,8 +1060,8 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
             .orEmpty()
     }
 
-    private fun applyNextWordSuggestion(value: String) {
-        learnWord(value, previousWordForPrediction)
+    private fun applyNextWordSuggestion(value: String, contextWord: String) {
+        learnWord(value, contextWord)
         currentInputConnection?.commitText("$value ", 1)
         typedWord.clear()
         lastCommittedWord = value
