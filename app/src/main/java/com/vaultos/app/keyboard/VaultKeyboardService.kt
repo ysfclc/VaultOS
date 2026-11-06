@@ -403,7 +403,6 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                                 view.scaleX = 0.94f
                                 view.scaleY = 0.94f
                                 view.translationZ = dp(5).toFloat()
-                                tapFeedback(view)
                             }
                             MotionEvent.ACTION_MOVE -> {
                                 val step = ((event.rawX - startX) / dp(18).toFloat()).toInt()
