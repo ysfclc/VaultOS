@@ -116,4 +116,4 @@ Added `LocalTypingMemoryInstrumentedTest` using AndroidX instrumentation and the
 
 A source review exposed that the shared normalizer rejected one-letter words. That prevented common context tokens such as English "I" from participating in learned pairs/trigrams. The minimum accepted word length is now one character; punctuation-only tokens remain rejected and the 32-character maximum remains unchanged.
 
-The Android build workflow now provisions an API 35 Google APIs emulator and runs `connectedDebugAndroidTest`. The instrumentation source and workflow are committed, but no emulator result is claimed until the new workflow run completes.
+The Android build workflow now provisions an API 35 Google APIs emulator and runs `connectedDebugAndroidTest`. The instrumentation source and workflow are committed. The first push-triggered run (162) and its retry both failed before GitHub exposed any job steps or downloadable logs; emulator execution is therefore unverified and no Android test/build pass is claimed.
