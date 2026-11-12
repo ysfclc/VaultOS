@@ -72,7 +72,7 @@ VaultOS is a local-first Android file manager and personal content library for A
 - Repository writes completed and source files re-fetched successfully.
 - Service uses the shared lazy typingMemory property; no per-render LocalTypingMemory(this) constructions remain.
 - Test source contains the added cases. Tests have not been executed in this session.
-- Hosted CI status is not confirmed through the available GitHub Actions inspection actions. No build, lint, test-pass or APK claim is made.
+- The commit's combined status exposes a failing Vercel check pointing to Vercel's build-rate limit; this is not an Android build result. No GitHub Actions Android run result is exposed by the available inspection actions. No Android build, lint, test-pass or APK claim is made.
 - No Redmi Note 12 Pro 5G device measurement was possible.
 
 **Not done / next**
