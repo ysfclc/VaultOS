@@ -1,5 +1,5 @@
 # State Ledger
-_Last updated: 2026-11-12 by Continuity Engineer — session 4_
+_Last updated: 2026-11-12 by Continuity Engineer — session 5_
 
 ## 1. Product snapshot
 VaultOS is a local-first Android file manager and personal content library for Android 9+. It combines a non-destructive index of existing shared storage with a private archive for incoming and newly detected content, a searchable/organizable Room catalogue, file operations, an optional capture keyboard, a DocumentsProvider, app/APK catalogue, and manual SAF backup/restore. “Complete” means data-safe operation, tested restore/migration compatibility, reliable everyday UX on the target Redmi Note 12 Pro 5G, and a reproducible signed release. Build success alone is not device acceptance.
@@ -12,7 +12,7 @@ VaultOS is a local-first Android file manager and personal content library for A
 | Unified library, search, organization | 🟡 partial | Implemented; database and UI integration coverage is thin |
 | File operations and ZIP safety | ✅ done | Core operations have 10 JVM regression tests; device UX acceptance remains separate |
 | Clipboard history and capture IME | 🟡 partial | Implemented; Android selected-IME boundary applies; physical app matrix open |
-| Keyboard suggestions | 🟡 partial | KBD-1/KBD-2 source implemented: cached typing memory, bounded async correction, stale-result gate, candidate-view reuse and opt-in EN/PL/TR trigram/two-word context; 24 JVM tests + 500-word benchmark harness added; Android suite/benchmark and Redmi acceptance open |
+| Keyboard suggestions | 🟡 partial | KBD-1/KBD-2 source implemented: cached typing memory, bounded async correction, stale-result gate, candidate-view reuse and opt-in EN/PL/TR trigram/two-word context; 24 JVM tests + six Android instrumentation tests and 500-word benchmark harness added; emulator execution/benchmark and Redmi acceptance open |
 | Metadata extraction | 🟡 partial | Parser tests exist; end-to-end extraction/provider behavior lacks integration tests |
 | Backup and restore | 🟡 partial | v1/v2 paths implemented; no automated round-trip, corruption, or migration test suite identified |
 | DocumentsProvider | 🟡 partial | Implemented; no provider interoperability test evidence |
@@ -23,7 +23,7 @@ VaultOS is a local-first Android file manager and personal content library for A
 ## 3. Currently in flight
 - 1.0.0 acceptance — automated CI is green; Redmi physical-device matrix and data migration/restore evidence remain open.
 - GOV-001 signing migration — blocked on replacement keystore/secrets and an update-continuity decision; preserve the existing key until migration is proven.
-- Keyboard V2 — KBD-1/KBD-2 source implementation is committed, including asynchronous bounded correction and stale-result rejection; hosted Android verification, benchmark execution, Android-backed learning tests and candidate UX remain; see docs/KEYBOARD-V2.md.
+- Keyboard V2 — KBD-1/KBD-2 source implementation is committed, including asynchronous bounded correction and stale-result rejection; hosted Android/instrumentation verification, benchmark execution and candidate UX remain; see docs/KEYBOARD-V2.md.
 - Test-coverage uplift — backup/restore, Room migrations, scan worker, clipboard repository, and DocumentsProvider currently lack identified automated integration tests.
 
 ## 4. Known gaps & stubs
@@ -45,8 +45,8 @@ VaultOS is a local-first Android file manager and personal content library for A
 - No checked-in Gradle wrapper was found. The local runtime used for this session has no mounted /testbed checkout; repository inspection/writes are through the connected GitHub repository.
 
 ## 6. Next three increments
-1. Verify the full Android build, lint and JVM suite; execute the 500-word correction benchmark and record p50/p95. Android-backed LocalTypingMemory persistence/opt-out/clear tests are still needed.
-2. Obtain hosted Android build/test/lint evidence and execute the 500-word benchmark; add Android-backed LocalTypingMemory persistence/opt-out/clear tests.
+1. Verify the full Android build, lint, JVM suite and API 35 instrumentation suite; execute the 500-word correction benchmark and record p50/p95.
+2. Obtain hosted Android build/test/lint/instrumentation evidence and execute the 500-word benchmark; fix any emulator or device-specific failures.
 3. KBD-3 candidate UX and KBD-4 EN/PL/TR Redmi Note 12 Pro 5G acceptance. Resume backup/restore integrity tests after the keyboard predictor has a verified baseline.
 
 ## 7. Open questions for the human
@@ -83,7 +83,7 @@ VaultOS is a local-first Android file manager and personal content library for A
 
 **Not done / next**
 1. Obtain the push-triggered Android Actions run evidence and fix any build/test/lint errors; run the 500-word benchmark and record output.
-2. Add Android-backed LocalTypingMemory tests for opt-in, trigram persistence, clear/reset and v1 bigram compatibility.
+2. Add Android-backed LocalTypingMemory tests for opt-in, trigram persistence, clear/reset and v1 bigram compatibility. (Implemented in session 5; execution pending.)
 3. Move candidate ranking off the IME main thread with generation-token stale-result rejection; then proceed to KBD-3 visual/interaction work and KBD-4 Redmi acceptance.
 
 **Open questions**
@@ -92,7 +92,7 @@ VaultOS is a local-first Android file manager and personal content library for A
 **Risks / landmines**
 - Preserve existing SharedPreferences word/bigram keys and JSON values; the new trigram key is additive.
 - Learning remains opt-in. Only safe text fields are read; at most 120 characters before the cursor are examined transiently. No sentence/editor text is persisted and no network processing was added.
-- Candidate correction and prediction ranking still execute synchronously in the IME service. KBD-1 reduces repeated work but does not yet prove typing latency or remove all main-thread computation.
+- Local fuzzy correction ranking now runs asynchronously; contextual prediction and other small candidate assembly work still execute on the IME thread. This does not yet prove typing latency or remove all main-thread computation.
 - Do not mark the keyboard complete until Android tests, benchmark, async stale-result protection and Redmi device acceptance are recorded.
 
 
@@ -125,3 +125,33 @@ VaultOS is a local-first Android file manager and personal content library for A
 
 **Risk note**
 - The worker only performs pure correction ranking against an immutable word-list snapshot. All `InputConnection` reads/writes and all candidate view updates remain on the IME main thread. Do not mark the keyboard complete without hosted verification and Redmi acceptance.
+
+
+## Session 5 — private typing-memory instrumentation (2026-11-12)
+
+**Done**
+- Added six Android-backed tests using AndroidX instrumentation and the real app sandbox SharedPreferences implementation.
+- Covered opt-in default, word/bigram/trigram persistence across new LocalTypingMemory instances, opt-out without data deletion, clear/reset while preserving the opt-in choice, EN/PL/TR isolation and legacy v1 word/bigram JSON fallback.
+- Source review found that the shared normalizer rejected one-letter words, preventing common context tokens such as English "I" from contributing to learned bigrams/trigrams. Changed the minimum accepted word length to one; punctuation-only and over-32-character tokens remain rejected.
+- Added AndroidX instrumentation dependencies and configured the Android Actions workflow to run `connectedDebugAndroidTest` on an API 35 Google APIs emulator.
+
+**Files changed**
+- `app/src/androidTest/java/com/vaultos/app/keyboard/LocalTypingMemoryInstrumentedTest.kt` — six persistence/privacy/compatibility tests.
+- `app/src/main/java/com/vaultos/app/keyboard/LocalTypingMemory.kt` — one-letter context token support.
+- `app/build.gradle.kts` — AndroidX test dependencies.
+- `.github/workflows/android-build.yml` — API 35 emulator instrumentation step.
+- `docs/TASKS.md`, `docs/KEYBOARD-V2.md`, `docs/PROJECT-STATUS.md` — delivery and verification state.
+
+**Verification**
+- Re-fetched source, tests, Gradle configuration and workflow from GitHub to verify committed content.
+- Confirmed the instrumentation workflow step follows the existing unit-test/lint/APK build step and runs `connectedDebugAndroidTest`.
+- No Android emulator run has completed in the evidence available to this session. No Android build, instrumentation, lint, APK or benchmark pass is claimed.
+- No physical Redmi Note 12 Pro 5G acceptance is claimed.
+
+**Next**
+1. Inspect the API 35 Android Actions run; fix compilation, emulator or instrumentation failures.
+2. Run and record the 500-word correction benchmark p50/p95.
+3. Add any missing editor-safe-field integration tests, then move to KBD-3 candidate UX only after the verified keyboard baseline.
+
+**Risk note**
+- Existing `words_<lang>` and `pairs_<lang>` preference keys and JSON values remain unchanged. Trigram storage is additive. Learning remains opt-in; clearing personal typing memory preserves the opt-in toggle but removes all stored personal models.
