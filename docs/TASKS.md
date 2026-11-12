@@ -255,7 +255,8 @@ The 0.13.0 keyboard is a functional baseline, not a complete predictive experien
 - [x] KBD-1: Reuse candidate strip cells and separators instead of rebuilding the entire row for each keystroke.
 - [x] KBD-1: Bound local fuzzy correction to 120 length-compatible candidates; prioritize likely same-initial matches and use bounded-memory edit distance with early exit.
 - [x] KBD-1: Add pure-engine correction limit, transposition and low-noise regression tests (execution pending hosted CI).
-- [ ] KBD-1: Add a repeatable pure-engine microbenchmark and record before/after measurements.
+- [x] KBD-1: Add a repeatable pure-engine microbenchmark for 500 personal words (p50/p95 output; no flaky timing threshold).
+- [ ] KBD-1: Execute benchmark in hosted CI and record output; do not claim device latency improvement without Redmi measurement.
 - [ ] KBD-2: Add opt-in bounded trigram/context learning without breaking existing word/bigram preferences.
 - [ ] KBD-2: Rank next-word candidates from a short transient two-word context, with EN/PL/TR isolation.
 - [ ] KBD-2: Test compatibility, clear/disable behavior, unknown contexts, ties and stale async result rejection.
