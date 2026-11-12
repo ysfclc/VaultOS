@@ -12,7 +12,7 @@ VaultOS is a local-first Android file manager and personal content library for A
 | Unified library, search, organization | 🟡 partial | Implemented; database and UI integration coverage is thin |
 | File operations and ZIP safety | ✅ done | Core operations have 10 JVM regression tests; device UX acceptance remains separate |
 | Clipboard history and capture IME | 🟡 partial | Implemented; Android selected-IME boundary applies; physical app matrix open |
-| Keyboard suggestions | 🟡 partial | KBD-1 source changes committed: cached IME-lifetime typing memory and bounded correction ranking; new tests and hosted verification pending; device latency/prediction acceptance open |
+| Keyboard suggestions | 🟡 partial | KBD-1 source changes committed: cached IME-lifetime typing memory, bounded correction ranking and candidate-view reuse; regression tests and 500-word benchmark harness added; execution/hosted verification pending; device latency/prediction acceptance open |
 | Metadata extraction | 🟡 partial | Parser tests exist; end-to-end extraction/provider behavior lacks integration tests |
 | Backup and restore | 🟡 partial | v1/v2 paths implemented; no automated round-trip, corruption, or migration test suite identified |
 | DocumentsProvider | 🟡 partial | Implemented; no provider interoperability test evidence |
@@ -45,7 +45,7 @@ VaultOS is a local-first Android file manager and personal content library for A
 - No checked-in Gradle wrapper was found. The local runtime used for this session has no mounted /testbed checkout; repository inspection/writes are through the connected GitHub repository.
 
 ## 6. Next three increments
-1. Finish KBD-1: obtain hosted CI evidence, add a repeatable pure-engine microbenchmark, and record its results; no device-latency claim until Redmi measurement.
+1. Finish KBD-1: obtain hosted CI evidence, execute the 500-word correction benchmark, and record p50/p95; no device-latency claim until Redmi measurement.
 2. KBD-2: add opt-in, bounded contextual trigram learning while preserving existing word/bigram data and privacy boundaries.
 3. KBD-3/KBD-4: refine candidate UX, then measure EN/PL/TR latency and prediction usefulness on the Redmi Note 12 Pro 5G. Resume backup/restore integrity tests after the keyboard predictor has a verified baseline.
 
@@ -59,27 +59,28 @@ VaultOS is a local-first Android file manager and personal content library for A
 - Implemented KBD-1 source changes: one cached LocalTypingMemory per IME service lifetime; parsed word/pair snapshots and dictionary word list cached in memory and invalidated on preference changes.
 - Bounded local correction ranking to 120 length-compatible candidates, prioritized same-initial candidates with a fallback pool, and replaced full edit-distance matrices with bounded-memory Damerau–Levenshtein plus early exit.
 - Reused the three candidate cells and separators across keystrokes instead of rebuilding the candidate strip each time.
-- Added correction limit, adjacent-transposition and low-noise regression test cases.
+- Added correction limit, adjacent-transposition and low-noise regression test cases, plus a repeatable 500-word JVM benchmark (150 warmups, 1,000 samples, p50/p95 output).
 
 **State changed**
 - app/src/main/java/com/vaultos/app/keyboard/LocalTypingMemory.kt — parsed SharedPreferences snapshots and dictionary list caching.
 - app/src/main/java/com/vaultos/app/keyboard/KeyboardSuggestionEngine.kt — bounded correction candidate pool and bounded-memory distance.
 - app/src/main/java/com/vaultos/app/keyboard/VaultKeyboardService.kt — reuse typing-memory instance for the IME lifetime and update candidate strip views in place.
 - app/src/test/java/com/vaultos/app/keyboard/KeyboardSuggestionEngineTest.kt — new correction regression cases.
+- app/src/test/java/com/vaultos/app/keyboard/KeyboardSuggestionEngineBenchmarkTest.kt — repeatable correction latency benchmark.
 - docs/KEYBOARD-V2.md, docs/TASKS.md, docs/PROJECT-STATUS.md — implementation and remaining verification recorded.
 - docs/STATE.md — current ledger and handoff.
 
 **Verified**
 - Repository writes completed and source files re-fetched successfully.
 - Service uses the shared lazy typingMemory property; no per-render LocalTypingMemory(this) constructions remain.
-- Test source contains the added cases. Tests have not been executed in this session.
+- Test source contains the added cases and benchmark harness. Neither tests nor benchmark have been executed in this session.
 - The code commit's combined status exposes a failing Vercel check pointing to Vercel's build-rate limit; this is not an Android build result. No GitHub Actions Android run result is exposed by the available inspection actions. No Android build, lint, test-pass or APK claim is made.
 - No Redmi Note 12 Pro 5G device measurement was possible.
 
 **Not done / next**
 1. Confirm the automatically triggered GitHub Actions run for the code changes; fix any compile/test/lint failures.
-2. Add a repeatable pure-engine microbenchmark and record baseline/after-change measurements.
-3. Continue KBD-1 only if profiling identifies remaining hot-path work; then proceed to KBD-2 two-word contextual prediction and bounded trigram learning.
+2. Execute the 500-word correction benchmark in hosted CI and record p50/p95; a valid pre-change comparison is not available yet.
+3. Then proceed to KBD-2 two-word contextual prediction and bounded trigram learning.
 
 **Open questions**
 - None blocking for code review/CI. Physical Redmi acceptance still requires the user's device.
