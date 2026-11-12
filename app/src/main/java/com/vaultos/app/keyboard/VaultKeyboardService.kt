@@ -948,22 +948,60 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
 
     private fun renderSuggestions() {
         val row = suggestionRow ?: return
-        row.removeAllViews()
-        if (!isSafeForSuggestions(currentInputEditorInfo)) {
-            val hint = TextView(this).apply {
-                text = selectedLanguageLabel()
-                textSize = 11f
-                gravity = Gravity.CENTER
-                setTextColor(if (keyboardThemeDark()) Color.rgb(115, 127, 143) else Color.rgb(130, 141, 154))
+
+        // Keep the three candidate cells and separators alive across keystrokes.
+        // Only their content/visibility changes; avoid tearing down and rebuilding
+        // the whole candidate strip for every character.
+        if (row.childCount != 5) {
+            row.removeAllViews()
+            repeat(3) { index ->
+                row.addView(TextView(this).apply {
+                    gravity = Gravity.CENTER
+                    maxLines = 1
+                    ellipsize = android.text.TextUtils.TruncateAt.END
+                    setPadding(dp(5), 0, dp(5), 0)
+                }, LinearLayout.LayoutParams(0, -1, 1f))
+                if (index < 2) {
+                    row.addView(View(this).apply {
+                        setBackgroundColor(if (keyboardThemeDark()) Color.rgb(53, 62, 74) else Color.rgb(205, 213, 222))
+                    }, LinearLayout.LayoutParams(dp(1), dp(20)).apply {
+                        gravity = Gravity.CENTER_VERTICAL
+                    })
+                }
             }
-            row.addView(hint, LinearLayout.LayoutParams(-1, -1))
+        }
+        val cells = listOf(
+            row.getChildAt(0) as TextView,
+            row.getChildAt(2) as TextView,
+            row.getChildAt(4) as TextView
+        )
+        val separators = listOf(row.getChildAt(1), row.getChildAt(3))
+
+        fun showHint() {
+            cells.forEachIndexed { index, cell ->
+                cell.visibility = if (index == 0) View.VISIBLE else View.GONE
+                cell.text = if (index == 0) selectedLanguageLabel() else ""
+                cell.textSize = 11f
+                cell.letterSpacing = 0.04f
+                cell.typeface = android.graphics.Typeface.DEFAULT
+                cell.gravity = Gravity.CENTER
+                cell.background = null
+                cell.setTextColor(if (keyboardThemeDark()) Color.rgb(143, 155, 171) else Color.rgb(112, 124, 139))
+                cell.setOnClickListener(null)
+                cell.setOnLongClickListener(null)
+            }
+            separators.forEach { it.visibility = View.GONE }
+        }
+
+        if (!isSafeForSuggestions(currentInputEditorInfo)) {
+            showHint()
             return
         }
+
         val typed = typedWord.toString()
-        val memory = typingMemory
         val language = selectedLanguageCode()
-        val learnedVocabulary = memory.dictionaryWords(language)
-        val learnedCompletions = if (typed.isNotBlank()) memory.completions(language, typed, 5) else emptyList()
+        val learnedVocabulary = typingMemory.dictionaryWords(language)
+        val learnedCompletions = if (typed.isNotBlank()) typingMemory.completions(language, typed, 5) else emptyList()
         val localCorrections = if (typed.isNotBlank() && currentSuggestions.isEmpty()) {
             KeyboardSuggestionEngine.nearbyCorrections(language, typed, additionalWords = learnedVocabulary)
         } else emptyList()
@@ -976,69 +1014,62 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                 learnedCompletions + KeyboardSuggestionEngine.completePrefix(language, typed, additionalWords = learnedCompletions)).distinct().take(3)
             correcting -> (listOf(lastCommittedWord) + currentSuggestions).distinct().take(3)
             contextualWord.isNotBlank() ->
-                (memory.nextWords(language, contextualWord) +
+                (typingMemory.nextWords(language, contextualWord) +
                     KeyboardSuggestionEngine.nextWordSuggestions(language, contextualWord)).distinct().take(3)
             else -> emptyList()
         }
 
         if (candidates.isEmpty()) {
-            val hint = TextView(this).apply {
-                text = selectedLanguageLabel()
-                textSize = 11f
-                letterSpacing = 0.04f
-                gravity = Gravity.CENTER
-                setTextColor(if (keyboardThemeDark()) Color.rgb(143, 155, 171) else Color.rgb(112, 124, 139))
-            }
-            row.addView(hint, LinearLayout.LayoutParams(-1, -1))
+            showHint()
             return
         }
 
-        candidates.forEachIndexed { index, candidate ->
-            if (index > 0) {
-                row.addView(View(this).apply {
-                    setBackgroundColor(if (keyboardThemeDark()) Color.rgb(53, 62, 74) else Color.rgb(205, 213, 222))
-                }, LinearLayout.LayoutParams(dp(1), dp(20)).apply {
-                    gravity = Gravity.CENTER_VERTICAL
-                })
+        cells.forEachIndexed { index, item ->
+            val candidate = candidates.getOrNull(index)
+            item.visibility = if (candidate == null) View.GONE else View.VISIBLE
+            if (candidate == null) {
+                item.text = ""
+                item.setOnClickListener(null)
+                item.setOnLongClickListener(null)
+                return@forEachIndexed
             }
-            val isCurrent = (typed.isNotBlank() || correcting) && candidate.equals(typed.ifBlank { lastCommittedWord }, ignoreCase = true)
-            val item = TextView(this).apply {
-                text = candidate
-                textSize = if (isCurrent) 13f else 13.5f
-                typeface = if (isCurrent) android.graphics.Typeface.DEFAULT_BOLD else android.graphics.Typeface.DEFAULT
-                gravity = Gravity.CENTER
-                maxLines = 1
-                ellipsize = android.text.TextUtils.TruncateAt.END
-                setTextColor(
-                    when {
-                        isCurrent && keyboardThemeDark() -> Color.rgb(177, 244, 211)
-                        isCurrent -> Color.rgb(27, 105, 75)
-                        keyboardThemeDark() -> Color.rgb(226, 232, 240)
-                        else -> Color.rgb(45, 55, 68)
-                    }
-                )
-                setPadding(dp(5), 0, dp(5), 0)
-                if (isCurrent) background = suggestionPillBackground()
-                setOnLongClickListener {
-                    if (typed.isNotBlank() && candidate.equals(typed, ignoreCase = true)) {
-                        LocalTypingMemory(this@VaultKeyboardService).addToDictionary(selectedLanguageCode(), typed)
-                        Toast.makeText(this@VaultKeyboardService, "Added to personal dictionary", Toast.LENGTH_SHORT).show()
-                        true
-                    } else false
+
+            val isCurrent = (typed.isNotBlank() || correcting) &&
+                candidate.equals(typed.ifBlank { lastCommittedWord }, ignoreCase = true)
+            item.text = candidate
+            item.textSize = if (isCurrent) 13f else 13.5f
+            item.typeface = if (isCurrent) android.graphics.Typeface.DEFAULT_BOLD else android.graphics.Typeface.DEFAULT
+            item.gravity = Gravity.CENTER
+            item.setTextColor(
+                when {
+                    isCurrent && keyboardThemeDark() -> Color.rgb(177, 244, 211)
+                    isCurrent -> Color.rgb(27, 105, 75)
+                    keyboardThemeDark() -> Color.rgb(226, 232, 240)
+                    else -> Color.rgb(45, 55, 68)
                 }
-                setOnClickListener {
-                    when {
-                        typed.isNotBlank() -> {
-                            if (candidate.equals(typed, ignoreCase = true)) commitSpace() else applySuggestion(candidate)
-                        }
-                        correcting -> {
-                            if (!candidate.equals(lastCommittedWord, ignoreCase = true)) applySuggestion(candidate)
-                        }
-                        else -> applyNextWordSuggestion(candidate, contextualWord)
+            )
+            item.background = if (isCurrent) suggestionPillBackground() else null
+            item.setOnLongClickListener {
+                if (typed.isNotBlank() && candidate.equals(typed, ignoreCase = true)) {
+                    typingMemory.addToDictionary(language, typed)
+                    Toast.makeText(this@VaultKeyboardService, "Added to personal dictionary", Toast.LENGTH_SHORT).show()
+                    true
+                } else false
+            }
+            item.setOnClickListener {
+                when {
+                    typed.isNotBlank() -> {
+                        if (candidate.equals(typed, ignoreCase = true)) commitSpace() else applySuggestion(candidate)
                     }
+                    correcting -> {
+                        if (!candidate.equals(lastCommittedWord, ignoreCase = true)) applySuggestion(candidate)
+                    }
+                    else -> applyNextWordSuggestion(candidate, contextualWord)
                 }
             }
-            row.addView(item, LinearLayout.LayoutParams(0, -1, 1f))
+        }
+        separators.forEachIndexed { index, separator ->
+            separator.visibility = if (candidates.size > index + 1) View.VISIBLE else View.GONE
         }
     }
 
