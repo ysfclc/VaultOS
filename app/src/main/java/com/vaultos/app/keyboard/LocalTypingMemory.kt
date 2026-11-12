@@ -102,15 +102,23 @@ class LocalTypingMemory(context: Context) {
                 .take(limit)
                 .map { it.key.substringAfterLast(SEPARATOR) }
                 .toList()
-            if (contextual.isNotEmpty()) return contextual
+            val prefix = "$previous$SEPARATOR"
+            val adjacent = read(pairKey(code)).entries.asSequence()
+                .filter { it.key.startsWith(prefix) }
+                .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key })
+                .take(limit)
+                .map { it.key.substringAfter(SEPARATOR) }
+                .toList()
+            return ContextualPredictionRanker.rank(contextual, adjacent, limit)
         }
         val prefix = "$previous$SEPARATOR"
-        return read(pairKey(code)).entries.asSequence()
+        val adjacent = read(pairKey(code)).entries.asSequence()
             .filter { it.key.startsWith(prefix) }
             .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key })
             .take(limit)
             .map { it.key.substringAfter(SEPARATOR) }
             .toList()
+        return ContextualPredictionRanker.rank(emptyList(), adjacent, limit)
     }
 
     fun clear() {
