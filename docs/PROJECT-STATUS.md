@@ -270,4 +270,4 @@ Implemented:
 - Added AndroidX instrumentation dependencies and an API 35 Google APIs emulator step to the Android Actions workflow. The existing build/test/lint/signed APK steps remain in place.
 - Fixed a context-learning edge case: one-letter words such as English "I" are now valid learned context tokens, while punctuation-only and over-32-character values remain rejected.
 
-Verification status: test source, Gradle dependencies and workflow were committed and re-fetched. The API 35 instrumentation run has not yet been observed; do not claim tests, Android build, lint or APK succeeded until Actions evidence is available. Physical Redmi acceptance remains open.
+Verification status: test source, Gradle dependencies and workflow were committed and re-fetched. GitHub Actions run [162](https://github.com/ysfclc/VaultOS/actions/runs/43226760701) and its retry failed before job steps or downloadable logs were exposed, so the cause is not yet diagnosable from the available evidence and API 35 instrumentation remains unverified. Do not claim tests, Android build, lint or APK succeeded. Physical Redmi acceptance remains open.
