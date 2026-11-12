@@ -42,8 +42,7 @@ VaultOS is a local-first Android file manager and personal content library. It c
 - [x] Full Gradle build, JVM tests, lint and signed 0.13.0 release APK: verified on Vercel Sandbox using JDK 17, Gradle 8.9, SDK 35 / Build Tools 35.0.0 (see Session 8 in docs/STATE.md).
 - [x] Android instrumentation test APK compiles; six Android-backed tests are present.
 - [ ] Execute Android instrumentation on an API 35 emulator: Vercel sandbox had no /dev/kvm; GitHub hosted runner allocation remains blocked.
-- [ ] Physical Redmi Note 12 Pro 5G acceptance remains separate and mandatory.
-- [ ] Physical Redmi Note 12 Pro 5G test: must be completed after installing the Actions APK. See `DEVICE-TEST-PLAN.md`.
+- [ ] Physical Redmi Note 12 Pro 5G acceptance remains separate and mandatory after installing the Vercel-built APK. See `DEVICE-TEST-PLAN.md`.
 
 ## Release acceptance criteria
 
