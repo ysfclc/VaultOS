@@ -175,6 +175,43 @@ object KeyboardSuggestionEngine {
         )
     )
 
+    private val contextNextWords = mapOf(
+        "en" to mapOf(
+            "i\u001fam" to listOf("not", "going", "sure"),
+            "thank\u001fyou" to listOf("for", "so", "very"),
+            "i\u001fthink" to listOf("that", "it", "we"),
+            "looking\u001fforward" to listOf("to")
+        ),
+        "pl" to mapOf(
+            "nie\u001fwiem" to listOf("czy", "jak", "co"),
+            "w\u001ftym" to listOf("momencie", "czasie", "przypadku"),
+            "dzień\u001fdobry" to listOf("wszystkim", "bardzo")
+        ),
+        "tr" to mapOf(
+            "ben\u001fde" to listOf("öyle", "bugün", "istiyorum"),
+            "çok\u001fteşekkür" to listOf("ederim", "ler"),
+            "bir\u001fşey" to listOf("söylemek", "var", "diyeceğim")
+        )
+    )
+
+    fun nextWordSuggestions(
+        language: String,
+        previousPreviousWord: String,
+        previousWord: String,
+        limit: Int = 3
+    ): List<String> {
+        if (limit <= 0) return emptyList()
+        val code = languageCode(language)
+        val wordLocale = locale(code)
+        val previousPrevious = previousPreviousWord.trim().lowercase(wordLocale)
+        val previous = previousWord.trim().lowercase(wordLocale)
+        if (previousPrevious.isNotBlank() && previous.isNotBlank()) {
+            val contextual = contextNextWords[code]?.get("$previousPrevious\u001f$previous").orEmpty()
+            if (contextual.isNotEmpty()) return contextual.distinct().take(limit)
+        }
+        return nextWordSuggestions(code, previous, limit)
+    }
+
     fun completePrefix(language: String, prefix: String, limit: Int = 3, additionalWords: List<String> = emptyList()): List<String> {
         val normalized = prefix.trim().lowercase(locale(language))
         if (normalized.length < 2 || limit <= 0) return emptyList()
