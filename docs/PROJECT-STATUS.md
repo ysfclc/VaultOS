@@ -39,7 +39,10 @@ VaultOS is a local-first Android file manager and personal content library. It c
 - [x] Kotlin compiler successfully compiled the standalone classifier source.
 - [x] Standalone classifier smoke test passed 10 classification cases and filename sanitization.
 - [x] Android manifest and resource XML parse checks are part of the delivery verification.
-- [ ] Full Gradle unit-test + lint + APK build: requires Android SDK Platform 35 and Gradle 8.9. The current build container has JDK 21 but no Android SDK/Gradle installation and cannot resolve external hosts, so a local APK cannot be truthfully marked verified here. The included GitHub Actions workflow provisions the toolchain and performs this build.
+- [x] Full Gradle build, JVM tests, lint and signed 0.13.0 release APK: verified on Vercel Sandbox using JDK 17, Gradle 8.9, SDK 35 / Build Tools 35.0.0 (see Session 8 in docs/STATE.md).
+- [x] Android instrumentation test APK compiles; six Android-backed tests are present.
+- [ ] Execute Android instrumentation on an API 35 emulator: Vercel sandbox had no /dev/kvm; GitHub hosted runner allocation remains blocked.
+- [ ] Physical Redmi Note 12 Pro 5G acceptance remains separate and mandatory.
 - [ ] Physical Redmi Note 12 Pro 5G test: must be completed after installing the Actions APK. See `DEVICE-TEST-PLAN.md`.
 
 ## Release acceptance criteria
@@ -271,3 +274,26 @@ Implemented:
 - Fixed a context-learning edge case: one-letter words such as English "I" are now valid learned context tokens, while punctuation-only and over-32-character values remain rejected.
 
 Verification status: test source and Gradle dependencies were committed and re-fetched. The workflow now separates signed APK publishing from API 35 instrumentation. Run [163](https://github.com/ysfclc/VaultOS/actions/runs/43261340442) failed both independent jobs before steps ran: both job records report runner_id=0, an empty runner_name, and steps=[]. This establishes a hosted-runner allocation failure in the observed run; it does not identify the account-level cause. Android build, lint, APK and instrumentation remain unverified for the latest source. Physical Redmi acceptance remains open.
+
+## Session 8 — Vercel Android build fallback (2026-11-12)
+
+**Source and build environment**
+- Built the current GitHub main tree at commit 056c93d044e6c2b398a96adfd923cd02c0390891, not the uploaded source archive.
+- Provisioned a Vercel Linux Sandbox in fra1 with JDK 17, Gradle 8.9, Android SDK Platform 35 and Build Tools 35.0.0.
+- The tracked signing keystore was recovered from the archived source copy only after its Git blob SHA was verified to exactly match the current repository blob (cc869a794f96e163048167ded34fb516033c0bae). The release APK therefore uses the repository's existing signing identity; no new signing lineage was created.
+
+**Verification results**
+- clean testDebugUnitTest lintDebug assembleDebug: BUILD SUCCESSFUL.
+- Forced a fresh JVM test execution with --rerun-tasks :app:testDebugUnitTest: 43 tests, 0 failures, 0 errors, 0 skipped.
+- 500-personal-word correction benchmark: p50 105 μs, p95 160 μs on the Vercel build host. This is a host microbenchmark, not a Redmi-device latency measurement.
+- :app:assembleDebugAndroidTest: BUILD SUCCESSFUL; the six Android-backed SharedPreferences tests compile.
+- :app:assembleRelease: BUILD SUCCESSFUL; release APK is 43,524,110 bytes, package com.vaultos.app, version 0.13.0 / code 14, target SDK 35. apksigner verify passed and the APK SHA-256 is 611ce20563b8836700a2e2c7a12b5d303910fccd9113c11e3e1967c5e649d435.
+- lintDebug and lintVitalRelease passed. The debug lint report contains 25 warnings and no errors.
+
+**Remaining verification**
+- The Vercel sandbox has no /dev/kvm, so connectedDebugAndroidTest could not be executed there. The Android instrumentation APK compiled, but its six tests remain unexecuted.
+- GitHub run 163 still documents the separate hosted-runner allocation problem. Vercel provides a working build fallback; it does not repair GitHub Actions runner provisioning.
+- Redmi Note 12 Pro 5G physical acceptance remains open. Do not infer real-device keyboard latency or everyday UX from the host benchmark.
+
+**Source archive warning**
+- incoming/VaultOS-source.zip contains an older 0.6.0 / versionCode 6 snapshot while the current repository is 0.13.0 / versionCode 14. It was deliberately excluded from this build. Refresh or retire that archive before any future ZIP-import push; do not treat it as current source.
