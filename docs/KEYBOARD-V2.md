@@ -58,9 +58,10 @@ Extract candidate scoring and context selection into a pure Kotlin component. Un
 - [ ] Execute the benchmark on hosted CI and record its output; compare against a pre-change baseline only if the prior source can be built reproducibly. Do not claim device latency improvement until measured on the Redmi.
 
 ### KBD-2 — Context-aware prediction
-- Add opt-in, bounded trigram learning while retaining v1 bigram compatibility.
-- Use a short, transient two-word context to rank predictions.
-- Add migration/compatibility and language-isolation tests.
+- [x] Add opt-in, bounded trigram learning (1,200 contexts per language) while retaining v1 bigram compatibility.
+- [x] Use a short, transient two-word context from the active safe editor to rank predictions, with one-word fallback.
+- [x] Add built-in EN/PL/TR two-word phrase priors and language-specific regression tests.
+- [ ] Add Android-backed tests for trigram persistence, opt-out, clear/reset and v1 bigram fallback.
 
 ### KBD-3 — Candidate UX
 - Improve candidate strip hierarchy and interactions.
