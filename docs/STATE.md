@@ -178,3 +178,27 @@ VaultOS is a local-first Android file manager and personal content library for A
 
 **Risk note**
 - The known-good hosted run predates the new emulator step. It validates the previous build pipeline only, not the current instrumentation workflow.
+
+## Session 7 — Split build and emulator CI; runner allocation evidence (2026-11-12)
+
+**Done**
+- Split the former single Android workflow into independent jobs: the existing signed build/test/lint/APK publication job and a read-only API 35 instrumentation job. The emulator suite can no longer block APK publication once the build runner is available.
+- Kept the API 35 Google APIs emulator configuration and connectedDebugAndroidTest command unchanged.
+- Set the instrumentation job's token permission to contents: read; the APK publishing job retains the workflow's required contents: write.
+- The workflow update triggered run [163](https://github.com/ysfclc/VaultOS/actions/runs/43261340442).
+
+**Verification and diagnosis**
+- Run 163 created both expected jobs: Test, lint and build APK and Android API 35 instrumentation.
+- Both jobs failed approximately two seconds after creation, before any step executed.
+- GitHub's raw job records for both jobs show runner_id: 0, empty runner_name, and steps: []. This is direct evidence that no hosted runner was assigned to either job in this run.
+- This is not a Gradle, Kotlin, dependency, test assertion or emulator-boot failure based on the available evidence. The underlying GitHub account/hosted-runner cause is not exposed by the available API.
+- The earlier known-good run 42261718395 had a real hosted runner and completed its 13 build steps, but predates the instrumentation job split.
+- No latest-source build, lint, unit test, instrumentation, benchmark or APK success is claimed.
+
+**Next**
+1. Restore GitHub-hosted runner allocation for this repository/account (inspect Actions usage/limits and GitHub service status in the repository owner UI).
+2. Re-run run 163 after runner allocation is available. Confirm build job publishes signed APKs independently and instrumentation job executes all six Android-backed tests.
+3. Record the correction benchmark p50/p95, then continue KBD-3 and Redmi device acceptance.
+
+**Risk note**
+- The CI architecture now isolates build delivery from emulator verification, but both still require GitHub-hosted runner capacity. No runner was allocated in run 163.
