@@ -235,3 +235,15 @@ Implemented in source:
 Verification: source changes are committed. Hosted unit tests/lint/build have not yet been confirmed from the available GitHub Actions inspection surface; no test-pass or APK claim is made. The Redmi Note 12 Pro 5G latency and typing-quality measurements remain pending. KBD-1's repeatable microbenchmark is still open.
 
 - Added `KeyboardSuggestionEngineBenchmarkTest`: repeatable JVM correction benchmark with 500 personal words, 150 warmups, 1,000 samples and p50/p95 output. Execution and measurement are pending; no performance result is claimed.
+
+
+## Keyboard V2 — KBD-2 contextual prediction implementation (2026-11-12)
+
+Implemented in source:
+
+- `LocalTypingMemory` now learns bounded three-word context counts only while private learning is enabled, preserving the existing word and adjacent-pair keys and limits. Trigram storage is capped at 1,200 contexts per language and cleared with personal typing data.
+- The keyboard tracks a transient two-word context, reads at most 120 characters before the cursor in safe text editors, and refreshes its fallback context after cursor navigation. It does not store editor text or sentences.
+- The predictor prefers a learned trigram for the exact two-word context, then falls back to existing v1 bigram counts. Static phrase priors are separated by EN/PL/TR locale.
+- Added pure-engine tests for two-word context in all three languages and fallback when the two-word context is unknown.
+
+Verification remains pending: no Android-backed persistence tests or executed Android/JVM suite are available in this session. The build and physical Redmi acceptance gates remain open.
