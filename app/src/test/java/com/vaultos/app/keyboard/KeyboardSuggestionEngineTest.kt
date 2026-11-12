@@ -111,4 +111,35 @@ class KeyboardSuggestionEngineTest {
     fun unrelatedInputDoesNotProduceCorrectionNoise() {
         assertTrue(KeyboardSuggestionEngine.nearbyCorrections("en", "qzxvplmok").isEmpty())
     }
+
+    @Test
+    fun exactTwoWordContextOutranksAdjacentWordFallback() {
+        assertEquals(
+            listOf("tomorrow", "later"),
+            ContextualPredictionRanker.rank(
+                trigramCandidates = listOf("tomorrow", "later", "tomorrow"),
+                bigramCandidates = listOf("today", "soon")
+            )
+        )
+    }
+
+    @Test
+    fun unknownTwoWordContextFallsBackToV1BigramCandidates() {
+        assertEquals(
+            listOf("today", "soon"),
+            ContextualPredictionRanker.rank(
+                trigramCandidates = emptyList(),
+                bigramCandidates = listOf("today", "soon")
+            )
+        )
+    }
+
+    @Test
+    fun contextualPredictionHonorsCandidateLimit() {
+        assertEquals(
+            listOf("one", "two"),
+            ContextualPredictionRanker.rank(listOf("one", "two", "three"), emptyList(), limit = 2)
+        )
+        assertTrue(ContextualPredictionRanker.rank(listOf("one"), emptyList(), limit = 0).isEmpty())
+    }
 }
