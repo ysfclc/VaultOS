@@ -12,18 +12,18 @@ VaultOS is a local-first Android file manager and personal content library for A
 | Unified library, search, organization | 🟡 partial | Implemented; database and UI integration coverage is thin |
 | File operations and ZIP safety | ✅ done | Core operations have 10 JVM regression tests; device UX acceptance remains separate |
 | Clipboard history and capture IME | 🟡 partial | Implemented; Android selected-IME boundary applies; physical app matrix open |
-| Keyboard suggestions | 🟡 partial | KBD-1/KBD-2 source implemented: cached typing memory, bounded async correction, stale-result gate, candidate-view reuse and opt-in EN/PL/TR trigram/two-word context; 24 JVM tests + six Android instrumentation tests and 500-word benchmark harness added; emulator execution/benchmark and Redmi acceptance open |
+| Keyboard suggestions | 🟡 partial | KBD-1/KBD-2 source implemented; 43 JVM tests pass; 500-word host benchmark p50/p95=105/160 μs; six Android instrumentation tests compile but await emulator execution; Redmi acceptance open |
 | Metadata extraction | 🟡 partial | Parser tests exist; end-to-end extraction/provider behavior lacks integration tests |
 | Backup and restore | 🟡 partial | v1/v2 paths implemented; no automated round-trip, corruption, or migration test suite identified |
 | DocumentsProvider | 🟡 partial | Implemented; no provider interoperability test evidence |
-| Signed CI/release | ✅ done | 0.13.0 hosted run 42261718395 passed and published private draft-release assets |
+| Signed CI/release | ✅ done | Vercel fallback assembled and verified the signed 0.13.0 release APK; GitHub hosted-runner provisioning remains unresolved |
 | Physical-device acceptance | ⚪ not started | 1.0.0 gate remains open for Redmi Note 12 Pro 5G |
 | Signing-material remediation | 🔴 blocked | GOV-001 needs user-provisioned replacement material and verified update-lineage plan |
 
 ## 3. Currently in flight
-- 1.0.0 acceptance — automated CI is green; Redmi physical-device matrix and data migration/restore evidence remain open.
+- 1.0.0 acceptance — Vercel build/test/lint/release verification is green; GitHub hosted-runner provisioning and Redmi physical-device matrix/data migration/restore evidence remain open.
 - GOV-001 signing migration — blocked on replacement keystore/secrets and an update-continuity decision; preserve the existing key until migration is proven.
-- Keyboard V2 — KBD-1/KBD-2 source implementation is committed, including asynchronous bounded correction and stale-result rejection; hosted Android/instrumentation verification, benchmark execution and candidate UX remain; see docs/KEYBOARD-V2.md.
+- Keyboard V2 — KBD-1/KBD-2 source is committed; Vercel JVM tests and the 500-word host benchmark pass; Android-backed tests compile but await emulator execution; candidate UX and Redmi acceptance remain; see docs/KEYBOARD-V2.md.
 - Test-coverage uplift — backup/restore, Room migrations, scan worker, clipboard repository, and DocumentsProvider currently lack identified automated integration tests.
 
 ## 4. Known gaps & stubs
