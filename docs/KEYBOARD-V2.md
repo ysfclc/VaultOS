@@ -1,6 +1,6 @@
 # VaultOS Neural Keyboard — V2 product increment
 
-_Status: approved direction; KBD-1 responsiveness implementation started, hosted verification pending._
+_Status: KBD-1 responsiveness and KBD-2 contextual prediction source implemented; hosted verification, asynchronous ranking and device acceptance pending._
 
 ## Problem statement
 
@@ -95,7 +95,8 @@ Extract candidate scoring and context selection into a pure Kotlin component. Un
 
 ## Current source findings (2026-11-12)
 
-- `KeyboardSuggestionEngine.kt` contains a compact static EN/PL/TR vocabulary and sparse one-word next-word maps.
+- `KeyboardSuggestionEngine.kt` contains a compact static EN/PL/TR vocabulary, one-word next-word maps and two-word phrase priors.
+- `LocalTypingMemory.kt` now adds opt-in, bounded per-language trigram counts while preserving the v1 word/bigram keys; exact two-word context predictions fall back to v1 adjacent-word counts when no trigram exists.
 - `LocalTypingMemory.kt` stores opt-in word and adjacent-word counts in SharedPreferences JSON; KBD-1 now caches parsed immutable snapshots for the IME lifetime and invalidates changed keys.
 - `VaultKeyboardService.renderSuggestions()` reads the personal dictionary and completions, runs local correction, reads cursor context and rebuilds candidate views on the typing path.
 - `requestWordSuggestions()` relies on the Android SpellCheckerSession for asynchronous typo candidates.
