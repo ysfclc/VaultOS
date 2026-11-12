@@ -141,6 +141,22 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         refreshKeyboard()
     }
 
+    override fun onUpdateSelection(
+        oldSelStart: Int,
+        oldSelEnd: Int,
+        newSelStart: Int,
+        newSelEnd: Int,
+        candidatesStart: Int,
+        candidatesEnd: Int
+    ) {
+        super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
+        if ((newSelStart != oldSelStart || newSelEnd != oldSelEnd) && typedWord.isEmpty()) {
+            val context = contextWordsBeforeCursor()
+            previousWordForPrediction = context.lastOrNull().orEmpty()
+            previousPreviousWordForPrediction = context.getOrNull(context.lastIndex - 1).orEmpty()
+        }
+    }
+
     override fun onFinishInput() {
         inputGeneration++
         typedWord.clear()
