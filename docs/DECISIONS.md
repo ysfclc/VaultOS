@@ -87,3 +87,14 @@ Append a new ADR for any later change to storage semantics, Room schema strategy
 **Decision:** Keep all prediction on-device and dependency-light. First remove avoidable typing-path work; then add bounded, opt-in contextual n-gram learning while retaining existing v1 word/bigram data. Use short transient context only in safe editor fields.  
 **Consequences:** The first release will be a responsive adaptive statistical predictor, not a claim of Gboard-level neural prediction. Learning remains opt-in, language-separated, bounded and clearable. No network permission or heavyweight inference dependency is introduced. Physical latency and quality must be measured on the target Redmi.  
 **Evidence:** docs/KEYBOARD-V2.md; KeyboardSuggestionEngine.kt; LocalTypingMemory.kt; VaultKeyboardService.kt.
+
+
+## ADR-010 — Additive private trigram learning for keyboard context
+
+**Status:** Accepted — 2026-11-12
+
+**Decision:** Extend the existing opt-in local typing memory with a bounded per-language three-word context counter. Keep the v1 word and adjacent-pair preference keys unchanged. When the current two-word context has learned candidates, prefer those; otherwise fall back to the existing adjacent-pair counts and then the small built-in EN/PL/TR phrase priors.
+
+**Privacy and limits:** Learn only after a safe editor commits a word and only while the user has enabled private typing memory. Persist counts keyed by three tokens, never sentences or full editor text. Cap each language at 1,200 contexts. Clear/reset removes the new context keys while preserving the user's learning toggle. No network or new inference dependency.
+
+**Consequences:** Existing v1 dictionaries and bigram counts remain readable. Android-backed persistence/opt-out/clear tests and device quality measurements are still required before acceptance.
