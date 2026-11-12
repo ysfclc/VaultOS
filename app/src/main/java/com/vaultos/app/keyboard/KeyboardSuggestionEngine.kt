@@ -193,17 +193,21 @@ object KeyboardSuggestionEngine {
         if (normalized.length < 3 || limit <= 0) return emptyList()
 
         val maxDistance = if (normalized.length <= 6) 1 else 2
-        val vocabulary = (additionalWords + words[code].orEmpty()).asSequence()
+        val lengthCompatible = (additionalWords + words[code].orEmpty()).asSequence()
             .distinct()
             .filter { candidate ->
                 candidate.length in (normalized.length - maxDistance)..(normalized.length + maxDistance)
             }
-            // Evaluate likely same-initial candidates first, but retain a bounded
-            // fallback pool for genuine first-letter mistakes.
+            .toList()
+        // Exact known words must never enter the correction path, even if they
+        // fall outside the bounded candidate pool used for typo ranking.
+        if (lengthCompatible.any { it.equals(normalized, ignoreCase = true) }) return emptyList()
+
+        // Evaluate likely same-initial candidates first, but retain a bounded
+        // fallback pool for genuine first-letter mistakes.
+        val vocabulary = lengthCompatible
             .sortedBy { if (it.firstOrNull()?.lowercaseChar() == normalized.firstOrNull()) 0 else 1 }
             .take(MAX_CORRECTION_CANDIDATES)
-            .toList()
-        if (normalized in vocabulary) return emptyList()
 
         return vocabulary.asSequence()
             .map { candidate -> candidate to boundedDamerauLevenshtein(normalized, candidate.lowercase(wordLocale), maxDistance) }
