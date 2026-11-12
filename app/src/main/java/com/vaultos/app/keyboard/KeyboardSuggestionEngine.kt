@@ -10,6 +10,8 @@ import java.util.Locale
  * the platform dictionary has no useful result. It does not send typed text anywhere.
  */
 object KeyboardSuggestionEngine {
+    private const val MAX_CORRECTION_CANDIDATES = 120
+
     private val words = mapOf(
         "en" to listOf(
             "the", "this", "that", "there", "their", "then", "they", "them", "these",
@@ -186,45 +188,63 @@ object KeyboardSuggestionEngine {
 
     fun nearbyCorrections(language: String, input: String, limit: Int = 2, additionalWords: List<String> = emptyList()): List<String> {
         val code = languageCode(language)
-        val locale = locale(code)
-        val normalized = input.trim().lowercase(locale)
+        val wordLocale = locale(code)
+        val normalized = input.trim().lowercase(wordLocale)
         if (normalized.length < 3 || limit <= 0) return emptyList()
-        val vocabulary = (additionalWords + words[code].orEmpty()).distinct()
-        if (normalized in vocabulary) return emptyList()
 
         val maxDistance = if (normalized.length <= 6) 1 else 2
-        return vocabulary.asSequence()
-            .map { candidate -> candidate to damerauLevenshtein(normalized, candidate.lowercase(locale)) }
-            .filter { (candidate, distance) ->
-                distance in 1..maxDistance && kotlin.math.abs(candidate.length - normalized.length) <= maxDistance
+        val vocabulary = (additionalWords + words[code].orEmpty()).asSequence()
+            .distinct()
+            .filter { candidate ->
+                candidate.length in (normalized.length - maxDistance)..(normalized.length + maxDistance)
             }
-            .sortedBy { it.second }
+            // Evaluate likely same-initial candidates first, but retain a bounded
+            // fallback pool for genuine first-letter mistakes.
+            .sortedBy { if (it.firstOrNull()?.lowercaseChar() == normalized.firstOrNull()) 0 else 1 }
+            .take(MAX_CORRECTION_CANDIDATES)
+            .toList()
+        if (normalized in vocabulary) return emptyList()
+
+        return vocabulary.asSequence()
+            .map { candidate -> candidate to boundedDamerauLevenshtein(normalized, candidate.lowercase(wordLocale), maxDistance) }
+            .filter { (_, distance) -> distance in 1..maxDistance }
+            .sortedWith(compareBy<Pair<String, Int>> { it.second }.thenBy { it.first })
             .take(limit)
             .map { it.first }
             .toList()
     }
 
-    private fun damerauLevenshtein(left: String, right: String): Int {
-        val matrix = Array(left.length + 1) { IntArray(right.length + 1) }
-        for (i in 0..left.length) matrix[i][0] = i
-        for (j in 0..right.length) matrix[0][j] = j
+    /** O(min(n,m)) memory and early exit when a row cannot meet the distance bound. */
+    private fun boundedDamerauLevenshtein(left: String, right: String, maximum: Int): Int {
+        if (kotlin.math.abs(left.length - right.length) > maximum) return maximum + 1
+        var previousPrevious = IntArray(right.length + 1) { it }
+        var previous = IntArray(right.length + 1) { it }
+        var current = IntArray(right.length + 1)
+
         for (i in 1..left.length) {
+            current[0] = i
+            var rowMinimum = current[0]
             for (j in 1..right.length) {
                 val cost = if (left[i - 1] == right[j - 1]) 0 else 1
                 var value = minOf(
-                    matrix[i - 1][j] + 1,
-                    matrix[i][j - 1] + 1,
-                    matrix[i - 1][j - 1] + cost
+                    previous[j] + 1,
+                    current[j - 1] + 1,
+                    previous[j - 1] + cost
                 )
                 if (i > 1 && j > 1 &&
                     left[i - 1] == right[j - 2] && left[i - 2] == right[j - 1]
                 ) {
-                    value = minOf(value, matrix[i - 2][j - 2] + 1)
+                    value = minOf(value, previousPrevious[j - 2] + 1)
                 }
-                matrix[i][j] = value
+                current[j] = value
+                rowMinimum = minOf(rowMinimum, value)
             }
+            if (rowMinimum > maximum) return maximum + 1
+            previousPrevious = previous
+            previous = current
+            current = IntArray(right.length + 1)
         }
-        return matrix[left.length][right.length]
+        return previous[right.length].takeIf { it <= maximum } ?: maximum + 1
     }
 
     fun nextWordSuggestions(language: String, previousWord: String, limit: Int = 3): List<String> {
