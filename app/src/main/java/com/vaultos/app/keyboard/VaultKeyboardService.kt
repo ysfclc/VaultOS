@@ -1117,11 +1117,12 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     private fun contextWordsBeforeCursor(): List<String> {
         if (!isSafeForSuggestions(currentInputEditorInfo)) return emptyList()
         val before = currentInputConnection?.getTextBeforeCursor(120, 0)?.toString().orEmpty().trimEnd()
-        val pair = Regex("""([\p{L}][\p{L}'’\-]*)\s+([\p{L}][\p{L}'’\-]*)$""").find(before)
+        val pair = Regex("""([\p{L}][\p{L}'’\-]*)\s+([\p{L}][\p{L}'’\-]*)[,;:]?$""").find(before)
         val words = if (pair != null) {
             listOf(pair.groupValues[1], pair.groupValues[2])
         } else {
-            Regex("""[\p{L}][\p{L}'’\-]*$""").find(before)?.value?.let(::listOf).orEmpty()
+            Regex("""([\p{L}][\p{L}'’\-]*)[,;:]?$""").find(before)
+                ?.groupValues?.get(1)?.let(::listOf).orEmpty()
         }
         return words.map { it.lowercase(inputLocale()) }
     }
