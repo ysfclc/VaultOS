@@ -145,7 +145,7 @@ VaultOS is a local-first Android file manager and personal content library for A
 **Verification**
 - Re-fetched source, tests, Gradle configuration and workflow from GitHub to verify committed content.
 - Confirmed the instrumentation workflow step follows the existing unit-test/lint/APK build step and runs `connectedDebugAndroidTest`.
-- GitHub Actions run [162](https://github.com/ysfclc/VaultOS/actions/runs/43226760701) and its retry both ended in failure within seconds; the GitHub job endpoint returned no step summaries and the log download returned 404. The failure appears to occur before actionable build/test output is exposed, so its cause remains unknown. No Android build, instrumentation, lint, APK or benchmark pass is claimed.
+- GitHub Actions run [162](https://github.com/ysfclc/VaultOS/actions/runs/43226760701) and three failed-job attempts all ended without step summaries or downloadable logs (`BlobNotFound`). The latest retry also failed before exposing a `Set up job` step. The same workflow's known-good run [42261718395](https://github.com/ysfclc/VaultOS/actions/runs/42261718395) exposes a normal hosted-runner startup and completed all 13 build steps, confirming the earlier workflow baseline could provision a runner. The current failure remains outside actionable workflow-step output; no root cause is inferred. No Android build, instrumentation, lint, APK or benchmark pass is claimed.
 - No physical Redmi Note 12 Pro 5G acceptance is claimed.
 
 **Next**
@@ -155,3 +155,26 @@ VaultOS is a local-first Android file manager and personal content library for A
 
 **Risk note**
 - Existing `words_<lang>` and `pairs_<lang>` preference keys and JSON values remain unchanged. Trigram storage is additive. Learning remains opt-in; clearing personal typing memory preserves the opt-in toggle but removes all stored personal models.
+
+
+## Session 6 — Android Actions startup investigation (2026-11-12)
+
+**Done**
+- Re-fetched the current API 35 instrumentation test, AndroidX dependencies, workflow and state ledger from GitHub.
+- Compared the failed run 162 with known-good run 42261718395. The known-good run exposes a normal Ubuntu 24.04 hosted runner, action downloads, all 13 build steps and successful signed APK publication.
+- Re-ran the failed job once more. The third failed-job attempt again completed without step summaries; its log download returned GitHub's `BlobNotFound` response. No `Set up job` step was exposed.
+- Reviewed the six instrumentation test cases and dependency declarations against the app's applicationId and configured AndroidX runner. Source review found no clear compile/API mismatch; this is not a substitute for executing the tests.
+
+**Verification**
+- The workflow still runs the existing clean/unit-test/lint/debug+release build before the API 35 emulator step. The new emulator action is configured with API 35, Google APIs, x86_64 and Pixel 2 profile.
+- No local Android SDK, Gradle executable or mounted `/testbed` checkout is available in this runtime. The Android tests cannot be executed locally here.
+- The runner failure occurs before step output is available. It cannot currently be attributed to Kotlin, Gradle dependencies, emulator boot or test assertions.
+- No Android build, lint, unit-test, instrumentation, APK or benchmark success is claimed for the latest source.
+
+**Next**
+1. Resolve GitHub Actions runner provisioning/visibility or obtain an actionable job log; do not keep blindly retrying run 162.
+2. Once a runner starts, execute the full unit/lint/build sequence and API 35 `connectedDebugAndroidTest`.
+3. Execute the 500-word correction benchmark and record p50/p95; keep Redmi physical acceptance open.
+
+**Risk note**
+- The known-good hosted run predates the new emulator step. It validates the previous build pipeline only, not the current instrumentation workflow.
