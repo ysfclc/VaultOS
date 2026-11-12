@@ -257,9 +257,11 @@ The 0.13.0 keyboard is a functional baseline, not a complete predictive experien
 - [x] KBD-1: Add pure-engine correction limit, transposition and low-noise regression tests (execution pending hosted CI).
 - [x] KBD-1: Add a repeatable pure-engine microbenchmark for 500 personal words (p50/p95 output; no flaky timing threshold).
 - [ ] KBD-1: Execute benchmark in hosted CI and record output; do not claim device latency improvement without Redmi measurement.
-- [ ] KBD-2: Add opt-in bounded trigram/context learning without breaking existing word/bigram preferences.
-- [ ] KBD-2: Rank next-word candidates from a short transient two-word context, with EN/PL/TR isolation.
-- [ ] KBD-2: Test compatibility, clear/disable behavior, unknown contexts, ties and stale async result rejection.
+- [x] KBD-2: Add opt-in bounded trigram/context learning without changing existing word/bigram preference keys.
+- [x] KBD-2: Rank next-word candidates from a short transient two-word context, with EN/PL/TR isolation and one-word fallback.
+- [x] KBD-2: Add pure tests for EN/PL/TR context priors, unknown-context fallback, trigram precedence and candidate limits.
+- [ ] KBD-2: Add Android-backed tests for trigram persistence, opt-out, clear/reset and v1 bigram compatibility.
+- [ ] KBD-2: Add stale-result rejection when prediction ranking is moved off the IME main thread.
 - [ ] KBD-3: Redesign candidate strip hierarchy and interactions after latency and prediction quality are stable.
 - [ ] KBD-4: Measure real typing latency and prediction usefulness on Redmi Note 12 Pro 5G across safe apps and languages.
 
