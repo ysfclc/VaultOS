@@ -4,7 +4,7 @@
 
 ## What is implemented
 
-See `docs/PROJECT-STATUS.md`, `docs/TASKS.md`, and `docs/RELEASE-PLAN.md` for the locked architecture, implementation status, phased task ledger, and next milestones.
+Start with `docs/STATE.md` for the session ledger and `docs/SPEC.md` for product requirements and traceability. `docs/DECISIONS.md` and `docs/RISKS.md` record durable architecture choices and risks; `CHANGELOG.md` records release history. The existing `docs/PROJECT-STATUS.md`, `docs/TASKS.md`, `docs/ARCHITECTURE.md`, and `docs/RELEASE-PLAN.md` retain implementation detail, architecture context, phased tasks, and release planning.
 
 - **Android share target:** receive `ACTION_SEND`, `ACTION_SEND_MULTIPLE`, selected text (`ACTION_PROCESS_TEXT`), and incoming content URIs. Shared files are streamed into the private VaultOS archive and catalogued.
 - **Manual import:** import one or many documents through Android's system picker.
