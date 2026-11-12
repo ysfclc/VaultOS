@@ -12,7 +12,7 @@ VaultOS is a local-first Android file manager and personal content library for A
 | Unified library, search, organization | 🟡 partial | Implemented; database and UI integration coverage is thin |
 | File operations and ZIP safety | ✅ done | Core operations have 10 JVM regression tests; device UX acceptance remains separate |
 | Clipboard history and capture IME | 🟡 partial | Implemented; Android selected-IME boundary applies; physical app matrix open |
-| Keyboard suggestions | 🟡 partial | KBD-1/KBD-2 source implemented: cached typing memory, bounded correction, candidate-view reuse, opt-in per-language trigram prediction and two-word context; 21 JVM tests + 500-word benchmark harness added; Android suite/benchmark, async ranking and Redmi acceptance open |
+| Keyboard suggestions | 🟡 partial | KBD-1/KBD-2 source implemented: cached typing memory, bounded async correction, stale-result gate, candidate-view reuse and opt-in EN/PL/TR trigram/two-word context; 24 JVM tests + 500-word benchmark harness added; Android suite/benchmark and Redmi acceptance open |
 | Metadata extraction | 🟡 partial | Parser tests exist; end-to-end extraction/provider behavior lacks integration tests |
 | Backup and restore | 🟡 partial | v1/v2 paths implemented; no automated round-trip, corruption, or migration test suite identified |
 | DocumentsProvider | 🟡 partial | Implemented; no provider interoperability test evidence |
@@ -23,7 +23,7 @@ VaultOS is a local-first Android file manager and personal content library for A
 ## 3. Currently in flight
 - 1.0.0 acceptance — automated CI is green; Redmi physical-device matrix and data migration/restore evidence remain open.
 - GOV-001 signing migration — blocked on replacement keystore/secrets and an update-continuity decision; preserve the existing key until migration is proven.
-- Keyboard V2 — KBD-1/KBD-2 source implementation is committed; hosted Android verification and benchmark execution remain, followed by async ranking and candidate UX; see docs/KEYBOARD-V2.md.
+- Keyboard V2 — KBD-1/KBD-2 source implementation is committed, including asynchronous bounded correction and stale-result rejection; hosted Android verification, benchmark execution, Android-backed learning tests and candidate UX remain; see docs/KEYBOARD-V2.md.
 - Test-coverage uplift — backup/restore, Room migrations, scan worker, clipboard repository, and DocumentsProvider currently lack identified automated integration tests.
 
 ## 4. Known gaps & stubs
@@ -46,7 +46,7 @@ VaultOS is a local-first Android file manager and personal content library for A
 
 ## 6. Next three increments
 1. Verify the full Android build, lint and JVM suite; execute the 500-word correction benchmark and record p50/p95. Android-backed LocalTypingMemory persistence/opt-out/clear tests are still needed.
-2. Move candidate ranking off the IME main thread with generation-token stale-result rejection, then profile the real typing path.
+2. Obtain hosted Android build/test/lint evidence and execute the 500-word benchmark; add Android-backed LocalTypingMemory persistence/opt-out/clear tests.
 3. KBD-3 candidate UX and KBD-4 EN/PL/TR Redmi Note 12 Pro 5G acceptance. Resume backup/restore integrity tests after the keyboard predictor has a verified baseline.
 
 ## 7. Open questions for the human
@@ -94,3 +94,34 @@ VaultOS is a local-first Android file manager and personal content library for A
 - Learning remains opt-in. Only safe text fields are read; at most 120 characters before the cursor are examined transiently. No sentence/editor text is persisted and no network processing was added.
 - Candidate correction and prediction ranking still execute synchronously in the IME service. KBD-1 reduces repeated work but does not yet prove typing latency or remove all main-thread computation.
 - Do not mark the keyboard complete until Android tests, benchmark, async stale-result protection and Redmi device acceptance are recorded.
+
+
+## Session 4 — asynchronous keyboard correction ranking (2026-11-12)
+
+**Done**
+- Moved bounded local fuzzy correction ranking out of `renderSuggestions()` and onto one reusable single-thread executor.
+- Kept immediate typed-word and prefix-completion candidates visible while the worker calculates corrections.
+- Added `SuggestionRequestGate`; each render invalidates older work and each request receives a fresh token.
+- Before applying a worker result, the main-thread callback checks token, input-session generation, exact typed word, selected language, candidate-row identity, safe-editor status and whether newer SpellChecker results have arrived.
+- Clear pending queued tasks on new requests; invalidate pending tokens and shut down the executor on service destruction.
+- Added three pure JVM tests for newest-request precedence and invalidation. Independently compiled and executed the gate helper with kotlinc; all checks passed.
+
+**Files changed**
+- `app/src/main/java/com/vaultos/app/keyboard/VaultKeyboardService.kt` — worker lifecycle, immutable vocabulary snapshot, async correction request and guarded main-thread apply.
+- `app/src/main/java/com/vaultos/app/keyboard/SuggestionRequestGate.kt` — new generation-token helper.
+- `app/src/test/java/com/vaultos/app/keyboard/SuggestionRequestGateTest.kt` — three regression tests.
+- `docs/TASKS.md`, `docs/KEYBOARD-V2.md`, `docs/PROJECT-STATUS.md` — updated delivery and verification state.
+
+**Verification**
+- GitHub source re-fetched and checked for worker, generation guard, lifecycle shutdown and removal of the synchronous correction call from `renderSuggestions()`.
+- Standalone Kotlin compile/run passed for the generation-gate helper: latest-request precedence, invalidation and current-token behavior.
+- No Android build, lint, full JUnit suite or benchmark result is claimed. The available CI status shows a successful Vercel check only; no Android Actions run is exposed by the available workflow query.
+- No Redmi Note 12 Pro 5G measurement is available.
+
+**Remaining**
+1. Verify Android build, lint and full JVM tests in hosted Actions; execute and record the 500-word benchmark.
+2. Add Android-backed typing-memory tests for opt-in, persistence, clear/reset and v1 compatibility.
+3. Proceed to KBD-3 candidate UX and KBD-4 physical EN/PL/TR acceptance only after the verified baseline.
+
+**Risk note**
+- The worker only performs pure correction ranking against an immutable word-list snapshot. All `InputConnection` reads/writes and all candidate view updates remain on the IME main thread. Do not mark the keyboard complete without hosted verification and Redmi acceptance.
