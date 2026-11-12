@@ -258,14 +258,38 @@ The 0.13.0 keyboard is a functional baseline, not a complete predictive experien
 - [x] KBD-1: Reject stale worker results with per-render generation tokens plus input-session, typed-word, language, editor-safety and candidate-row checks; clear queued work and shut down the executor with the service.
 - [x] KBD-1: Add pure-engine correction limit, transposition and low-noise regression tests (execution pending hosted CI).
 - [x] KBD-1: Add a repeatable pure-engine microbenchmark for 500 personal words (p50/p95 output; no flaky timing threshold).
-- [ ] KBD-1: Execute benchmark in hosted CI and record output; do not claim device latency improvement without Redmi measurement.
+- [x] KBD-1: Execute the 500-word correction benchmark on Vercel; p50=105 μs / p95=160 μs on the build host (not a Redmi-device measurement).
 - [x] KBD-2: Add opt-in bounded trigram/context learning without changing existing word/bigram preference keys.
 - [x] KBD-2: Rank next-word candidates from a short transient two-word context, with EN/PL/TR isolation and one-word fallback.
 - [x] KBD-2: Add pure tests for EN/PL/TR context priors, unknown-context fallback, trigram precedence and candidate limits.
 - [x] KBD-2: Add Android-backed tests for opt-in, word/bigram/trigram persistence, opt-out, clear/reset, EN/PL/TR isolation and v1 bigram compatibility.
-- [ ] KBD-2: Restore GitHub-hosted runner allocation (run 162 and both jobs in run 163 failed with runner_id=0, empty runner_name and no steps), then execute connectedDebugAndroidTest on the API 35 CI emulator.
+- [x] KBD-2: Compile the six Android-backed SharedPreferences tests with :app:assembleDebugAndroidTest on Vercel.
+- [ ] KBD-2: Execute connectedDebugAndroidTest on an API 35 emulator; Vercel had no /dev/kvm and GitHub runner allocation remains unresolved.
 - [x] KBD-1: Add pure generation-gate tests for newest-request precedence and lifecycle invalidation.
 - [ ] KBD-3: Redesign candidate strip hierarchy and interactions after latency and prediction quality are stable.
 - [ ] KBD-4: Measure real typing latency and prediction usefulness on Redmi Note 12 Pro 5G across safe apps and languages.
 
 Do not mark this phase complete from unit tests alone; device acceptance is mandatory.
+
+## Session 8 — Vercel Android build fallback (2026-11-12)
+
+**Source and build environment**
+- Built the current GitHub main tree at commit 056c93d044e6c2b398a96adfd923cd02c0390891, not the uploaded source archive.
+- Provisioned a Vercel Linux Sandbox in fra1 with JDK 17, Gradle 8.9, Android SDK Platform 35 and Build Tools 35.0.0.
+- The tracked signing keystore was recovered from the archived source copy only after its Git blob SHA was verified to exactly match the current repository blob (cc869a794f96e163048167ded34fb516033c0bae). The release APK therefore uses the repository's existing signing identity; no new signing lineage was created.
+
+**Verification results**
+- clean testDebugUnitTest lintDebug assembleDebug: BUILD SUCCESSFUL.
+- Forced a fresh JVM test execution with --rerun-tasks :app:testDebugUnitTest: 43 tests, 0 failures, 0 errors, 0 skipped.
+- 500-personal-word correction benchmark: p50 105 μs, p95 160 μs on the Vercel build host. This is a host microbenchmark, not a Redmi-device latency measurement.
+- :app:assembleDebugAndroidTest: BUILD SUCCESSFUL; the six Android-backed SharedPreferences tests compile.
+- :app:assembleRelease: BUILD SUCCESSFUL; release APK is 43,524,110 bytes, package com.vaultos.app, version 0.13.0 / code 14, target SDK 35. apksigner verify passed and the APK SHA-256 is 611ce20563b8836700a2e2c7a12b5d303910fccd9113c11e3e1967c5e649d435.
+- lintDebug and lintVitalRelease passed. The debug lint report contains 25 warnings and no errors.
+
+**Remaining verification**
+- The Vercel sandbox has no /dev/kvm, so connectedDebugAndroidTest could not be executed there. The Android instrumentation APK compiled, but its six tests remain unexecuted.
+- GitHub run 163 still documents the separate hosted-runner allocation problem. Vercel provides a working build fallback; it does not repair GitHub Actions runner provisioning.
+- Redmi Note 12 Pro 5G physical acceptance remains open. Do not infer real-device keyboard latency or everyday UX from the host benchmark.
+
+**Source archive warning**
+- incoming/VaultOS-source.zip contains an older 0.6.0 / versionCode 6 snapshot while the current repository is 0.13.0 / versionCode 14. It was deliberately excluded from this build. Refresh or retire that archive before any future ZIP-import push; do not treat it as current source.
