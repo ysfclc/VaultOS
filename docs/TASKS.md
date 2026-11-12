@@ -245,3 +245,19 @@ Phase 2 implementation is in release line 0.2.0. The Room 1→2 migration adds r
 - [ ] Install the signed 0.13.0 APK as an in-place update on Redmi Note 12 Pro 5G.
 - [ ] Verify navigation discoverability, initial storage permission setup, keyboard touch accuracy, suggestions after cursor movement/paste, menu reachability, TalkBack, large text and landscape.
 - [ ] Only mark keyboard/app usability accepted after the physical-device checklist passes.
+
+
+## Phase 14 — adaptive predictive keyboard V2
+
+The 0.13.0 keyboard is a functional baseline, not a complete predictive experience. See docs/KEYBOARD-V2.md and requirement R-013 in docs/SPEC.md.
+
+- [ ] KBD-1: Cache personal typing-memory snapshots and remove repeated JSON parsing from candidate rendering.
+- [ ] KBD-1: Bound/optimize local fuzzy correction work and prevent expensive scans on every keystroke.
+- [ ] KBD-1: Add pure-engine ordering/limit tests and a repeatable microbenchmark.
+- [ ] KBD-2: Add opt-in bounded trigram/context learning without breaking existing word/bigram preferences.
+- [ ] KBD-2: Rank next-word candidates from a short transient two-word context, with EN/PL/TR isolation.
+- [ ] KBD-2: Test compatibility, clear/disable behavior, unknown contexts, ties and stale async result rejection.
+- [ ] KBD-3: Redesign candidate strip hierarchy and interactions after latency and prediction quality are stable.
+- [ ] KBD-4: Measure real typing latency and prediction usefulness on Redmi Note 12 Pro 5G across safe apps and languages.
+
+Do not mark this phase complete from unit tests alone; device acceptance is mandatory.
