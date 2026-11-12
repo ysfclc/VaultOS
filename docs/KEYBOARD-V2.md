@@ -64,7 +64,8 @@ Extract candidate scoring and context selection into a pure Kotlin component. Un
 - [x] Add opt-in, bounded trigram learning (1,200 contexts per language) while retaining v1 bigram compatibility.
 - [x] Use a short, transient two-word context from the active safe editor to rank predictions, with one-word fallback.
 - [x] Add built-in EN/PL/TR two-word phrase priors and language-specific regression tests.
-- [ ] Add Android-backed tests for trigram persistence, opt-out, clear/reset and v1 bigram fallback.
+- [x] Add Android-backed tests for opt-in, persistence across instances, opt-out, clear/reset, language isolation and v1 bigram fallback.
+- [ ] Execute the instrumentation suite on the API 35 CI emulator and record the run.
 
 ### KBD-3 — Candidate UX
 - Improve candidate strip hierarchy and interactions.
@@ -84,6 +85,7 @@ Extract candidate scoring and context selection into a pure Kotlin component. Un
 - Stale asynchronous results cannot replace suggestions for newer input.
 - Opt-in learning stores bounded word/ngram counts only; disable and clear controls work.
 - Existing v1 personal dictionaries remain readable.
+- Android-backed SharedPreferences tests cover opt-in, persistence, opt-out, clear/reset and v1 bigram compatibility (execution still pending).
 - EN/PL/TR unit tests pass.
 - Android build, lint and full relevant unit suite pass in hosted CI.
 - Physical device acceptance and latency measurements are recorded separately.
@@ -106,3 +108,12 @@ Extract candidate scoring and context selection into a pure Kotlin component. Un
 - Added `SuggestionRequestGate` and three JVM tests for latest-request precedence and lifecycle invalidation. The pure gate was compiled and exercised independently; the Android service integration, full project tests, benchmark, typing latency and adaptive prediction quality remain unverified.
 
 The first implementation increment is KBD-1. Do not start with visual polish or a neural runtime.
+
+
+## Android-backed private typing-memory tests (2026-11-12)
+
+Added `LocalTypingMemoryInstrumentedTest` using AndroidX instrumentation and the real app sandbox SharedPreferences implementation. Coverage includes learning disabled by default, enabled word/bigram/trigram persistence across instances, opt-out without deleting existing data, clear preserving the user's opt-in choice, EN/PL/TR model separation, and v1 word/bigram JSON fallback when no trigram key exists.
+
+A source review exposed that the shared normalizer rejected one-letter words. That prevented common context tokens such as English "I" from participating in learned pairs/trigrams. The minimum accepted word length is now one character; punctuation-only tokens remain rejected and the 32-character maximum remains unchanged.
+
+The Android build workflow now provisions an API 35 Google APIs emulator and runs `connectedDebugAndroidTest`. The instrumentation source and workflow are committed, but no emulator result is claimed until the new workflow run completes.
