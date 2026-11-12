@@ -55,18 +55,24 @@ VaultOS is a local-first Android file manager and personal content library for A
 ## Session Handoff
 
 **Done this session**
-- Governance bootstrap and source-of-truth reconciliation — repository inspected at f992d9cfb54d516cf45098c31ee95e9e8d619dd2; formal spec/decision/risk/ledger documents are being established.
+- Governance bootstrap and source-of-truth reconciliation — created the project ledger, spec/traceability matrix, reconstructed ADRs, risk register and changelog; corrected the stale 1.0.0 gate against 0.13.0 source/CI evidence.
 
 **State changed**
-- docs/STATE.md — created as the project continuity ledger.
+- docs/STATE.md — session ledger and handoff.
+- docs/SPEC.md — product contract and 12-row requirement traceability matrix.
+- docs/DECISIONS.md — reconstructed architecture decision records.
+- docs/RISKS.md — current risk register, including GOV-001 and data-safety risks.
+- CHANGELOG.md — release milestone history through 0.13.0.
+- docs/RELEASE-1.0-GATE.md — reconciled automated status; device and migration/restore gates remain open.
+- README.md — entry points to the new governance docs.
 
 **Verified**
-- Build: not run; this is a documentation-only increment and no local checkout/Android SDK is mounted in this runtime.
-- Tests: not run this session; latest hosted CI run 42261718395 is recorded as passing in the repository's 0.13.0 status/README.
+- Build: not run; documentation-only increment, no application source/build files changed, and no local checkout/Android SDK is mounted in this runtime.
+- Tests: not run this session; latest hosted CI run 42261718395 is recorded as passing in the repository's 0.13.0 status/README. Source inspection found 31 test methods across four JVM test classes; CI summary does not separately report the method count.
 
 **Not done / next**
-1. Complete the spec, decision and risk documents; reconcile the stale 1.0.0 gate and link the new governance docs from README.
-2. Next engineering increment: backup/restore integrity tests for both supported manifest formats and failure paths.
+1. Add automated backup/restore integrity tests for manifest v1/v2, malformed input, missing/corrupt payloads and SHA-256 mismatch.
+2. Follow with Room migration tests; keep physical-device acceptance separate and evidence-based.
 
 **Open questions**
 - Replacement signing material/secrets and physical Redmi acceptance remain user-dependent; defaults are to keep both gates open.
