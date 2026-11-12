@@ -251,9 +251,10 @@ Phase 2 implementation is in release line 0.2.0. The Room 1→2 migration adds r
 
 The 0.13.0 keyboard is a functional baseline, not a complete predictive experience. See docs/KEYBOARD-V2.md and requirement R-013 in docs/SPEC.md.
 
-- [ ] KBD-1: Cache personal typing-memory snapshots and remove repeated JSON parsing from candidate rendering.
-- [ ] KBD-1: Bound/optimize local fuzzy correction work and prevent expensive scans on every keystroke.
-- [ ] KBD-1: Add pure-engine ordering/limit tests and a repeatable microbenchmark.
+- [x] KBD-1: Reuse one IME-lifetime typing-memory instance; cache parsed personal word/pair snapshots and dictionary lists with preference-change invalidation.
+- [x] KBD-1: Bound local fuzzy correction to 120 length-compatible candidates; prioritize likely same-initial matches and use bounded-memory edit distance with early exit.
+- [x] KBD-1: Add pure-engine correction limit, transposition and low-noise regression tests (execution pending hosted CI).
+- [ ] KBD-1: Add a repeatable pure-engine microbenchmark and record before/after measurements.
 - [ ] KBD-2: Add opt-in bounded trigram/context learning without breaking existing word/bigram preferences.
 - [ ] KBD-2: Rank next-word candidates from a short transient two-word context, with EN/PL/TR isolation.
 - [ ] KBD-2: Test compatibility, clear/disable behavior, unknown contexts, ties and stale async result rejection.
