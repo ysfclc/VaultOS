@@ -1,6 +1,7 @@
 package com.vaultos.app.keyboard
 
 import android.content.Context
+import android.content.SharedPreferences
 import org.json.JSONObject
 import java.util.Locale
 
@@ -9,9 +10,23 @@ import java.util.Locale
  *
  * Stores only individual words and adjacent-word counts. It never stores sentences,
  * clipboard content, field contents, or sends data off-device. Learning is opt-in.
+ *
+ * Parsed snapshots are cached for the lifetime of this instance. Preference changes
+ * invalidate only the affected language snapshot, so suggestion rendering never
+ * reparses the same JSON on every keystroke.
  */
 class LocalTypingMemory(context: Context) {
     private val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+    private val snapshotCache = mutableMapOf<String, Map<String, Int>>()
+    private val wordListCache = mutableMapOf<String, List<String>>()
+
+    private val preferenceListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        if (key != null) invalidate(key)
+    }
+
+    init {
+        prefs.registerOnSharedPreferenceChangeListener(preferenceListener)
+    }
 
     fun isLearningEnabled(): Boolean = prefs.getBoolean(KEY_ENABLED, false)
 
@@ -27,7 +42,7 @@ class LocalTypingMemory(context: Context) {
         val previous = normalize(previousWord, code)
         if (previous != null && previous != normalized) {
             increment(pairKey(code), "$previous$SEPARATOR$normalized", 1)
-         }
+        }
         trim(wordKey(code), MAX_WORDS)
         trim(pairKey(code), MAX_PAIRS)
     }
@@ -36,41 +51,38 @@ class LocalTypingMemory(context: Context) {
     fun addToDictionary(language: String, word: String) {
         val code = languageCode(language)
         val normalized = normalize(word, code) ?: return
-        val values = read(wordKey(code))
-        values.put(normalized, maxOf(values.optInt(normalized, 0), PINNED_WORD_SCORE))
-        prefs.edit().putString(wordKey(code), values.toString()).apply()
+        val values = read(wordKey(code)).toMutableMap()
+        values[normalized] = maxOf(values[normalized] ?: 0, PINNED_WORD_SCORE)
+        write(wordKey(code), values)
     }
 
     fun completions(language: String, prefix: String, limit: Int = 5): List<String> {
         val code = languageCode(language)
         val normalized = prefix.trim().lowercase(locale(code))
         if (normalized.length < 2 || limit <= 0) return emptyList()
-        val values = read(wordKey(code))
-        return values.keys()
-            .asSequence()
-            .filter { it.startsWith(normalized) && it != normalized }
-            .sortedWith(compareByDescending<String> { values.optInt(it, 0) }.thenBy { it })
+        return read(wordKey(code)).entries.asSequence()
+            .filter { it.key.startsWith(normalized) && it.key != normalized }
+            .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key })
             .take(limit)
-            .map { preserveCase(prefix, it, code) }
+            .map { preserveCase(prefix, it.key, code) }
             .toList()
     }
 
     fun dictionaryWords(language: String): List<String> {
         val code = languageCode(language)
-        val values = read(wordKey(code))
-        return values.keys().asSequence().toList()
+        return wordListCache.getOrPut(code) { read(wordKey(code)).keys.toList() }
     }
 
     fun nextWords(language: String, previousWord: String, limit: Int = 3): List<String> {
         val code = languageCode(language)
         val previous = normalize(previousWord, code) ?: return emptyList()
         if (limit <= 0) return emptyList()
-        val pairs = read(pairKey(code))
-        return pairs.keys().asSequence()
-            .filter { it.startsWith("$previous$SEPARATOR") }
-            .sortedWith(compareByDescending<String> { pairs.optInt(it, 0) }.thenBy { it })
+        val prefix = "$previous$SEPARATOR"
+        return read(pairKey(code)).entries.asSequence()
+            .filter { it.key.startsWith(prefix) }
+            .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key })
             .take(limit)
-            .map { it.substringAfter(SEPARATOR) }
+            .map { it.key.substringAfter(SEPARATOR) }
             .toList()
     }
 
@@ -78,28 +90,57 @@ class LocalTypingMemory(context: Context) {
         // Clearing learned data must not silently change the user's opt-in setting.
         val learningEnabled = isLearningEnabled()
         prefs.edit().clear().putBoolean(KEY_ENABLED, learningEnabled).apply()
+        snapshotCache.clear()
+        wordListCache.clear()
     }
 
     private fun increment(key: String, item: String, amount: Int) {
-        val values = read(key)
-        values.put(item, (values.optInt(item, 0) + amount).coerceAtMost(MAX_SCORE))
-        prefs.edit().putString(key, values.toString()).apply()
+        val values = read(key).toMutableMap()
+        values[item] = ((values[item] ?: 0) + amount).coerceAtMost(MAX_SCORE)
+        write(key, values)
     }
 
     private fun trim(key: String, maximum: Int) {
         val values = read(key)
-        if (values.length() <= maximum) return
-        val keep = values.keys().asSequence()
-            .sortedByDescending { values.optInt(it, 0) }
+        if (values.size <= maximum) return
+        write(key, values.entries.asSequence()
+            .sortedByDescending { it.value }
             .take(maximum)
-            .toList()
-        val compact = JSONObject()
-        keep.forEach { compact.put(it, values.optInt(it, 0)) }
-        prefs.edit().putString(key, compact.toString()).apply()
+            .associate { it.key to it.value })
     }
 
-    private fun read(key: String): JSONObject =
-        runCatching { JSONObject(prefs.getString(key, "{}") ?: "{}") }.getOrElse { JSONObject() }
+    private fun read(key: String): Map<String, Int> =
+        snapshotCache.getOrPut(key) {
+            val json = runCatching { JSONObject(prefs.getString(key, "{}") ?: "{}") }
+                .getOrElse { JSONObject() }
+            buildMap {
+                val keys = json.keys()
+                while (keys.hasNext()) {
+                    val item = keys.next()
+                    put(item, json.optInt(item, 0))
+                }
+            }
+        }
+
+    private fun write(key: String, values: Map<String, Int>) {
+        val json = JSONObject()
+        values.forEach { (item, score) -> json.put(item, score) }
+        prefs.edit().putString(key, json.toString()).apply()
+        // apply() notifies listeners synchronously for this process; seed the fresh
+        // immutable snapshot after invalidation to avoid a second parse on next render.
+        snapshotCache[key] = values.toMap()
+        if (key.startsWith("words_")) {
+            val code = key.removePrefix("words_")
+            wordListCache[code] = values.keys.toList()
+        }
+    }
+
+    private fun invalidate(key: String) {
+        if (key.startsWith("words_") || key.startsWith("pairs_")) {
+            snapshotCache.remove(key)
+            if (key.startsWith("words_")) wordListCache.remove(key.removePrefix("words_"))
+        }
+    }
 
     private fun normalize(value: String, language: String): String? {
         val word = value.trim().lowercase(locale(language))
