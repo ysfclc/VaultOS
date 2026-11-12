@@ -1,5 +1,5 @@
 # State Ledger
-_Last updated: 2026-11-12 by Continuity Engineer — session 5_
+_Last updated: 2026-11-12 by Continuity Engineer — session 5 verification update_
 
 ## 1. Product snapshot
 VaultOS is a local-first Android file manager and personal content library for Android 9+. It combines a non-destructive index of existing shared storage with a private archive for incoming and newly detected content, a searchable/organizable Room catalogue, file operations, an optional capture keyboard, a DocumentsProvider, app/APK catalogue, and manual SAF backup/restore. “Complete” means data-safe operation, tested restore/migration compatibility, reliable everyday UX on the target Redmi Note 12 Pro 5G, and a reproducible signed release. Build success alone is not device acceptance.
@@ -145,11 +145,11 @@ VaultOS is a local-first Android file manager and personal content library for A
 **Verification**
 - Re-fetched source, tests, Gradle configuration and workflow from GitHub to verify committed content.
 - Confirmed the instrumentation workflow step follows the existing unit-test/lint/APK build step and runs `connectedDebugAndroidTest`.
-- No Android emulator run has completed in the evidence available to this session. No Android build, instrumentation, lint, APK or benchmark pass is claimed.
+- GitHub Actions run [162](https://github.com/ysfclc/VaultOS/actions/runs/43226760701) and its retry both ended in failure within seconds; the GitHub job endpoint returned no step summaries and the log download returned 404. The failure appears to occur before actionable build/test output is exposed, so its cause remains unknown. No Android build, instrumentation, lint, APK or benchmark pass is claimed.
 - No physical Redmi Note 12 Pro 5G acceptance is claimed.
 
 **Next**
-1. Inspect the API 35 Android Actions run; fix compilation, emulator or instrumentation failures.
+1. Diagnose the GitHub Actions runner/job startup failure; once a job exposes steps/logs, fix any compilation, emulator or instrumentation failures.
 2. Run and record the 500-word correction benchmark p50/p95.
 3. Add any missing editor-safe-field integration tests, then move to KBD-3 candidate UX only after the verified keyboard baseline.
 
