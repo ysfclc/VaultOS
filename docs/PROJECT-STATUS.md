@@ -229,6 +229,7 @@ Implemented in source:
 - `VaultKeyboardService` now reuses one `LocalTypingMemory` instance for the lifetime of the IME instead of constructing it during each candidate render.
 - `LocalTypingMemory` caches parsed SharedPreferences word/pair snapshots and the dictionary word list; changed preference keys invalidate the affected cached data. Existing JSON keys and stored values are preserved.
 - `KeyboardSuggestionEngine` filters by compatible word length, caps the correction pool at 120, prioritizes same-initial candidates while retaining a fallback pool, and uses bounded-memory Damerau–Levenshtein with early exit.
+- `VaultKeyboardService.renderSuggestions()` now reuses its three candidate cells and separators instead of recreating the candidate row on each keystroke.
 - Added regression cases for candidate limits, adjacent transposition and unrelated input noise.
 
 Verification: source changes are committed. Hosted unit tests/lint/build have not yet been confirmed from the available GitHub Actions inspection surface; no test-pass or APK claim is made. The Redmi Note 12 Pro 5G latency and typing-quality measurements remain pending. KBD-1's repeatable microbenchmark is still open.
