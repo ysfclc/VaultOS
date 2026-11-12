@@ -77,3 +77,13 @@ _This is a reconstructed ADR baseline recorded on 2026-11-12. The decisions belo
 ## ADR change rule
 
 Append a new ADR for any later change to storage semantics, Room schema strategy, backup format, signing identity, supported Android baseline, permission model, or remote-service/privacy boundary. Do not silently edit an accepted decision; append a superseding ADR and record migration consequences.
+
+
+## ADR-009 — Keep keyboard prediction local and make the typing path latency-first
+
+**Status:** Accepted for the V2 keyboard increment  
+**Context:** The 0.13.0 IME uses a small static lexicon and sparse one-word next-word maps. Candidate rendering reads personal-memory JSON, computes corrections and rebuilds views on the main thread. User feedback reports slow typing and poor prediction.  
+**Options:** Add a remote LLM/API; bundle a large neural runtime/model; improve a small local contextual model and remove synchronous work from the keystroke path.  
+**Decision:** Keep all prediction on-device and dependency-light. First remove avoidable typing-path work; then add bounded, opt-in contextual n-gram learning while retaining existing v1 word/bigram data. Use short transient context only in safe editor fields.  
+**Consequences:** The first release will be a responsive adaptive statistical predictor, not a claim of Gboard-level neural prediction. Learning remains opt-in, language-separated, bounded and clearable. No network permission or heavyweight inference dependency is introduced. Physical latency and quality must be measured on the target Redmi.  
+**Evidence:** docs/KEYBOARD-V2.md; KeyboardSuggestionEngine.kt; LocalTypingMemory.kt; VaultKeyboardService.kt.
