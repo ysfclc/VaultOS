@@ -8,7 +8,7 @@ import java.util.Locale
 /**
  * Optional, on-device typing memory.
  *
- * Stores only individual words and adjacent-word counts. It never stores sentences,
+ * Stores only individual words, adjacent-word counts and bounded three-word context counts. It never stores sentences,
  * clipboard content, field contents, or sends data off-device. Learning is opt-in.
  *
  * Parsed snapshots are cached for the lifetime of this instance. Preference changes
@@ -34,7 +34,7 @@ class LocalTypingMemory(context: Context) {
         prefs.edit().putBoolean(KEY_ENABLED, enabled).apply()
     }
 
-    fun learn(language: String, word: String, previousWord: String = "") {
+    fun learn(language: String, word: String, previousWord: String = "", previousPreviousWord: String = "") {
         if (!isLearningEnabled()) return
         val code = languageCode(language)
         val normalized = normalize(word, code) ?: return
@@ -43,8 +43,15 @@ class LocalTypingMemory(context: Context) {
         if (previous != null && previous != normalized) {
             increment(pairKey(code), "$previous$SEPARATOR$normalized", 1)
         }
+        val previousPrevious = normalize(previousPreviousWord, code)
+        if (previousPrevious != null && previous != null &&
+            previousPrevious != previous && previous != normalized && previousPrevious != normalized
+        ) {
+            increment(trigramKey(code), "$previousPrevious$SEPARATOR$previous$SEPARATOR$normalized", 1)
+        }
         trim(wordKey(code), MAX_WORDS)
         trim(pairKey(code), MAX_PAIRS)
+        trim(trigramKey(code), MAX_TRIGRAMS)
     }
 
     /** Explicitly save a word even when automatic learning is disabled. */
@@ -73,10 +80,30 @@ class LocalTypingMemory(context: Context) {
         return wordListCache.getOrPut(code) { read(wordKey(code)).keys.toList() }
     }
 
-    fun nextWords(language: String, previousWord: String, limit: Int = 3): List<String> {
+    fun nextWords(language: String, previousWord: String, limit: Int = 3): List<String> =
+        nextWords(language, "", previousWord, limit)
+
+    /** Prefer a learned two-word context; gracefully fall back to v1 adjacent-word counts. */
+    fun nextWords(
+        language: String,
+        previousPreviousWord: String,
+        previousWord: String,
+        limit: Int = 3
+    ): List<String> {
         val code = languageCode(language)
         val previous = normalize(previousWord, code) ?: return emptyList()
         if (limit <= 0) return emptyList()
+        val previousPrevious = normalize(previousPreviousWord, code)
+        if (previousPrevious != null) {
+            val contextPrefix = "$previousPrevious$SEPARATOR$previous$SEPARATOR"
+            val contextual = read(trigramKey(code)).entries.asSequence()
+                .filter { it.key.startsWith(contextPrefix) }
+                .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key })
+                .take(limit)
+                .map { it.key.substringAfterLast(SEPARATOR) }
+                .toList()
+            if (contextual.isNotEmpty()) return contextual
+        }
         val prefix = "$previous$SEPARATOR"
         return read(pairKey(code)).entries.asSequence()
             .filter { it.key.startsWith(prefix) }
@@ -136,7 +163,7 @@ class LocalTypingMemory(context: Context) {
     }
 
     private fun invalidate(key: String) {
-        if (key.startsWith("words_") || key.startsWith("pairs_")) {
+        if (key.startsWith("words_") || key.startsWith("pairs_") || key.startsWith("trigrams_")) {
             snapshotCache.remove(key)
             if (key.startsWith("words_")) wordListCache.remove(key.removePrefix("words_"))
         }
@@ -154,6 +181,7 @@ class LocalTypingMemory(context: Context) {
 
     private fun wordKey(code: String) = "words_$code"
     private fun pairKey(code: String) = "pairs_$code"
+    private fun trigramKey(code: String) = "trigrams_$code"
 
     private fun languageCode(value: String): String =
         value.lowercase(Locale.ROOT).takeIf { it in LANGUAGES } ?: "en"
@@ -170,6 +198,7 @@ class LocalTypingMemory(context: Context) {
         private const val SEPARATOR = "\u001f"
         private const val MAX_WORDS = 500
         private const val MAX_PAIRS = 800
+        private const val MAX_TRIGRAMS = 1_200
         private const val MAX_SCORE = 10_000
         private const val PINNED_WORD_SCORE = 1_000_000
         private val LANGUAGES = setOf("en", "pl", "tr")
