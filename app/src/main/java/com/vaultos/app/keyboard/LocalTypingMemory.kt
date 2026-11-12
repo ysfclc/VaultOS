@@ -179,7 +179,7 @@ class LocalTypingMemory(context: Context) {
 
     private fun normalize(value: String, language: String): String? {
         val word = value.trim().lowercase(locale(language))
-        if (word.length !in 2..32 || !word.any { it.isLetter() }) return null
+        if (word.length !in 1..32 || !word.any { it.isLetter() }) return null
         if (word.any { !it.isLetter() && it !in setOf('\'', '’', '-') }) return null
         return word
     }
