@@ -146,6 +146,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         typedWord.clear()
         lastCommittedWord = ""
         previousWordForPrediction = ""
+        previousPreviousWordForPrediction = ""
         currentSuggestions = emptyList()
         spellCheckGeneration++
         spellChecker?.close()
@@ -826,11 +827,12 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                 if (action != EditorInfo.IME_ACTION_NONE && action != EditorInfo.IME_ACTION_UNSPECIFIED) currentInputConnection?.performEditorAction(action)
                 else currentInputConnection?.commitText("\n", 1)
                 if (typedWord.isNotBlank()) {
-                    learnWord(typedWord.toString(), previousWordForPrediction)
+                    learnWord(typedWord.toString(), previousWordForPrediction, previousPreviousWordForPrediction)
                 }
                 typedWord.clear()
                 lastCommittedWord = ""
                 previousWordForPrediction = ""
+                previousPreviousWordForPrediction = ""
                 currentSuggestions = emptyList()
                 shifted = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_AUTO_CAPITALIZE, true)
                 lastSpaceAt = 0L
@@ -846,8 +848,10 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                     requestWordSuggestions(typedWord.toString())
                 } else {
                     if (typedWord.isNotBlank()) {
-                        learnWord(typedWord.toString(), previousWordForPrediction)
-                        previousWordForPrediction = typedWord.toString()
+                        val committedWord = typedWord.toString()
+                        learnWord(committedWord, previousWordForPrediction, previousPreviousWordForPrediction)
+                        previousPreviousWordForPrediction = previousWordForPrediction
+                        previousWordForPrediction = committedWord
                     }
                     typedWord.clear()
                     lastCommittedWord = ""
@@ -855,6 +859,8 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                     currentSuggestions = emptyList()
                 }
                 if (value in setOf(".", "?", "!")) {
+                    previousWordForPrediction = ""
+                    previousPreviousWordForPrediction = ""
                     shifted = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_AUTO_CAPITALIZE, true)
                     lastSpaceAt = 0L
                     refreshKeyboard()
