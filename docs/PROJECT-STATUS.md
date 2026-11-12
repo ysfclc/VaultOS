@@ -213,3 +213,10 @@ Implemented on branch `ux-reset/0.13.0`:
 Version: 0.13.0 / versionCode 14. Application ID, Room schema, user data and existing signing identity are unchanged.
 
 Verification state: hosted CI run [42261718395](https://github.com/ysfclc/VaultOS/actions/runs/42261718395) passed unit tests, lint, signed debug/release APK assembly, checksum preparation and private draft release publishing. APK signer SHA-256 matches the retained certificate: `c5b0c6c49ff6ca525558c2fecfa11dff54fba50f9083482cd869af4759e78b23`. The signed release APK is attached at [VaultOS-release.apk](https://github.com/ysfclc/VaultOS/releases/download/untagged-04b4086aa81185969695/VaultOS-release.apk). Physical phone acceptance is still pending; this is not yet a device-verified usability release. The existing signing identity is intentionally retained to preserve update installation continuity.
+
+
+## Keyboard quality reassessment — 2026-11-12
+
+User feedback reports that the keyboard still feels slow and does not provide useful prediction. Source inspection supports this concern: the current predictor is a small static EN/PL/TR lexicon with sparse single-word context maps; personal dictionary JSON is read during suggestion rendering; local edit-distance correction and candidate-row reconstruction occur on the typing path. The 0.13.0 unit tests verify helper examples, not perceived prediction quality or real-device latency.
+
+The keyboard must therefore be treated as a partial product surface, not complete. See docs/KEYBOARD-V2.md, requirement R-013 and ADR-009. KBD-1 responsiveness and KBD-2 contextual prediction take priority over visual redesign. No cloud text processing or heavyweight model dependency is approved.
