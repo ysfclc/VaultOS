@@ -86,6 +86,18 @@ class KeyboardSuggestionEngineTest {
     }
 
     @Test
+    fun twoWordContextPredictionsAreLanguageSpecific() {
+        assertEquals(listOf("not", "going", "sure"), KeyboardSuggestionEngine.nextWordSuggestions("en", "I", "AM"))
+        assertEquals(listOf("czy", "jak", "co"), KeyboardSuggestionEngine.nextWordSuggestions("pl", "nie", "wiem"))
+        assertEquals(listOf("öyle", "bugün", "istiyorum"), KeyboardSuggestionEngine.nextWordSuggestions("tr", "BEN", "DE"))
+    }
+
+    @Test
+    fun unknownTwoWordContextFallsBackToSingleWordPrediction() {
+        assertEquals(listOf("am", "have", "think"), KeyboardSuggestionEngine.nextWordSuggestions("en", "unknown", "I"))
+    }
+
+    @Test
     fun correctionCandidatesRespectRequestedLimit() {
         assertEquals(1, KeyboardSuggestionEngine.nearbyCorrections("en", "helo", limit = 1).size)
     }
