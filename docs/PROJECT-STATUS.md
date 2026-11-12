@@ -260,3 +260,14 @@ Implemented in source:
 - Added `SuggestionRequestGateTest` with three cases covering newest-request precedence and invalidation.
 
 Verification: the generation-gate helper compiled and passed a standalone Kotlin execution. The full Android project build, lint, JUnit suite and 500-word benchmark have not been run here. The GitHub status currently reports a successful Vercel check only; the available workflow-run query returns no Android Actions run for this commit. Redmi device acceptance remains open.
+
+
+## Keyboard V2 — Android-backed private learning coverage (2026-11-12)
+
+Implemented:
+
+- Added six Android instrumentation tests against the app sandbox's real SharedPreferences: opt-in default, word/bigram/trigram persistence across service-memory instances, opt-out behavior, clear/reset semantics, EN/PL/TR isolation and legacy v1 JSON fallback.
+- Added AndroidX instrumentation dependencies and an API 35 Google APIs emulator step to the Android Actions workflow. The existing build/test/lint/signed APK steps remain in place.
+- Fixed a context-learning edge case: one-letter words such as English "I" are now valid learned context tokens, while punctuation-only and over-32-character values remain rejected.
+
+Verification status: test source, Gradle dependencies and workflow were committed and re-fetched. The API 35 instrumentation run has not yet been observed; do not claim tests, Android build, lint or APK succeeded until Actions evidence is available. Physical Redmi acceptance remains open.
