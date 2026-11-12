@@ -55,6 +55,7 @@ import java.util.Locale
  */
 class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellCheckerSessionListener {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val typingMemory by lazy(LazyThreadSafetyMode.NONE) { LocalTypingMemory(applicationContext) }
     private val mainHandler = Handler(Looper.getMainLooper())
     private var clipboard: ClipboardManager? = null
     private var spellChecker: SpellCheckerSession? = null
@@ -566,8 +567,8 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         item("Open clipboard history") { openClipboardHistory() }
 
         section("PERSONAL TYPING")
-        item(if (LocalTypingMemory(this).isLearningEnabled()) "Pause private word learning" else "Enable private word learning") {
-            val memory = LocalTypingMemory(this)
+        item(if (typingMemory.isLearningEnabled()) "Pause private word learning" else "Enable private word learning") {
+            val memory = typingMemory
             memory.setLearningEnabled(!memory.isLearningEnabled())
             refreshKeyboard()
         }
@@ -577,7 +578,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                 .setMessage("This removes saved words and local word-pair counts from this device. It does not affect clipboard history or Vault files.")
                 .setNegativeButton("Cancel", null)
                 .setPositiveButton("Clear") { _, _ ->
-                    LocalTypingMemory(this).clear()
+                    typingMemory.clear()
                     Toast.makeText(this, "Personal typing data cleared", Toast.LENGTH_SHORT).show()
                     refreshKeyboard()
                 }
@@ -881,7 +882,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         // Never persist text from password, email, URL, numeric, autocomplete or other
         // fields where suggestions are disabled, even when a word ends at punctuation.
         if (!isSafeForSuggestions(currentInputEditorInfo)) return
-        LocalTypingMemory(this).learn(selectedLanguageCode(), word, previousWord)
+        typingMemory.learn(selectedLanguageCode(), word, previousWord)
     }
 
     private fun handleSmartSpace() {
@@ -959,7 +960,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
             return
         }
         val typed = typedWord.toString()
-        val memory = LocalTypingMemory(this)
+        val memory = typingMemory
         val language = selectedLanguageCode()
         val learnedVocabulary = memory.dictionaryWords(language)
         val learnedCompletions = if (typed.isNotBlank()) memory.completions(language, typed, 5) else emptyList()
