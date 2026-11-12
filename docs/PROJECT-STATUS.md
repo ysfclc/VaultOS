@@ -247,3 +247,16 @@ Implemented in source:
 - Added pure-engine tests for two-word context in all three languages and fallback when the two-word context is unknown.
 
 Verification remains pending: no Android-backed persistence tests or executed Android/JVM suite are available in this session. The build and physical Redmi acceptance gates remain open.
+
+
+## Keyboard V2 — asynchronous correction ranking (2026-11-12)
+
+Implemented in source:
+
+- Local fuzzy correction no longer runs synchronously inside `renderSuggestions()`. The IME takes a copy of the current personal vocabulary on the main thread and submits bounded ranking to one reusable single-thread executor.
+- The existing current-word and prefix-completion candidates remain available immediately while local corrections are calculated.
+- A per-render generation gate rejects results from older requests. The apply path also verifies the input session, exact typed word, selected language, current candidate-row identity, safe-editor status and absence of newer SpellChecker suggestions.
+- Pending queued ranking is cleared when a newer request arrives; the worker is shut down and pending tokens invalidated when the IME service is destroyed. No editor text or new network/model dependency is introduced.
+- Added `SuggestionRequestGateTest` with three cases covering newest-request precedence and invalidation.
+
+Verification: the generation-gate helper compiled and passed a standalone Kotlin execution. The full Android project build, lint, JUnit suite and 500-word benchmark have not been run here. The GitHub status currently reports a successful Vercel check only; the available workflow-run query returns no Android Actions run for this commit. Redmi device acceptance remains open.
