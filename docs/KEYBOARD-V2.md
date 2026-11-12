@@ -1,10 +1,10 @@
 # VaultOS Neural Keyboard — V2 product increment
 
-_Status: KBD-1 responsiveness and KBD-2 contextual prediction source implemented; hosted verification, asynchronous ranking and device acceptance pending._
+_Status: KBD-1 responsiveness and KBD-2 contextual prediction source implemented, including asynchronous local correction ranking and stale-result rejection; hosted verification, Android-backed learning tests and device acceptance pending._
 
 ## Problem statement
 
-The 0.13.0 keyboard is visually more polished than its prediction engine. Its current engine is a small hand-written EN/PL/TR lexicon with sparse one-word next-word maps. The service also performs personal-dictionary reads, fuzzy matching and suggestion-row reconstruction on the main thread during typing. This creates two user-visible failures: weak prediction and avoidable input latency.
+The 0.13.0 keyboard is visually more polished than its prediction engine. Its current engine is a small hand-written EN/PL/TR lexicon with sparse one-word next-word maps. The service previously performed local fuzzy correction on the IME main thread. KBD-1 now moves that bounded correction scan to a reusable worker; the static language model and the quality of its predictions remain limited, and real-device latency still needs measurement.
 
 This is a product-completeness issue, not a theme issue. Do not describe the existing suggestion engine as a complete predictive keyboard.
 
@@ -55,6 +55,9 @@ Extract candidate scoring and context selection into a pure Kotlin component. Un
 - [x] Bound correction ranking to 120 length-compatible candidates, prioritize same-initial candidates, and use bounded-memory Damerau–Levenshtein with an early exit.
 - [x] Add deterministic correction-limit, transposition and low-noise regression cases (execution pending hosted CI).
 - [x] Add a repeatable JVM microbenchmark for correction ranking with the maximum 500-word personal vocabulary; it reports p50/p95 without a flaky hard threshold.
+- [x] Move local fuzzy correction ranking to a reusable single-thread worker using an immutable personal-vocabulary snapshot; retain immediate typed/completion candidates while ranking runs.
+- [x] Guard worker results with a generation token and active input/session checks; discard queued stale work and shut down the worker with the IME service.
+- [x] Add pure generation-gate tests for latest-request precedence and lifecycle invalidation.
 - [ ] Execute the benchmark on hosted CI and record its output; compare against a pre-change baseline only if the prior source can be built reproducibly. Do not claim device latency improvement until measured on the Redmi.
 
 ### KBD-2 — Context-aware prediction
@@ -98,8 +101,8 @@ Extract candidate scoring and context selection into a pure Kotlin component. Un
 - `KeyboardSuggestionEngine.kt` contains a compact static EN/PL/TR vocabulary, one-word next-word maps and two-word phrase priors.
 - `LocalTypingMemory.kt` now adds opt-in, bounded per-language trigram counts while preserving the v1 word/bigram keys; exact two-word context predictions fall back to v1 adjacent-word counts when no trigram exists.
 - `LocalTypingMemory.kt` stores opt-in word and adjacent-word counts in SharedPreferences JSON; KBD-1 now caches parsed immutable snapshots for the IME lifetime and invalidates changed keys.
-- `VaultKeyboardService.renderSuggestions()` reads the personal dictionary and completions, runs local correction, reads cursor context and rebuilds candidate views on the typing path.
+- `VaultKeyboardService.renderSuggestions()` keeps cached personal vocabulary/completion lookup and candidate rendering on the IME thread, while local fuzzy correction now runs on a reusable worker from an immutable vocabulary snapshot. The UI keeps immediate typed/completion candidates while the worker ranks corrections.
 - `requestWordSuggestions()` relies on the Android SpellCheckerSession for asynchronous typo candidates.
-- Existing helper coverage has been extended with bounded-correction cases and a repeatable 500-word correction benchmark harness. Neither has been executed against this code yet; latency, adaptive sequence prediction and IME integration remain unverified.
+- Added `SuggestionRequestGate` and three JVM tests for latest-request precedence and lifecycle invalidation. The pure gate was compiled and exercised independently; the Android service integration, full project tests, benchmark, typing latency and adaptive prediction quality remain unverified.
 
 The first implementation increment is KBD-1. Do not start with visual polish or a neural runtime.
