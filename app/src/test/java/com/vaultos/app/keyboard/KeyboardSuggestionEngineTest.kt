@@ -84,4 +84,19 @@ class KeyboardSuggestionEngineTest {
         assertTrue(KeyboardSuggestionEngine.completePrefix("en", "a").isEmpty())
         assertTrue(KeyboardSuggestionEngine.completePrefix("en", "hello").isEmpty())
     }
+
+    @Test
+    fun correctionCandidatesRespectRequestedLimit() {
+        assertEquals(1, KeyboardSuggestionEngine.nearbyCorrections("en", "helo", limit = 1).size)
+    }
+
+    @Test
+    fun correctionEngineHandlesAdjacentTransposition() {
+        assertTrue(KeyboardSuggestionEngine.nearbyCorrections("en", "teh").contains("the"))
+    }
+
+    @Test
+    fun unrelatedInputDoesNotProduceCorrectionNoise() {
+        assertTrue(KeyboardSuggestionEngine.nearbyCorrections("en", "qzxvplmok").isEmpty())
+    }
 }
