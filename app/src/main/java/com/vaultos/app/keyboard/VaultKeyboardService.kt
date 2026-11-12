@@ -78,6 +78,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     private var typedWord = StringBuilder()
     private var lastCommittedWord = ""
     private var previousWordForPrediction = ""
+    private var previousPreviousWordForPrediction = ""
     private var inputGeneration = 0
     private var spellCheckGeneration = 0
     private var currentSuggestions: List<String> = emptyList()
@@ -121,6 +122,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         typedWord.clear()
         lastCommittedWord = ""
         previousWordForPrediction = ""
+        previousPreviousWordForPrediction = ""
         currentSuggestions = emptyList()
         activeSpellCheckWord = ""
         spellCheckGeneration++
@@ -878,11 +880,11 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         spellChecker?.getSuggestions(arrayOf(TextInfo(word, requestId, requestId)), 3, false)
     }
 
-    private fun learnWord(word: String, previousWord: String = "") {
+    private fun learnWord(word: String, previousWord: String = "", previousPreviousWord: String = "") {
         // Never persist text from password, email, URL, numeric, autocomplete or other
         // fields where suggestions are disabled, even when a word ends at punctuation.
         if (!isSafeForSuggestions(currentInputEditorInfo)) return
-        typingMemory.learn(selectedLanguageCode(), word, previousWord)
+        typingMemory.learn(selectedLanguageCode(), word, previousWord, previousPreviousWord)
     }
 
     private fun handleSmartSpace() {
@@ -896,6 +898,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
             typedWord.clear()
             lastCommittedWord = ""
             previousWordForPrediction = ""
+            previousPreviousWordForPrediction = ""
             currentSuggestions = emptyList()
             activeSpellCheckWord = ""
             spellCheckGeneration++
@@ -911,8 +914,9 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     private fun commitSpace() {
         val word = typedWord.toString()
         if (word.isNotBlank() && isSafeForSuggestions(currentInputEditorInfo)) {
-            learnWord(word, previousWordForPrediction)
+            learnWord(word, previousWordForPrediction, previousPreviousWordForPrediction)
             lastCommittedWord = word
+            previousPreviousWordForPrediction = previousWordForPrediction
             previousWordForPrediction = word
             activeSuggestionInputGeneration = inputGeneration
             requestWordSuggestions(word)
@@ -936,9 +940,10 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
             connection.deleteSurroundingText(word.length + if (committedWord) 1 else 0, 0)
             connection.commitText("$value ", 1)
         }
-        learnWord(value, previousWordForPrediction)
+        learnWord(value, previousWordForPrediction, previousPreviousWordForPrediction)
         typedWord.clear()
         lastCommittedWord = value
+        previousPreviousWordForPrediction = previousWordForPrediction
         previousWordForPrediction = value
         activeSpellCheckWord = ""
         spellCheckGeneration++
@@ -1008,14 +1013,18 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         val correcting = currentSuggestions.isNotEmpty() || localCorrections.isNotEmpty()
         // Read only a short, transient window from the active safe text field. This keeps
         // predictions aligned with the real cursor after edits, pastes or cursor movement.
-        val contextualWord = contextWordBeforeCursor().ifBlank { previousWordForPrediction }
+        val contextWords = contextWordsBeforeCursor().ifEmpty {
+            listOf(previousPreviousWordForPrediction, previousWordForPrediction).filter { it.isNotBlank() }
+        }
+        val contextualWord = contextWords.lastOrNull().orEmpty()
+        val previousContextWord = contextWords.getOrNull(contextWords.lastIndex - 1).orEmpty()
         val candidates = when {
             typed.isNotBlank() -> (listOf(typed) + currentSuggestions + localCorrections +
                 learnedCompletions + KeyboardSuggestionEngine.completePrefix(language, typed, additionalWords = learnedCompletions)).distinct().take(3)
             correcting -> (listOf(lastCommittedWord) + currentSuggestions).distinct().take(3)
             contextualWord.isNotBlank() ->
-                (typingMemory.nextWords(language, contextualWord) +
-                    KeyboardSuggestionEngine.nextWordSuggestions(language, contextualWord)).distinct().take(3)
+                (typingMemory.nextWords(language, previousContextWord, contextualWord) +
+                    KeyboardSuggestionEngine.nextWordSuggestions(language, previousContextWord, contextualWord)).distinct().take(3)
             else -> emptyList()
         }
 
@@ -1064,7 +1073,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                     correcting -> {
                         if (!candidate.equals(lastCommittedWord, ignoreCase = true)) applySuggestion(candidate)
                     }
-                    else -> applyNextWordSuggestion(candidate, contextualWord)
+                    else -> applyNextWordSuggestion(candidate, previousContextWord, contextualWord)
                 }
             }
         }
@@ -1081,21 +1090,24 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         }
     }
 
-    private fun contextWordBeforeCursor(): String {
-        if (!isSafeForSuggestions(currentInputEditorInfo)) return ""
-        val before = currentInputConnection?.getTextBeforeCursor(80, 0)?.toString().orEmpty()
-        val normalized = before.trimEnd()
-        return Regex("""[\p{L}][\p{L}'’\-]*$""")
-            .find(normalized)?.value
-            ?.lowercase(inputLocale())
-            .orEmpty()
+    private fun contextWordsBeforeCursor(): List<String> {
+        if (!isSafeForSuggestions(currentInputEditorInfo)) return emptyList()
+        val before = currentInputConnection?.getTextBeforeCursor(120, 0)?.toString().orEmpty().trimEnd()
+        val pair = Regex("""([\p{L}][\p{L}'’\-]*)\s+([\p{L}][\p{L}'’\-]*)$""").find(before)
+        val words = if (pair != null) {
+            listOf(pair.groupValues[1], pair.groupValues[2])
+        } else {
+            Regex("""[\p{L}][\p{L}'’\-]*$""").find(before)?.value?.let(::listOf).orEmpty()
+        }
+        return words.map { it.lowercase(inputLocale()) }
     }
 
-    private fun applyNextWordSuggestion(value: String, contextWord: String) {
-        learnWord(value, contextWord)
+    private fun applyNextWordSuggestion(value: String, previousContextWord: String, contextWord: String) {
+        learnWord(value, contextWord, previousContextWord)
         currentInputConnection?.commitText("$value ", 1)
         typedWord.clear()
         lastCommittedWord = value
+        previousPreviousWordForPrediction = contextWord
         previousWordForPrediction = value
         activeSpellCheckWord = ""
         currentSuggestions = emptyList()
@@ -1113,6 +1125,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         typedWord.clear()
         lastCommittedWord = ""
         previousWordForPrediction = ""
+        previousPreviousWordForPrediction = ""
         activeSpellCheckWord = ""
         currentSuggestions = emptyList()
         spellCheckGeneration++
