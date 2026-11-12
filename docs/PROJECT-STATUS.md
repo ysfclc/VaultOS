@@ -233,3 +233,5 @@ Implemented in source:
 - Added regression cases for candidate limits, adjacent transposition and unrelated input noise.
 
 Verification: source changes are committed. Hosted unit tests/lint/build have not yet been confirmed from the available GitHub Actions inspection surface; no test-pass or APK claim is made. The Redmi Note 12 Pro 5G latency and typing-quality measurements remain pending. KBD-1's repeatable microbenchmark is still open.
+
+- Added `KeyboardSuggestionEngineBenchmarkTest`: repeatable JVM correction benchmark with 500 personal words, 150 warmups, 1,000 samples and p50/p95 output. Execution and measurement are pending; no performance result is claimed.
