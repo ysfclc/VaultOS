@@ -58,12 +58,13 @@ VaultOS is a local-first Android file manager and personal content library for A
 **Done this session**
 - Implemented KBD-1 source changes: one cached LocalTypingMemory per IME service lifetime; parsed word/pair snapshots and dictionary word list cached in memory and invalidated on preference changes.
 - Bounded local correction ranking to 120 length-compatible candidates, prioritized same-initial candidates with a fallback pool, and replaced full edit-distance matrices with bounded-memory Damerau–Levenshtein plus early exit.
+- Reused the three candidate cells and separators across keystrokes instead of rebuilding the candidate strip each time.
 - Added correction limit, adjacent-transposition and low-noise regression test cases.
 
 **State changed**
 - app/src/main/java/com/vaultos/app/keyboard/LocalTypingMemory.kt — parsed SharedPreferences snapshots and dictionary list caching.
 - app/src/main/java/com/vaultos/app/keyboard/KeyboardSuggestionEngine.kt — bounded correction candidate pool and bounded-memory distance.
-- app/src/main/java/com/vaultos/app/keyboard/VaultKeyboardService.kt — reuse typing-memory instance for the IME lifetime.
+- app/src/main/java/com/vaultos/app/keyboard/VaultKeyboardService.kt — reuse typing-memory instance for the IME lifetime and update candidate strip views in place.
 - app/src/test/java/com/vaultos/app/keyboard/KeyboardSuggestionEngineTest.kt — new correction regression cases.
 - docs/KEYBOARD-V2.md, docs/TASKS.md, docs/PROJECT-STATUS.md — implementation and remaining verification recorded.
 - docs/STATE.md — current ledger and handoff.
@@ -72,7 +73,7 @@ VaultOS is a local-first Android file manager and personal content library for A
 - Repository writes completed and source files re-fetched successfully.
 - Service uses the shared lazy typingMemory property; no per-render LocalTypingMemory(this) constructions remain.
 - Test source contains the added cases. Tests have not been executed in this session.
-- The commit's combined status exposes a failing Vercel check pointing to Vercel's build-rate limit; this is not an Android build result. No GitHub Actions Android run result is exposed by the available inspection actions. No Android build, lint, test-pass or APK claim is made.
+- The code commit's combined status exposes a failing Vercel check pointing to Vercel's build-rate limit; this is not an Android build result. No GitHub Actions Android run result is exposed by the available inspection actions. No Android build, lint, test-pass or APK claim is made.
 - No Redmi Note 12 Pro 5G device measurement was possible.
 
 **Not done / next**
