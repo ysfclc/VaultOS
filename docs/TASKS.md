@@ -263,7 +263,7 @@ The 0.13.0 keyboard is a functional baseline, not a complete predictive experien
 - [x] KBD-2: Rank next-word candidates from a short transient two-word context, with EN/PL/TR isolation and one-word fallback.
 - [x] KBD-2: Add pure tests for EN/PL/TR context priors, unknown-context fallback, trigram precedence and candidate limits.
 - [x] KBD-2: Add Android-backed tests for opt-in, word/bigram/trigram persistence, opt-out, clear/reset, EN/PL/TR isolation and v1 bigram compatibility.
-- [ ] KBD-2: Diagnose the current GitHub Actions runner failure (runs 159–162 failed before exposing job steps/logs), then execute connectedDebugAndroidTest on the API 35 CI emulator.
+- [ ] KBD-2: Diagnose the GitHub Actions startup failure (run 162 and three failed-job attempts produced no step summaries or downloadable logs), then execute connectedDebugAndroidTest on the API 35 CI emulator.
 - [x] KBD-1: Add pure generation-gate tests for newest-request precedence and lifecycle invalidation.
 - [ ] KBD-3: Redesign candidate strip hierarchy and interactions after latency and prediction quality are stable.
 - [ ] KBD-4: Measure real typing latency and prediction usefulness on Redmi Note 12 Pro 5G across safe apps and languages.
