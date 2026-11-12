@@ -594,7 +594,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         item("Clear personal typing data") {
             AlertDialog.Builder(this)
                 .setTitle("Clear personal typing data?")
-                .setMessage("This removes saved words and local word-pair counts from this device. It does not affect clipboard history or Vault files.")
+                .setMessage("This removes saved words and local word-context counts from this device. It does not affect clipboard history or Vault files.")
                 .setNegativeButton("Cancel", null)
                 .setPositiveButton("Clear") { _, _ ->
                     typingMemory.clear()
