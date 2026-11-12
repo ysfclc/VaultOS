@@ -54,7 +54,8 @@ Extract candidate scoring and context selection into a pure Kotlin component. Un
 - [x] Keep the three candidate cells and separators alive across keystrokes; update content and visibility rather than rebuilding the suggestion row.
 - [x] Bound correction ranking to 120 length-compatible candidates, prioritize same-initial candidates, and use bounded-memory Damerau–Levenshtein with an early exit.
 - [x] Add deterministic correction-limit, transposition and low-noise regression cases (execution pending hosted CI).
-- [ ] Capture a repeatable baseline and after-change microbenchmark for the pure engine; do not claim device latency improvement until measured on the Redmi.
+- [x] Add a repeatable JVM microbenchmark for correction ranking with the maximum 500-word personal vocabulary; it reports p50/p95 without a flaky hard threshold.
+- [ ] Execute the benchmark on hosted CI and record its output; compare against a pre-change baseline only if the prior source can be built reproducibly. Do not claim device latency improvement until measured on the Redmi.
 
 ### KBD-2 — Context-aware prediction
 - Add opt-in, bounded trigram learning while retaining v1 bigram compatibility.
@@ -97,6 +98,6 @@ Extract candidate scoring and context selection into a pure Kotlin component. Un
 - `LocalTypingMemory.kt` stores opt-in word and adjacent-word counts in SharedPreferences JSON; KBD-1 now caches parsed immutable snapshots for the IME lifetime and invalidates changed keys.
 - `VaultKeyboardService.renderSuggestions()` reads the personal dictionary and completions, runs local correction, reads cursor context and rebuilds candidate views on the typing path.
 - `requestWordSuggestions()` relies on the Android SpellCheckerSession for asynchronous typo candidates.
-- Existing helper coverage has been extended with bounded-correction cases, but tests have not yet run against this code; latency, adaptive sequence prediction and IME integration remain unverified.
+- Existing helper coverage has been extended with bounded-correction cases and a repeatable 500-word correction benchmark harness. Neither has been executed against this code yet; latency, adaptive sequence prediction and IME integration remain unverified.
 
 The first implementation increment is KBD-1. Do not start with visual polish or a neural runtime.
