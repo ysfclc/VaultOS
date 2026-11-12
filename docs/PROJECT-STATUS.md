@@ -220,3 +220,15 @@ Verification state: hosted CI run [42261718395](https://github.com/ysfclc/VaultO
 User feedback reports that the keyboard still feels slow and does not provide useful prediction. Source inspection supports this concern: the current predictor is a small static EN/PL/TR lexicon with sparse single-word context maps; personal dictionary JSON is read during suggestion rendering; local edit-distance correction and candidate-row reconstruction occur on the typing path. The 0.13.0 unit tests verify helper examples, not perceived prediction quality or real-device latency.
 
 The keyboard must therefore be treated as a partial product surface, not complete. See docs/KEYBOARD-V2.md, requirement R-013 and ADR-009. KBD-1 responsiveness and KBD-2 contextual prediction take priority over visual redesign. No cloud text processing or heavyweight model dependency is approved.
+
+
+## Keyboard V2 — KBD-1 responsiveness implementation (2026-11-12)
+
+Implemented in source:
+
+- `VaultKeyboardService` now reuses one `LocalTypingMemory` instance for the lifetime of the IME instead of constructing it during each candidate render.
+- `LocalTypingMemory` caches parsed SharedPreferences word/pair snapshots and the dictionary word list; changed preference keys invalidate the affected cached data. Existing JSON keys and stored values are preserved.
+- `KeyboardSuggestionEngine` filters by compatible word length, caps the correction pool at 120, prioritizes same-initial candidates while retaining a fallback pool, and uses bounded-memory Damerau–Levenshtein with early exit.
+- Added regression cases for candidate limits, adjacent transposition and unrelated input noise.
+
+Verification: source changes are committed. Hosted unit tests/lint/build have not yet been confirmed from the available GitHub Actions inspection surface; no test-pass or APK claim is made. The Redmi Note 12 Pro 5G latency and typing-quality measurements remain pending. KBD-1's repeatable microbenchmark is still open.
