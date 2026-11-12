@@ -1035,9 +1035,11 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         val correcting = currentSuggestions.isNotEmpty() || localCorrections.isNotEmpty()
         // Read only a short, transient window from the active safe text field. This keeps
         // predictions aligned with the real cursor after edits, pastes or cursor movement.
-        val contextWords = contextWordsBeforeCursor().ifEmpty {
-            listOf(previousPreviousWordForPrediction, previousWordForPrediction).filter { it.isNotBlank() }
-        }
+        val contextWords = if (typed.isBlank() && !correcting) {
+            contextWordsBeforeCursor().ifEmpty {
+                listOf(previousPreviousWordForPrediction, previousWordForPrediction).filter { it.isNotBlank() }
+            }
+        } else emptyList()
         val contextualWord = contextWords.lastOrNull().orEmpty()
         val previousContextWord = contextWords.getOrNull(contextWords.lastIndex - 1).orEmpty()
         val candidates = when {
