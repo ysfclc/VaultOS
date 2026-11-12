@@ -1,6 +1,6 @@
 # VaultOS Neural Keyboard — V2 product increment
 
-_Status: approved direction; implementation not yet started._
+_Status: approved direction; KBD-1 responsiveness implementation started, hosted verification pending._
 
 ## Problem statement
 
@@ -50,10 +50,10 @@ Extract candidate scoring and context selection into a pure Kotlin component. Un
 ## Incremental delivery plan
 
 ### KBD-1 — Typing-path responsiveness
-- Cache local typing-memory reads and stop repeated JSON parsing during candidate rendering.
-- Bound and optimize local correction work.
-- Add deterministic tests for candidate ordering and limits.
-- Capture a repeatable baseline and after-change microbenchmark for the pure engine; do not claim device latency improvement until measured on the Redmi.
+- [x] Reuse one `LocalTypingMemory` instance for the IME service lifetime; cache parsed word/pair snapshots and the dictionary word list, invalidating them when SharedPreferences data changes.
+- [x] Bound correction ranking to 120 length-compatible candidates, prioritize same-initial candidates, and use bounded-memory Damerau–Levenshtein with an early exit.
+- [x] Add deterministic correction-limit, transposition and low-noise regression cases (execution pending hosted CI).
+- [ ] Capture a repeatable baseline and after-change microbenchmark for the pure engine; do not claim device latency improvement until measured on the Redmi.
 
 ### KBD-2 — Context-aware prediction
 - Add opt-in, bounded trigram learning while retaining v1 bigram compatibility.
@@ -93,9 +93,9 @@ Extract candidate scoring and context selection into a pure Kotlin component. Un
 ## Current source findings (2026-11-12)
 
 - `KeyboardSuggestionEngine.kt` contains a compact static EN/PL/TR vocabulary and sparse one-word next-word maps.
-- `LocalTypingMemory.kt` stores opt-in word and adjacent-word counts in SharedPreferences JSON.
+- `LocalTypingMemory.kt` stores opt-in word and adjacent-word counts in SharedPreferences JSON; KBD-1 now caches parsed immutable snapshots for the IME lifetime and invalidates changed keys.
 - `VaultKeyboardService.renderSuggestions()` reads the personal dictionary and completions, runs local correction, reads cursor context and rebuilds candidate views on the typing path.
 - `requestWordSuggestions()` relies on the Android SpellCheckerSession for asynchronous typo candidates.
-- Existing tests cover the deterministic helper's current examples, not latency, adaptive sequence prediction or IME integration.
+- Existing helper coverage has been extended with bounded-correction cases, but tests have not yet run against this code; latency, adaptive sequence prediction and IME integration remain unverified.
 
 The first implementation increment is KBD-1. Do not start with visual polish or a neural runtime.
