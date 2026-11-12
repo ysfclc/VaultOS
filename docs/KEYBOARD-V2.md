@@ -51,6 +51,7 @@ Extract candidate scoring and context selection into a pure Kotlin component. Un
 
 ### KBD-1 — Typing-path responsiveness
 - [x] Reuse one `LocalTypingMemory` instance for the IME service lifetime; cache parsed word/pair snapshots and the dictionary word list, invalidating them when SharedPreferences data changes.
+- [x] Keep the three candidate cells and separators alive across keystrokes; update content and visibility rather than rebuilding the suggestion row.
 - [x] Bound correction ranking to 120 length-compatible candidates, prioritize same-initial candidates, and use bounded-memory Damerau–Levenshtein with an early exit.
 - [x] Add deterministic correction-limit, transposition and low-noise regression cases (execution pending hosted CI).
 - [ ] Capture a repeatable baseline and after-change microbenchmark for the pure engine; do not claim device latency improvement until measured on the Redmi.
