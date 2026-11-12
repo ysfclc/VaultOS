@@ -48,6 +48,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.yield
 import java.util.Locale
+import java.util.concurrent.LinkedBlockingDeque
+import java.util.concurrent.ThreadPoolExecutor
+import java.util.concurrent.TimeUnit
 
 /**
  * Local-first VaultOS keyboard. The keyboard is intentionally independent from the
@@ -57,6 +60,10 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val typingMemory by lazy(LazyThreadSafetyMode.NONE) { LocalTypingMemory(applicationContext) }
     private val mainHandler = Handler(Looper.getMainLooper())
+    private val suggestionRequestGate = SuggestionRequestGate()
+    private var correctionExecutor: ThreadPoolExecutor? = null
+    private var localCorrectionWord = ""
+    private var localCorrectionSuggestions: List<String> = emptyList()
     private var clipboard: ClipboardManager? = null
     private var spellChecker: SpellCheckerSession? = null
     private var shifted = false
@@ -93,11 +100,15 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
 
     override fun onCreate() {
         super.onCreate()
+        correctionExecutor = ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, LinkedBlockingDeque())
         clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         clipboard?.addPrimaryClipChangedListener(clipboardListener)
     }
 
     override fun onDestroy() {
+        suggestionRequestGate.invalidate()
+        correctionExecutor?.shutdownNow()
+        correctionExecutor = null
         clipboard?.removePrimaryClipChangedListener(clipboardListener)
         spellChecker?.close()
         keyPreviewPopup?.dismiss()
@@ -110,6 +121,9 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
         super.onStartInput(attribute, restarting)
         inputGeneration++
+        suggestionRequestGate.invalidate()
+        localCorrectionWord = ""
+        localCorrectionSuggestions = emptyList()
         clipboardMode = false
         commandsMode = false
         emojiMode = false
@@ -159,6 +173,9 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
 
     override fun onFinishInput() {
         inputGeneration++
+        suggestionRequestGate.invalidate()
+        localCorrectionWord = ""
+        localCorrectionSuggestions = emptyList()
         typedWord.clear()
         lastCommittedWord = ""
         previousWordForPrediction = ""
@@ -1031,9 +1048,12 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         val language = selectedLanguageCode()
         val learnedVocabulary = typingMemory.dictionaryWords(language)
         val learnedCompletions = if (typed.isNotBlank()) typingMemory.completions(language, typed, 5) else emptyList()
-        val localCorrections = if (typed.isNotBlank() && currentSuggestions.isEmpty()) {
-            KeyboardSuggestionEngine.nearbyCorrections(language, typed, additionalWords = learnedVocabulary)
+        val localCorrections = if (typed.isNotBlank() && currentSuggestions.isEmpty() && localCorrectionWord == typed) {
+            localCorrectionSuggestions
         } else emptyList()
+        if (typed.isNotBlank() && currentSuggestions.isEmpty() && localCorrectionWord != typed) {
+            requestLocalCorrections(typed, language, learnedVocabulary, row)
+        }
         val correcting = currentSuggestions.isNotEmpty() || localCorrections.isNotEmpty()
         // Read only a short, transient window from the active safe text field. This keeps
         // predictions aligned with the real cursor after edits, pastes or cursor movement.
@@ -1105,6 +1125,43 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         }
         separators.forEachIndexed { index, separator ->
             separator.visibility = if (candidates.size > index + 1) View.VISIBLE else View.GONE
+        }
+    }
+
+    private fun requestLocalCorrections(
+        word: String,
+        language: String,
+        vocabulary: List<String>,
+        targetRow: LinearLayout
+    ) {
+        val token = suggestionRequestGate.issue()
+        val session = inputGeneration
+        val immutableVocabulary = vocabulary.toList()
+        val executor = correctionExecutor ?: return
+        // Keep at most one pending ranking request. An already-running request may finish,
+        // but its generation token prevents it from touching a newer editor state.
+        executor.queue.clear()
+        runCatching {
+            executor.execute {
+                val result = KeyboardSuggestionEngine.nearbyCorrections(
+                    language = language,
+                    input = word,
+                    additionalWords = immutableVocabulary
+                )
+                mainHandler.post {
+                    if (!suggestionRequestGate.isCurrent(token) ||
+                        inputGeneration != session ||
+                        typedWord.toString() != word ||
+                        selectedLanguageCode() != language ||
+                        suggestionRow !== targetRow ||
+                        currentSuggestions.isNotEmpty() ||
+                        !isSafeForSuggestions(currentInputEditorInfo)
+                    ) return@post
+                    localCorrectionWord = word
+                    localCorrectionSuggestions = result
+                    renderSuggestions()
+                }
+            }
         }
     }
 
