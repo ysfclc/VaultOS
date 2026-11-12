@@ -252,6 +252,7 @@ Phase 2 implementation is in release line 0.2.0. The Room 1→2 migration adds r
 The 0.13.0 keyboard is a functional baseline, not a complete predictive experience. See docs/KEYBOARD-V2.md and requirement R-013 in docs/SPEC.md.
 
 - [x] KBD-1: Reuse one IME-lifetime typing-memory instance; cache parsed personal word/pair snapshots and dictionary lists with preference-change invalidation.
+- [x] KBD-1: Reuse candidate strip cells and separators instead of rebuilding the entire row for each keystroke.
 - [x] KBD-1: Bound local fuzzy correction to 120 length-compatible candidates; prioritize likely same-initial matches and use bounded-memory edit distance with early exit.
 - [x] KBD-1: Add pure-engine correction limit, transposition and low-noise regression tests (execution pending hosted CI).
 - [ ] KBD-1: Add a repeatable pure-engine microbenchmark and record before/after measurements.
