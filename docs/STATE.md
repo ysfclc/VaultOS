@@ -12,7 +12,7 @@ VaultOS is a local-first Android file manager and personal content library for A
 | Unified library, search, organization | 🟡 partial | Implemented; database and UI integration coverage is thin |
 | File operations and ZIP safety | ✅ done | Core operations have 10 JVM regression tests; device UX acceptance remains separate |
 | Clipboard history and capture IME | 🟡 partial | Implemented; Android selected-IME boundary applies; physical app matrix open |
-| Keyboard suggestions | 🟡 partial | KBD-1 source changes committed: cached IME-lifetime typing memory, bounded correction ranking and candidate-view reuse; regression tests and 500-word benchmark harness added; execution/hosted verification pending; device latency/prediction acceptance open |
+| Keyboard suggestions | 🟡 partial | KBD-1/KBD-2 source implemented: cached typing memory, bounded correction, candidate-view reuse, opt-in per-language trigram prediction and two-word context; 21 JVM tests + 500-word benchmark harness added; Android suite/benchmark, async ranking and Redmi acceptance open |
 | Metadata extraction | 🟡 partial | Parser tests exist; end-to-end extraction/provider behavior lacks integration tests |
 | Backup and restore | 🟡 partial | v1/v2 paths implemented; no automated round-trip, corruption, or migration test suite identified |
 | DocumentsProvider | 🟡 partial | Implemented; no provider interoperability test evidence |
