@@ -924,6 +924,8 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         // fields where suggestions are disabled, even when a word ends at punctuation.
         if (!isSafeForSuggestions(currentInputEditorInfo)) return
         typingMemory.learn(selectedLanguageCode(), word, previousWord, previousPreviousWord)
+        localCorrectionWord = ""
+        localCorrectionSuggestions = emptyList()
     }
 
     private fun handleSmartSpace() {
@@ -1051,7 +1053,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         val localCorrections = if (typed.isNotBlank() && currentSuggestions.isEmpty() && localCorrectionWord == typed) {
             localCorrectionSuggestions
         } else emptyList()
-        if (typed.isNotBlank() && currentSuggestions.isEmpty() && localCorrectionWord != typed) {
+        if (typed.length >= 2 && currentSuggestions.isEmpty() && localCorrectionWord != typed) {
             requestLocalCorrections(typed, language, learnedVocabulary, row)
         }
         val correcting = currentSuggestions.isNotEmpty() || localCorrections.isNotEmpty()
@@ -1107,6 +1109,9 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
             item.setOnLongClickListener {
                 if (typed.isNotBlank() && candidate.equals(typed, ignoreCase = true)) {
                     typingMemory.addToDictionary(language, typed)
+                    localCorrectionWord = ""
+                    localCorrectionSuggestions = emptyList()
+                    renderSuggestions()
                     Toast.makeText(this@VaultKeyboardService, "Added to personal dictionary", Toast.LENGTH_SHORT).show()
                     true
                 } else false
@@ -1250,6 +1255,8 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         val languages = listOf("en", "pl", "tr")
         val next = languages[(languages.indexOf(selectedLanguageCode()) + 1) % languages.size]
         getSharedPreferences(PREFS, MODE_PRIVATE).edit().putString(KEY_LANGUAGE, next).apply()
+        localCorrectionWord = ""
+        localCorrectionSuggestions = emptyList()
         spellChecker?.close()
         spellChecker = null
         activeSpellCheckWord = ""
