@@ -254,6 +254,8 @@ The 0.13.0 keyboard is a functional baseline, not a complete predictive experien
 - [x] KBD-1: Reuse one IME-lifetime typing-memory instance; cache parsed personal word/pair snapshots and dictionary lists with preference-change invalidation.
 - [x] KBD-1: Reuse candidate strip cells and separators instead of rebuilding the entire row for each keystroke.
 - [x] KBD-1: Bound local fuzzy correction to 120 length-compatible candidates; prioritize likely same-initial matches and use bounded-memory edit distance with early exit.
+- [x] KBD-1: Run local correction ranking on one reusable worker thread using immutable vocabulary snapshots; keep IME/editor/UI operations on the main thread.
+- [x] KBD-1: Reject stale worker results with per-render generation tokens plus input-session, typed-word, language, editor-safety and candidate-row checks; clear queued work and shut down the executor with the service.
 - [x] KBD-1: Add pure-engine correction limit, transposition and low-noise regression tests (execution pending hosted CI).
 - [x] KBD-1: Add a repeatable pure-engine microbenchmark for 500 personal words (p50/p95 output; no flaky timing threshold).
 - [ ] KBD-1: Execute benchmark in hosted CI and record output; do not claim device latency improvement without Redmi measurement.
@@ -261,7 +263,7 @@ The 0.13.0 keyboard is a functional baseline, not a complete predictive experien
 - [x] KBD-2: Rank next-word candidates from a short transient two-word context, with EN/PL/TR isolation and one-word fallback.
 - [x] KBD-2: Add pure tests for EN/PL/TR context priors, unknown-context fallback, trigram precedence and candidate limits.
 - [ ] KBD-2: Add Android-backed tests for trigram persistence, opt-out, clear/reset and v1 bigram compatibility.
-- [ ] KBD-2: Add stale-result rejection when prediction ranking is moved off the IME main thread.
+- [x] KBD-1: Add pure generation-gate tests for newest-request precedence and lifecycle invalidation.
 - [ ] KBD-3: Redesign candidate strip hierarchy and interactions after latency and prediction quality are stable.
 - [ ] KBD-4: Measure real typing latency and prediction usefulness on Redmi Note 12 Pro 5G across safe apps and languages.
 
