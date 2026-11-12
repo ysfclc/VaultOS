@@ -615,6 +615,8 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                 .setNegativeButton("Cancel", null)
                 .setPositiveButton("Clear") { _, _ ->
                     typingMemory.clear()
+                    localCorrectionWord = ""
+                    localCorrectionSuggestions = emptyList()
                     Toast.makeText(this, "Personal typing data cleared", Toast.LENGTH_SHORT).show()
                     refreshKeyboard()
                 }
