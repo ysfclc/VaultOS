@@ -1,6 +1,6 @@
 # VaultOS Neural Keyboard — V2 product increment
 
-_Status: KBD-1 responsiveness and KBD-2 contextual prediction source implemented, including asynchronous local correction ranking and stale-result rejection; hosted verification, Android-backed learning tests and device acceptance pending._
+_Status: KBD-1 responsiveness and KBD-2 contextual prediction source implemented; Vercel JVM build/test/benchmark passed, Android-backed learning tests compile but await emulator execution, and Redmi device acceptance remains pending._
 
 ## Problem statement
 
@@ -106,6 +106,8 @@ Extract candidate scoring and context selection into a pure Kotlin component. Un
 - `VaultKeyboardService.renderSuggestions()` keeps cached personal vocabulary/completion lookup and candidate rendering on the IME thread, while local fuzzy correction now runs on a reusable worker from an immutable vocabulary snapshot. The UI keeps immediate typed/completion candidates while the worker ranks corrections.
 - `requestWordSuggestions()` relies on the Android SpellCheckerSession for asynchronous typo candidates.
 - Added `SuggestionRequestGate` and three JVM tests for latest-request precedence and lifecycle invalidation. The pure gate was compiled and exercised independently; the Android service integration, full project tests, benchmark, typing latency and adaptive prediction quality remain unverified.
+
+Vercel fallback verification on 2026-11-12 ran all 43 JVM tests successfully and measured the 500-word correction path at p50 105 μs / p95 160 μs on the build host. The Android instrumentation APK compiles, but emulator execution and Redmi device latency remain open.
 
 The first implementation increment is KBD-1. Do not start with visual polish or a neural runtime.
 
