@@ -975,6 +975,8 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
 
     private fun renderSuggestions() {
         val row = suggestionRow ?: return
+        // A render represents a new UI snapshot; any older worker result is now stale.
+        suggestionRequestGate.invalidate()
 
         // Keep the three candidate cells and separators alive across keystrokes.
         // Only their content/visibility changes; avoid tearing down and rebuilding
