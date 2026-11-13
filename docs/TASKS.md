@@ -323,3 +323,6 @@ Do not mark this phase complete from unit tests alone; device acceptance is mand
 - [ ] Verify the first connected Vercel production deployment reaches READY.
 - [ ] Download the APK and ZIP from the stable project domain and verify checksums/signature.
 - [ ] Complete physical Redmi Note 12 Pro 5G acceptance and API 35 instrumentation execution.
+
+
+**Current blocker (2026-11-13):** Vercel refused the initial deployment with HTTP 402 `api-deployments-free-per-day` (more than 100 API deployments today; retry after 24 hours). The connected project settings and source pipeline are in place, but production build/download verification remains unchecked until Vercel accepts a deployment.
