@@ -22,6 +22,7 @@ import android.view.MotionEvent
 import android.view.SoundEffectConstants
 import android.view.View
 import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputMethodManager
 import android.view.textservice.SentenceSuggestionsInfo
 import android.view.textservice.SpellCheckerSession
@@ -139,6 +140,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         previousPreviousWordForPrediction = ""
         currentSuggestions = emptyList()
         activeSpellCheckWord = ""
+        autoCorrectCursorPosition = null
         spellCheckGeneration++
         spellChecker?.close()
         spellChecker = null
@@ -185,6 +187,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         spellChecker?.close()
         spellChecker = null
         activeSpellCheckWord = ""
+        autoCorrectCursorPosition = null
         super.onFinishInput()
     }
 
@@ -238,6 +241,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     }
 
     private var activeSuggestionInputGeneration = 0
+    private var autoCorrectCursorPosition: Int? = null
 
     private fun runOnMain(block: () -> Unit) {
         if (Looper.myLooper() == Looper.getMainLooper()) block() else mainHandler.post { block() }
@@ -852,6 +856,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
             "?123", "123" -> { symbols = true; refreshKeyboard() }
             "ABC" -> { symbols = false; refreshKeyboard() }
             "⌫" -> {
+                autoCorrectCursorPosition = null
                 val connection = currentInputConnection ?: return
                 val selected = connection.getSelectedText(0)
                 if (!selected.isNullOrEmpty()) connection.commitText("", 1)
@@ -883,6 +888,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
             }
             else -> {
                 val value = if (shifted || capsLock) key.uppercase(inputLocale()) else key
+                autoCorrectCursorPosition = null
                 currentInputConnection?.commitText(value, 1)
                 if (value.length == 1 && value[0].isLetter()) {
                     typedWord.append(value)
@@ -963,13 +969,13 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
 
     private fun commitSpace() {
         val word = typedWord.toString()
-        if (word.isNotBlank() && isSafeForSuggestions(currentInputEditorInfo)) {
+        val shouldCheck = word.isNotBlank() && isSafeForSuggestions(currentInputEditorInfo)
+        if (shouldCheck) {
             learnWord(word, previousWordForPrediction, previousPreviousWordForPrediction)
             lastCommittedWord = word
             previousPreviousWordForPrediction = previousWordForPrediction
             previousWordForPrediction = word
             activeSuggestionInputGeneration = inputGeneration
-            requestWordSuggestions(word)
         } else {
             lastCommittedWord = ""
             activeSpellCheckWord = ""
@@ -978,7 +984,19 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         }
         currentInputConnection?.commitText(" ", 1)
         typedWord.clear()
+        // Capture the absolute cursor anchor only after the trailing space is committed.
+        // If the editor cannot provide a collapsed selection offset, auto-correct stays off.
+        autoCorrectCursorPosition = if (shouldCheck) currentCursorPosition() else null
+        if (shouldCheck) requestWordSuggestions(word)
         renderSuggestions()
+    }
+
+    private fun currentCursorPosition(): Int? {
+        val extracted = currentInputConnection?.getExtractedText(ExtractedTextRequest(), 0) ?: return null
+        if (extracted.startOffset < 0 || extracted.selectionStart < 0 ||
+            extracted.selectionStart != extracted.selectionEnd
+        ) return null
+        return extracted.startOffset + extracted.selectionStart
     }
 
     private fun applySuggestion(value: String) {
@@ -1218,6 +1236,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     }
 
     private fun sendCursorKey(code: Int) {
+        autoCorrectCursorPosition = null
         currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, code))
         currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, code))
         typedWord.clear()
@@ -1271,6 +1290,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         activeSpellCheckWord = ""
         currentSuggestions = emptyList()
         activeSuggestionInputGeneration = -1
+        autoCorrectCursorPosition = null
         spellCheckGeneration++
         if (isSafeForSuggestions(currentInputEditorInfo)) {
             val manager = getSystemService(Context.TEXT_SERVICES_MANAGER_SERVICE) as? TextServicesManager
