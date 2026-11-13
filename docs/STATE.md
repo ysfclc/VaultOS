@@ -1,5 +1,5 @@
 # State Ledger
-_Last updated: 2026-11-12 by Continuity Engineer — Vercel build fallback_
+_Last updated: 2026-11-13 by Continuity Engineer — keyboard auto-correct safety increment_
 
 ## 1. Product snapshot
 VaultOS is a local-first Android file manager and personal content library for Android 9+. It combines a non-destructive index of existing shared storage with a private archive for incoming and newly detected content, a searchable/organizable Room catalogue, file operations, an optional capture keyboard, a DocumentsProvider, app/APK catalogue, and manual SAF backup/restore. “Complete” means data-safe operation, tested restore/migration compatibility, reliable everyday UX on the target Redmi Note 12 Pro 5G, and a reproducible signed release. Build success alone is not device acceptance.
@@ -12,7 +12,7 @@ VaultOS is a local-first Android file manager and personal content library for A
 | Unified library, search, organization | 🟡 partial | Implemented; database and UI integration coverage is thin |
 | File operations and ZIP safety | ✅ done | Core operations have 10 JVM regression tests; device UX acceptance remains separate |
 | Clipboard history and capture IME | 🟡 partial | Implemented; Android selected-IME boundary applies; physical app matrix open |
-| Keyboard suggestions | 🟡 partial | KBD-1/KBD-2 source implemented; 43 JVM tests pass; 500-word host benchmark p50/p95=105/160 μs; six Android instrumentation tests compile but await emulator execution; Redmi acceptance open |
+| Keyboard suggestions | 🟡 partial | KBD-1/KBD-2 source implemented; 43 JVM tests and host correction benchmark were recorded in the prior Vercel build; this branch adds a stale-cursor auto-correct guard and six pure regression cases (standalone Kotlin harness 7/7); branch Android/JVM build and tests pending; Redmi acceptance open |
 | Metadata extraction | 🟡 partial | Parser tests exist; end-to-end extraction/provider behavior lacks integration tests |
 | Backup and restore | 🟡 partial | v1/v2 paths implemented; no automated round-trip, corruption, or migration test suite identified |
 | DocumentsProvider | 🟡 partial | Implemented; no provider interoperability test evidence |
@@ -263,3 +263,31 @@ VaultOS is a local-first Android file manager and personal content library for A
 - Shell syntax and the target SDK parser were checked in a Vercel Sandbox.
 - The first deployment was not created: Vercel returned HTTP 402 `api-deployments-free-per-day` because the team exceeded 100 API deployments for the day; the response specified a 24-hour retry window. A second Git push did not produce an automatic deployment. No Vercel CLI authentication was available in the sandbox for the suggested CLI fallback.
 - Therefore the pipeline is configured in the connected project but is **not yet production-verified**. Re-trigger the Vercel production deployment after the API limit resets, then verify the deployment logs and both static download files.
+
+
+## Session 11 — stale auto-correct cursor guard (2026-11-13)
+
+**Scope**
+- Addressed a concrete text-integrity risk before expanding the keyboard predictor: an opt-in Android SpellChecker callback could arrive after cursor movement and delete text relative to the new cursor.
+
+**Changes on branch `keyboard/kbd1-autocorrect-cursor-guard-2026-11-13`**
+- `VaultKeyboardService.kt`: automatic correction now additionally requires the committed word to match the active spell-check request and the exact word-plus-space suffix to remain immediately before the current cursor.
+- `CommittedWordReplacementGuard.kt`: added a pure guard that rejects missing/invalid expected words, active selections, stale cursor positions and mismatched text.
+- `CommittedWordReplacementGuardTest.kt`: added six JVM regression cases.
+- `docs/KEYBOARD-V2.md` and `docs/RISKS.md`: documented the mitigation and verification boundary.
+
+**Verification**
+- Compiled the exact guard implementation with the available Kotlin compiler and ran a standalone harness: 7/7 checks passed.
+- Re-fetched the changed source and documentation from the feature branch after writes.
+- The Android service integration, Gradle/JUnit project suite, lint, APK build and emulator instrumentation have not been executed for this branch. No build or APK success is claimed.
+- No physical Redmi Note 12 Pro 5G acceptance is claimed.
+
+**Next**
+1. Obtain a reproducible Android build/test/lint result for this branch; fix any compile or regression failure before merge.
+2. Merge the cursor guard only after the full project checks pass.
+3. Continue KBD-1 with measured IME-path profiling, then address the larger quality gap: the current built-in EN/PL/TR lexicon and phrase priors are sparse hand-authored lists, not a broad frequency-ranked language model.
+4. Keep swipe typing and visual redesign behind prediction quality and reliability gates.
+
+**Risk / compatibility**
+- No SharedPreferences keys, learned data formats, app version, signing material or clipboard behavior were changed.
+- Automatic correction remains opt-in. If the callback cannot prove the expected text is still at the cursor, it now leaves the user's text untouched and retains ordinary suggestions.
