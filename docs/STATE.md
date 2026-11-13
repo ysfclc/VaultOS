@@ -12,7 +12,7 @@ VaultOS is a local-first Android file manager and personal content library for A
 | Unified library, search, organization | 🟡 partial | Implemented; database and UI integration coverage is thin |
 | File operations and ZIP safety | ✅ done | Core operations have 10 JVM regression tests; device UX acceptance remains separate |
 | Clipboard history and capture IME | 🟡 partial | Implemented; Android selected-IME boundary applies; physical app matrix open |
-| Keyboard suggestions | 🟡 partial | KBD-1/KBD-2 source implemented; 43 JVM tests and host correction benchmark were recorded in the prior Vercel build; this branch adds a stale-cursor auto-correct guard and six pure regression cases (standalone Kotlin harness 7/7); branch Android/JVM build and tests pending; Redmi acceptance open |
+| Keyboard suggestions | 🟡 partial | KBD-1/KBD-2 source implemented; 43 JVM tests and host correction benchmark were recorded in the prior Vercel build; this branch adds a stale-cursor auto-correct guard and eight pure regression cases (standalone Kotlin harness 10/10); branch Android/JVM build and tests pending; Redmi acceptance open |
 | Metadata extraction | 🟡 partial | Parser tests exist; end-to-end extraction/provider behavior lacks integration tests |
 | Backup and restore | 🟡 partial | v1/v2 paths implemented; no automated round-trip, corruption, or migration test suite identified |
 | DocumentsProvider | 🟡 partial | Implemented; no provider interoperability test evidence |
@@ -273,11 +273,11 @@ VaultOS is a local-first Android file manager and personal content library for A
 **Changes on branch `keyboard/kbd1-autocorrect-cursor-guard-2026-11-13`**
 - `VaultKeyboardService.kt`: automatic correction now additionally requires the committed word to match the active spell-check request and the exact word-plus-space suffix to remain immediately before the current cursor.
 - `CommittedWordReplacementGuard.kt`: added a pure guard that rejects missing/invalid expected words, active selections, stale cursor positions and mismatched text.
-- `CommittedWordReplacementGuardTest.kt`: added six JVM regression cases.
+- `CommittedWordReplacementGuardTest.kt`: added eight JVM regression cases.
 - `docs/KEYBOARD-V2.md` and `docs/RISKS.md`: documented the mitigation and verification boundary.
 
 **Verification**
-- Compiled the exact guard implementation with the available Kotlin compiler and ran a standalone harness: 7/7 checks passed.
+- Compiled the exact guard implementation with the available Kotlin compiler and ran a standalone harness: 10/10 checks passed.
 - Re-fetched the changed source and documentation from the feature branch after writes.
 - The Android service integration, Gradle/JUnit project suite, lint, APK build and emulator instrumentation have not been executed for this branch. No build or APK success is claimed.
 - No physical Redmi Note 12 Pro 5G acceptance is claimed.
@@ -298,3 +298,10 @@ VaultOS is a local-first Android file manager and personal content library for A
 - GitHub exposed empty step lists for both jobs; log retrieval returned `BlobNotFound`. No runner setup or build step was available.
 - This is consistent with the previously recorded runner-allocation failure. It is not evidence of a Kotlin compilation, Gradle, lint, APK-signing or test assertion failure.
 - The PR remains open and unmerged. Do not merge until a real Android build/test/lint run is available.
+
+
+**Cursor-anchor refinement**
+- Tightened the initial suffix-only guard after review: identical text can occur at multiple cursor locations. The service now captures the editor's absolute collapsed selection offset immediately after committing the trailing space and requires the same offset when the delayed correction arrives.
+- Auto-correct is skipped if the editor does not expose a usable extracted-text offset. This is intentionally fail-safe.
+- Added coverage for a duplicate identical word at a different cursor position and for unavailable cursor offsets. The standalone Kotlin harness now passes 10/10 checks.
+- The Android integration still requires a real build and device verification; no claim is made that all third-party editors expose extracted-text offsets consistently.
