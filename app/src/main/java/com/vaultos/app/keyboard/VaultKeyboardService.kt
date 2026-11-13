@@ -220,10 +220,13 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                     val connection = currentInputConnection
                     val selectedText = connection?.getSelectedText(0)
                     val beforeCursor = connection?.getTextBeforeCursor(lastCommittedWord.length + 1, 0)
+                    val currentCursor = currentCursorPosition()
                     // Spell-check results can arrive after the user has moved the cursor.
-                    // Only replace when the exact committed word and trailing space are
-                    // still immediately before a collapsed cursor.
-                    if (CommittedWordReplacementGuard.canReplace(beforeCursor, selectedText, lastCommittedWord)) {
+                    // Require the same absolute cursor anchor and exact word-plus-space suffix.
+                    if (CommittedWordReplacementGuard.canReplace(
+                            beforeCursor, selectedText, lastCommittedWord,
+                            autoCorrectCursorPosition, currentCursor
+                        )) {
                         connection?.deleteSurroundingText(lastCommittedWord.length + 1, 0)
                         connection?.commitText("$replacement ", 1)
                         lastCommittedWord = replacement
