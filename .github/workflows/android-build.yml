@@ -267,6 +267,11 @@ jobs:
           "$APKSIGNER" verify --verbose --print-certs dist/VaultOS-release.apk
           cd dist
           sha256sum VaultOS-debug.apk VaultOS-release.apk > SHA256SUMS.txt
+          # A plain ZIP is friendlier to Android download managers than the
+          # previous temporary sandbox streaming endpoint.
+          zip -9 -j VaultOS-0.13.0.zip VaultOS-release.apk
+          unzip -t VaultOS-0.13.0.zip
+          sha256sum VaultOS-0.13.0.zip >> SHA256SUMS.txt
           {
             echo "VaultOS 0.13.0"
             echo "Build: ${GITHUB_RUN_NUMBER}"
@@ -275,6 +280,15 @@ jobs:
             echo "Target SDK: 35"
             echo "Minimum SDK: 28"
           } > BUILD-INFO.txt
+
+      - name: Upload ZIP for native ChatGPT handoff
+        uses: actions/upload-artifact@v4
+        with:
+          name: VaultOS-0.13.0
+          path: dist/VaultOS-release.apk
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
 
       - name: Publish signed APKs as a private draft release
         env:
@@ -288,6 +302,7 @@ jobs:
           ASSETS=(
             dist/VaultOS-release.apk
             dist/VaultOS-debug.apk
+            dist/VaultOS-0.13.0.zip
             dist/SHA256SUMS.txt
             dist/BUILD-INFO.txt
           )
