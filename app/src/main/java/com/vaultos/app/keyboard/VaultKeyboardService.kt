@@ -209,18 +209,25 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
             renderSuggestions()
             if (getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_AUTOCORRECT, false) &&
                 looksLikeTypo && suggestions.isNotEmpty() && lastCommittedWord.isNotBlank() && typedWord.isEmpty() &&
-                inputGeneration == activeSuggestionInputGeneration
+                inputGeneration == activeSuggestionInputGeneration &&
+                lastCommittedWord.equals(requestedWord, ignoreCase = true)
             ) {
                 val replacement = suggestions.first()
                 if (!replacement.equals(lastCommittedWord, ignoreCase = true)) {
-                    currentInputConnection?.let { connection ->
-                        connection.deleteSurroundingText(lastCommittedWord.length + 1, 0)
-                        connection.commitText("$replacement ", 1)
+                    val connection = currentInputConnection
+                    val selectedText = connection?.getSelectedText(0)
+                    val beforeCursor = connection?.getTextBeforeCursor(lastCommittedWord.length + 1, 0)
+                    // Spell-check results can arrive after the user has moved the cursor.
+                    // Only replace when the exact committed word and trailing space are
+                    // still immediately before a collapsed cursor.
+                    if (CommittedWordReplacementGuard.canReplace(beforeCursor, selectedText, lastCommittedWord)) {
+                        connection?.deleteSurroundingText(lastCommittedWord.length + 1, 0)
+                        connection?.commitText("$replacement ", 1)
+                        lastCommittedWord = replacement
+                        previousWordForPrediction = replacement
+                        currentSuggestions = emptyList()
+                        renderSuggestions()
                     }
-                    lastCommittedWord = replacement
-                    previousWordForPrediction = replacement
-                    currentSuggestions = emptyList()
-                    renderSuggestions()
                 }
             }
         }
