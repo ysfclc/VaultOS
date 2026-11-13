@@ -123,3 +123,11 @@ The Android build workflow runs the API 35 Google APIs emulator suite as an inde
 ## 500-word correction benchmark — Vercel host (2026-11-12)
 
 The repeatable JVM benchmark ran 1,000 measured correction-ranking iterations after 150 warm-ups with a 500-word personal vocabulary. Result: **p50 105 μs, p95 160 μs**. This is a Vercel Linux host measurement of the pure correction-ranking path only; it is not an IME end-to-end or Redmi device latency result. All 43 JVM tests passed in the same forced run. The six Android-backed SharedPreferences tests compiled but were not executed because the Vercel sandbox exposed no /dev/kvm.
+
+## Evaluation foundation — 2026-11-13
+
+Added `docs/KEYBOARD-BENCHMARK.md`, `docs/KEYBOARD-LANGUAGE-RESOURCES.md`, a 25-row curated smoke fixture, and `KeyboardEvaluationSmokeTest`.
+
+The smoke test reports per-locale top-1/top-3 counts for next-word, prefix and correction cases, plus correct-token false-correction controls. The fixture intentionally exercises known existing engine paths and includes Polish/Turkish diacritic cases. It is not representative language data and cannot support a quality claim. The test has not yet been executed in Gradle/CI.
+
+Before adding large lexicons, record immutable dataset version, explicit redistribution license, attribution, checksum and transformation steps. No external corpus or model has been selected or bundled. The next implementation should use a licensed, held-out evaluation set and compare against the same baseline; no English-only aggregate should conceal weak PL/TR behavior.
