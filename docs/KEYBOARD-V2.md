@@ -131,7 +131,10 @@ A source audit found that an opt-in SpellChecker callback could arrive after the
 
 The callback now requires all of the following before automatic replacement:
 - the checked word still matches the committed word for the active input session;
+- the absolute cursor offset captured immediately after committing the trailing space still matches the current collapsed cursor offset;
 - no non-empty selection is active;
 - the exact committed word and its trailing space are still immediately before the cursor.
 
-The pure `CommittedWordReplacementGuard` helper has regression cases for a valid suffix, moved cursor, active selection, mismatched word, invalid expected word and case-insensitive matching. The helper was compiled and exercised with a standalone Kotlin harness (7/7 checks passed). The full Android/JVM project build and test suite have not yet been run against this branch; physical-device acceptance remains open.
+If the editor does not expose a verifiable extracted-text selection offset, automatic correction is skipped rather than guessing.
+
+The pure `CommittedWordReplacementGuard` helper has regression cases for a valid suffix, moved cursor, active selection, mismatched word, invalid expected word and case-insensitive matching. The helper was compiled and exercised with a standalone Kotlin harness (10/10 checks passed). The full Android/JVM project build and test suite have not yet been run against this branch; physical-device acceptance remains open.
