@@ -1,5 +1,5 @@
 # State Ledger
-_Last updated: 2026-11-12 by Continuity Engineer — Vercel build fallback_
+_Last updated: 2026-11-13 by Continuity Engineer — keyboard evaluation foundation_
 
 ## 1. Product snapshot
 VaultOS is a local-first Android file manager and personal content library for Android 9+. It combines a non-destructive index of existing shared storage with a private archive for incoming and newly detected content, a searchable/organizable Room catalogue, file operations, an optional capture keyboard, a DocumentsProvider, app/APK catalogue, and manual SAF backup/restore. “Complete” means data-safe operation, tested restore/migration compatibility, reliable everyday UX on the target Redmi Note 12 Pro 5G, and a reproducible signed release. Build success alone is not device acceptance.
@@ -263,3 +263,33 @@ VaultOS is a local-first Android file manager and personal content library for A
 - Shell syntax and the target SDK parser were checked in a Vercel Sandbox.
 - The first deployment was not created: Vercel returned HTTP 402 `api-deployments-free-per-day` because the team exceeded 100 API deployments for the day; the response specified a 24-hour retry window. A second Git push did not produce an automatic deployment. No Vercel CLI authentication was available in the sandbox for the suggested CLI fallback.
 - Therefore the pipeline is configured in the connected project but is **not yet production-verified**. Re-trigger the Vercel production deployment after the API limit resets, then verify the deployment logs and both static download files.
+
+
+## Session 12 — multilingual keyboard evaluation foundation (2026-11-13)
+
+**Scope**
+- Establish a repeatable evaluation contract before changing the language engine or importing bulk lexicons.
+
+**Changes on branch `keyboard/benchmark-baseline-plan-2026-11-13`**
+- Added `docs/KEYBOARD-BENCHMARK.md`: separate next-word, prefix, correction, false-correction, latency and memory metrics; locale-by-locale reporting; held-out corpus rules; acceptance gates.
+- Added `docs/KEYBOARD-LANGUAGE-RESOURCES.md`: mandatory dataset provenance, redistribution-license, attribution, checksum and transformation record before adding external language data.
+- Added `app/src/test/resources/keyboard/keyboard-eval-v1.tsv`: 25 curated EN/PL/TR smoke cases covering existing context, prefix and correction paths plus correct-word controls.
+- Added `KeyboardEvaluationSmokeTest.kt`: diagnostic per-locale top-1/top-3 counts and correct-token correction-safety assertions.
+- Updated `docs/KEYBOARD-V2.md` with the evaluation foundation and explicit limits.
+
+**Verification**
+- Re-fetched all five changed artifacts from the feature branch.
+- Manually checked fixture structure: 25 data rows; each locale has next-word, prefix and correction cases, plus a correct-token control.
+- The smoke test, Gradle unit suite, lint and Android build have not been executed. No baseline accuracy or latency result is claimed.
+- No external lexicon was downloaded or bundled; source licenses and provenance remain a gate.
+- This branch is separate from the cursor-safety PR and is not merged.
+
+**Next**
+1. Run the smoke test and existing JVM suite on a functioning Android/Gradle runner; fix any test-source or resource-path issues.
+2. Select explicit, redistributable EN/PL/TR corpus sources and document exact revisions/licenses/checksums before adding them.
+3. Build the held-out evaluation set and only then implement frequency-ranked unigram/prefix candidates, followed by smoothed context backoff.
+4. Compare all locales against the same fixed baseline; retain conservative correction safety thresholds.
+
+**Non-claims**
+- The 25-row fixture is a hand-curated smoke/regression set, not a representative benchmark corpus.
+- No claim of improved prediction quality, Gboard parity, successful Android build, APK, or Redmi device acceptance is made.
