@@ -8,10 +8,15 @@ internal object CommittedWordReplacementGuard {
     fun canReplace(
         textBeforeCursor: CharSequence?,
         selectedText: CharSequence?,
-        expectedWord: String
+        expectedWord: String,
+        expectedCursorPosition: Int?,
+        currentCursorPosition: Int?
     ): Boolean {
         if (expectedWord.isBlank() || expectedWord.any(Char::isWhitespace)) return false
         if (!selectedText.isNullOrEmpty()) return false
+        if (expectedCursorPosition == null || currentCursorPosition == null ||
+            expectedCursorPosition != currentCursorPosition
+        ) return false
         val expectedSuffix = "$expectedWord "
         return textBeforeCursor?.toString()?.endsWith(expectedSuffix, ignoreCase = true) == true
     }
