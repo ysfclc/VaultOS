@@ -291,3 +291,10 @@ VaultOS is a local-first Android file manager and personal content library for A
 **Risk / compatibility**
 - No SharedPreferences keys, learned data formats, app version, signing material or clipboard behavior were changed.
 - Automatic correction remains opt-in. If the callback cannot prove the expected text is still at the cursor, it now leaves the user's text untouched and retains ordinary suggestions.
+
+
+**CI follow-up — run 43439235614**
+- The pull-request-triggered Android build and API 35 instrumentation jobs both failed about two seconds after queueing.
+- GitHub exposed empty step lists for both jobs; log retrieval returned `BlobNotFound`. No runner setup or build step was available.
+- This is consistent with the previously recorded runner-allocation failure. It is not evidence of a Kotlin compilation, Gradle, lint, APK-signing or test assertion failure.
+- The PR remains open and unmerged. Do not merge until a real Android build/test/lint run is available.
