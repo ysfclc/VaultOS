@@ -293,3 +293,8 @@ VaultOS is a local-first Android file manager and personal content library for A
 **Non-claims**
 - The 25-row fixture is a hand-curated smoke/regression set, not a representative benchmark corpus.
 - No claim of improved prediction quality, Gboard parity, successful Android build, APK, or Redmi device acceptance is made.
+
+
+**CI follow-up — run 43440447414**
+- The push-triggered Android build/lint/test job and API 35 instrumentation job both failed before executing any steps; GitHub returned empty step lists for both.
+- This is the same runner-startup failure pattern seen on the cursor-safety branch. It does not validate or invalidate the new test source; Gradle execution remains unavailable.
