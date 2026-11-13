@@ -305,3 +305,9 @@ VaultOS is a local-first Android file manager and personal content library for A
 - Auto-correct is skipped if the editor does not expose a usable extracted-text offset. This is intentionally fail-safe.
 - Added coverage for a duplicate identical word at a different cursor position and for unavailable cursor offsets. The standalone Kotlin harness now passes 10/10 checks.
 - The Android integration still requires a real build and device verification; no claim is made that all third-party editors expose extracted-text offsets consistently.
+
+
+**Latest PR-head CI follow-up — run 43439761519**
+- The workflow also attempted the latest cursor-anchor implementation at commit `724e72c62dcee3694f2be2965d4ad50cb5399f23`.
+- Both Android build and API 35 instrumentation jobs failed before executing any steps; GitHub returned empty step lists for both.
+- This confirms the runner-startup blockage persists on the final PR head. The latest source has not been compiled by Android Gradle CI.
