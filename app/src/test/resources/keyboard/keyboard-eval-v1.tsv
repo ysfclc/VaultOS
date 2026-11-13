@@ -13,7 +13,7 @@ tr-next-01	tr-TR	next	ben de		öyle	Existing two-token prior; smoke only
 tr-next-02	tr-TR	next	çok teşekkür		erim	Existing two-token prior; smoke only
 tr-next-03	tr-TR	next	bir şey		söylemek	Existing two-token prior; smoke only
 tr-next-04	tr-TR	next	merhaba		nasılsın	Existing one-token prior; smoke only
-tr-next-05	tr-TR	next	ben		çok	Existing one-token prior; smoke only
+tr-next-05	tr-TR	next	ben		de	Existing one-token prior; smoke only
 en-prefix-01	en-US	prefix		hel	hello	Existing completion list; smoke only
 pl-prefix-01	pl-PL	prefix		dzi	dzień	Locale diacritic; smoke only
 tr-prefix-01	tr-TR	prefix		merh	merhaba	Locale completion; smoke only
