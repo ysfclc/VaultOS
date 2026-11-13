@@ -254,3 +254,12 @@ VaultOS is a local-first Android file manager and personal content library for A
 - Added a repository-owned Vercel build script and `vercel.json`. The script provisions/caches JDK 17, Gradle 8.9 and Android SDK 35 under `.vercel/cache/`; runs unit tests, lint and signed release assembly; verifies the stable signing certificate; and packages versioned APK/ZIP/checksum/build metadata plus a mobile download page.
 - The first production deployment is the acceptance gate. Do not call the pipeline complete until the Vercel build reaches READY, the APK signature/checksum checks pass, and the deployed APK and ZIP are downloaded and verified from the project domain.
 - Physical Redmi Note 12 Pro 5G acceptance and API 35 emulator instrumentation execution remain separate open tests.
+
+
+### Connected deployment blocker — 2026-11-13
+
+- Vercel project settings were updated: framework `null`, build command `bash scripts/vercel-build.sh`, output directory `dist`.
+- Pipeline source was committed to `main` (initial implementation `9a4155efdf9080396e97bf8756f98ea76e70526e`; target-SDK metadata fix `23e1dbe02e3bba37f9f459dbe592675097c1089f`; post-link trigger commit `f41861fa4bed1ce0b2f8b2fcfc5441dc5f62bc7f`).
+- Shell syntax and the target SDK parser were checked in a Vercel Sandbox.
+- The first deployment was not created: Vercel returned HTTP 402 `api-deployments-free-per-day` because the team exceeded 100 API deployments for the day; the response specified a 24-hour retry window. A second Git push did not produce an automatic deployment. No Vercel CLI authentication was available in the sandbox for the suggested CLI fallback.
+- Therefore the pipeline is configured in the connected project but is **not yet production-verified**. Re-trigger the Vercel production deployment after the API limit resets, then verify the deployment logs and both static download files.
