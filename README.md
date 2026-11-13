@@ -198,3 +198,12 @@ This release addresses the daily navigation and keyboard friction directly:
 - The local EN / PL / TR vocabulary and context-pair baseline has been broadened, with regression tests for added examples.
 
 This remains an offline deterministic keyboard. It does **not** claim glide typing or Gboard-equivalent neural prediction. Physical touch accuracy, suggestion relevance, accessibility and layout still require acceptance on the Redmi Note 12 Pro 5G.
+
+
+## Vercel Android release pipeline
+
+The connected Vercel project `vaultos` builds the signed Android release directly from this repository on production deployments. The build command is `bash scripts/vercel-build.sh`; the static output is published from `dist/`.
+
+The pipeline provisions and caches JDK 17, Gradle 8.9, Android SDK Platform 35 and Build Tools 35.0.0 under `.vercel/cache/`, then runs JVM unit tests, Android lint and the signed release build. It verifies the existing VaultOS signing certificate before publishing anything.
+
+Each successful production deployment exposes a versioned APK, a ZIP containing that APK, SHA-256 checksums, build metadata and a mobile-friendly download page at the project domain. The build runs on Vercel's connected Git deployment; it does not depend on a temporary Sandbox or GitHub Actions runner.

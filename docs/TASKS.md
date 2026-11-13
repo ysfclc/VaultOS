@@ -313,3 +313,13 @@ Do not mark this phase complete from unit tests alone; device acceptance is mand
 - Temporary download page: https://sb-4y1nz0v7zv7e.vercel.run/ ; direct APK: https://sb-4y1nz0v7zv7e.vercel.run/VaultOS-0.13.0.apk . The route was externally fetched and verified. It is tied to the non-persistent sandbox and expires when that session stops (45-minute maximum); download and keep a local copy.
 - This avoids snapshot storage, but is not a permanent Vercel deployment or release asset. Do not describe it as durable hosting.
 - No `/dev/kvm` emulator or physical Redmi test was available. Keep Android instrumentation execution and Redmi Note 12 Pro 5G acceptance open.
+
+
+## Vercel production APK pipeline
+
+- [x] Configure the connected `vaultos` Vercel project to run the repository-owned Android release build and publish `dist/`.
+- [x] Add a cached JDK 17 / Gradle 8.9 / Android SDK 35 provisioning script with unit tests, lint, signed release assembly and signing-certificate enforcement.
+- [x] Add versioned APK + ZIP, SHA-256 checksums, build metadata and a mobile-friendly static download page.
+- [ ] Verify the first connected Vercel production deployment reaches READY.
+- [ ] Download the APK and ZIP from the stable project domain and verify checksums/signature.
+- [ ] Complete physical Redmi Note 12 Pro 5G acceptance and API 35 instrumentation execution.

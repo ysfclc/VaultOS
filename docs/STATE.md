@@ -245,3 +245,12 @@ VaultOS is a local-first Android file manager and personal content library for A
 - Temporary download page: https://sb-4y1nz0v7zv7e.vercel.run/ ; direct APK: https://sb-4y1nz0v7zv7e.vercel.run/VaultOS-0.13.0.apk . The route was externally fetched and verified. It is tied to the non-persistent sandbox and expires when that session stops (45-minute maximum); download and keep a local copy.
 - This avoids snapshot storage, but is not a permanent Vercel deployment or release asset. Do not describe it as durable hosting.
 - No `/dev/kvm` emulator or physical Redmi test was available. Keep Android instrumentation execution and Redmi Note 12 Pro 5G acceptance open.
+
+
+## Session 10 — Connected Vercel production APK pipeline (2026-11-13)
+
+- Connected Vercel project: `vaultos` (`prj_1crRZ1Wy4SeL4iWvIRUWUnTYe8tS`), linked to `ysfclc/VaultOS` on `main`.
+- Configured the project build command as `bash scripts/vercel-build.sh`, framework `null`, and output directory `dist`.
+- Added a repository-owned Vercel build script and `vercel.json`. The script provisions/caches JDK 17, Gradle 8.9 and Android SDK 35 under `.vercel/cache/`; runs unit tests, lint and signed release assembly; verifies the stable signing certificate; and packages versioned APK/ZIP/checksum/build metadata plus a mobile download page.
+- The first production deployment is the acceptance gate. Do not call the pipeline complete until the Vercel build reaches READY, the APK signature/checksum checks pass, and the deployed APK and ZIP are downloaded and verified from the project domain.
+- Physical Redmi Note 12 Pro 5G acceptance and API 35 emulator instrumentation execution remain separate open tests.
