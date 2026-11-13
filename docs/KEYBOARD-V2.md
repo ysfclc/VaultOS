@@ -57,6 +57,7 @@ Extract candidate scoring and context selection into a pure Kotlin component. Un
 - [x] Add a repeatable JVM microbenchmark for correction ranking with the maximum 500-word personal vocabulary; it reports p50/p95 without a flaky hard threshold.
 - [x] Move local fuzzy correction ranking to a reusable single-thread worker using an immutable personal-vocabulary snapshot; retain immediate typed/completion candidates while ranking runs.
 - [x] Guard worker results with a generation token and active input/session checks; discard queued stale work and shut down the worker with the IME service.
+- [x] Guard opt-in automatic correction against delayed SpellChecker callbacks: replace only when the exact checked word plus trailing space is still immediately before a collapsed cursor.
 - [x] Add pure generation-gate tests for latest-request precedence and lifecycle invalidation.
 - [ ] Execute the benchmark on hosted CI and record its output; compare against a pre-change baseline only if the prior source can be built reproducibly. Do not claim device latency improvement until measured on the Redmi.
 
@@ -123,3 +124,14 @@ The Android build workflow runs the API 35 Google APIs emulator suite as an inde
 ## 500-word correction benchmark — Vercel host (2026-11-12)
 
 The repeatable JVM benchmark ran 1,000 measured correction-ranking iterations after 150 warm-ups with a 500-word personal vocabulary. Result: **p50 105 μs, p95 160 μs**. This is a Vercel Linux host measurement of the pure correction-ranking path only; it is not an IME end-to-end or Redmi device latency result. All 43 JVM tests passed in the same forced run. The six Android-backed SharedPreferences tests compiled but were not executed because the Vercel sandbox exposed no /dev/kvm.
+
+## Cursor-safe automatic correction — 2026-11-13
+
+A source audit found that an opt-in SpellChecker callback could arrive after the user moved the cursor. The previous implementation checked the input-session generation and word value, but did not prove that the checked word was still immediately before the active cursor before deleting surrounding text.
+
+The callback now requires all of the following before automatic replacement:
+- the checked word still matches the committed word for the active input session;
+- no non-empty selection is active;
+- the exact committed word and its trailing space are still immediately before the cursor.
+
+The pure `CommittedWordReplacementGuard` helper has regression cases for a valid suffix, moved cursor, active selection, mismatched word, invalid expected word and case-insensitive matching. The helper was compiled and exercised with a standalone Kotlin harness (7/7 checks passed). The full Android/JVM project build and test suite have not yet been run against this branch; physical-device acceptance remains open.
