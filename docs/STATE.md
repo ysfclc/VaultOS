@@ -263,3 +263,29 @@ VaultOS is a local-first Android file manager and personal content library for A
 - Shell syntax and the target SDK parser were checked in a Vercel Sandbox.
 - The first deployment was not created: Vercel returned HTTP 402 `api-deployments-free-per-day` because the team exceeded 100 API deployments for the day; the response specified a 24-hour retry window. A second Git push did not produce an automatic deployment. No Vercel CLI authentication was available in the sandbox for the suggested CLI fallback.
 - Therefore the pipeline is configured in the connected project but is **not yet production-verified**. Re-trigger the Vercel production deployment after the API limit resets, then verify the deployment logs and both static download files.
+
+
+## Session 10 — keyboard typing and app usability repair (2026-11-14)
+
+**Branch:** `fix/keyboard-typing-and-ux-0.13.1`  
+**Target:** VaultOS 0.13.1 / versionCode 15
+
+**Implemented in source**
+- Replaced single-tap-only Backspace handling with immediate delete plus touch-and-hold repeat (420 ms initial delay, then accelerated repeat); touch-up/cancel and service destruction stop the repeat task.
+- Backspace now deletes a complete Android ICU character boundary rather than one UTF-16 code unit, respects selected text, and resynchronizes the active composing token from text immediately before the cursor.
+- Debounced Android SpellCheckerSession requests by 95 ms and invalidate/remove stale pending requests as the user types or changes language.
+- Automatic sentence Shift now updates the existing letter and Shift key views in place instead of rebuilding the complete keyboard after the first character or sentence punctuation.
+- Added a candidate-source ranker that keeps the word being typed distinct from alternatives, merges platform corrections, personal completions, local typo matches and built-in prefix completions, and removes duplicates.
+- Contextual prediction now fills unused slots from adjacent-word evidence rather than dropping all fallback candidates when only one trigram candidate exists. Added additional EN/PL/TR two-word phrase priors.
+- Refreshed the Home dashboard, quick actions, local-first status, storage metrics, device access guidance, navigation selected states, Files heading and shared empty states.
+
+**Verification state at handoff**
+- GitHub Actions run [43642774636](https://github.com/ysfclc/VaultOS/actions/runs/43642774636) is the validation run for this branch. Source preflight passed and both Android jobs were assigned runners; final test/build and API 35 emulator outcomes must be recorded after completion.
+- No physical Redmi Note 12 Pro 5G test has been performed in this session. Do not claim device latency, hold-repeat ergonomics or prediction relevance as accepted until the phone is tested.
+- Package ID, Room schema, signing configuration and existing storage model are intentionally unchanged.
+
+**Remaining acceptance**
+1. Confirm unit tests, lint, signed debug/release APK assembly and certificate verification in the GitHub run.
+2. Confirm Android API 35 instrumentation completes.
+3. Install the release APK over the existing installation on the Redmi Note 12 Pro 5G (do not uninstall); test sustained typing, short/long backspace, selected-text deletion, emoji/diacritics, EN/PL/TR suggestions, language switching, clips, Vault and navigation.
+4. Record on-device typing responsiveness and candidate usefulness. Build-host microbenchmarks are not substitutes for IME latency measurements.
