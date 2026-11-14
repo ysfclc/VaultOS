@@ -1,9 +1,9 @@
 package com.vaultos.app.keyboard
 
 /**
- * Deterministic precedence rule for private context prediction.
- * An exact two-word context wins when it has evidence; otherwise retain v1 bigram
- * behavior. Candidate lists are bounded and deduplicated before reaching the IME.
+ * Stable candidate precedence for private context prediction.
+ * Exact two-word evidence leads, but a sparse trigram must not erase useful
+ * adjacent-word evidence. Deduplicate while filling the remaining candidate slots.
  */
 internal object ContextualPredictionRanker {
     fun rank(
@@ -12,7 +12,10 @@ internal object ContextualPredictionRanker {
         limit: Int = 3
     ): List<String> {
         if (limit <= 0) return emptyList()
-        val preferred = trigramCandidates.takeIf { it.isNotEmpty() } ?: bigramCandidates
-        return preferred.asSequence().distinct().take(limit).toList()
+        return (trigramCandidates.asSequence() + bigramCandidates.asSequence())
+            .filter { it.isNotBlank() }
+            .distinctBy { it.lowercase() }
+            .take(limit)
+            .toList()
     }
 }
