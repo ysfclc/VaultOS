@@ -262,6 +262,9 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         addToolbarKey(top, "Type", active = !clipboardMode && !commandsMode && !emojiMode, weight = 1.15f) {
             clipboardMode = false; commandsMode = false; emojiMode = false; refreshKeyboard()
         }
+        addToolbarKey(top, "😊", active = emojiMode, weight = 0.68f) {
+            emojiMode = true; clipboardMode = false; commandsMode = false; refreshKeyboard()
+        }
         addToolbarKey(top, "Clips", active = clipboardMode, weight = 1.05f) {
             clipboardMode = true; commandsMode = false; emojiMode = false; clipboardQuery = ""; refreshKeyboard()
         }
@@ -377,6 +380,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
             gravity = Gravity.CENTER
             setTextColor(if (keyboardThemeDark()) Color.WHITE else Color.rgb(28, 35, 44))
             isSingleLine = true
+            contentDescription = if (label == "😊") "Emoji keyboard" else label
             setPadding(dp(2), 0, dp(2), 0)
             background = keyBackground(wide = true, active = active, toolbar = true)
             setOnClickListener { tapFeedback(this); playKeySound(this); action() }
