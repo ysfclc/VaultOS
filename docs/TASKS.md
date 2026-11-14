@@ -326,3 +326,18 @@ Do not mark this phase complete from unit tests alone; device acceptance is mand
 
 
 **Current blocker (2026-11-13):** Vercel refused the initial deployment with HTTP 402 `api-deployments-free-per-day` (more than 100 API deployments today; retry after 24 hours). The connected project settings and source pipeline are in place, but production build/download verification remains unchecked until Vercel accepts a deployment.
+
+
+## Phase 15 — keyboard typing and app UX repair (0.13.1)
+
+- [x] Implement touch-and-hold Backspace repeat with immediate initial deletion, bounded repeat cadence and clean cancellation on release/service teardown.
+- [x] Delete complete Unicode character boundaries, respect selected text and resync the composing token with the actual editor cursor.
+- [x] Debounce SpellCheckerSession requests and reject stale callbacks after new keystrokes, language changes or editor changes.
+- [x] Update automatic Shift labels in place rather than reconstructing the full IME view during ordinary typing.
+- [x] Rank and deduplicate candidate sources so platform typo corrections, learned personal completions, local typo matches and offline prefix completions can share the available suggestion slots.
+- [x] Merge sparse trigram results with adjacent-word fallbacks and broaden common EN/PL/TR phrase priors.
+- [x] Refresh Home dashboard hierarchy, quick-action clarity, local-first status, storage access explanation, selected navigation states, Files page heading and empty states.
+- [ ] Confirm GitHub Actions JVM tests, lint, signed APK assembly and signing-certificate verification for run [43642774636](https://github.com/ysfclc/VaultOS/actions/runs/43642774636).
+- [ ] Confirm API 35 connected instrumentation for private typing memory.
+- [ ] Install in place on Redmi Note 12 Pro 5G and verify normal typing, held Backspace, Unicode/diacritics, selected text, EN/PL/TR recommendations, clipboard/Vault keyboard modes, large font, TalkBack and app navigation.
+- [ ] Record real-device typing latency and prediction usefulness. Do not treat a CI build or host-side microbenchmark as physical keyboard acceptance.
