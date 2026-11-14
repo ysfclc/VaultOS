@@ -45,6 +45,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -200,7 +201,7 @@ private fun VaultApp(activity: MainActivity, repository: VaultRepository, resume
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Column { Text("VaultOS", fontWeight = FontWeight.Bold); Text("Your phone. One library.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) } },
+                    title = { Column { Text("VaultOS", fontWeight = FontWeight.Bold); Text("Local library · private by default", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) } },
                     actions = {
                         IconButton(onClick = { captureClipboard(activity, repository, onMessage = { message = it }) }) { Icon(Icons.Default.ContentPaste, "Capture clipboard") }
                         IconButton(onClick = { activity.startActivity(Intent(activity, ClipboardHistoryActivity::class.java)) }) { Icon(Icons.Default.History, "Clipboard history") }
@@ -223,7 +224,19 @@ private fun VaultApp(activity: MainActivity, repository: VaultRepository, resume
                             Page.More -> Icons.Default.MoreHoriz
                         }
                         val selected = if (p == Page.More) page in setOf(Page.More, Page.Apps, Page.Settings) else page == p
-                        NavigationBarItem(selected = selected, onClick = { page = p }, icon = { Icon(icon, p.label) }, label = { Text(p.label) })
+                        NavigationBarItem(
+                            selected = selected,
+                            onClick = { page = p },
+                            icon = { Icon(icon, p.label) },
+                            label = { Text(p.label, maxLines = 1) },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = Color(0xFF9AE6C1),
+                                selectedTextColor = Color(0xFFBFEFD4),
+                                indicatorColor = Color(0xFF21362E),
+                                unselectedIconColor = Color(0xFF8693A1),
+                                unselectedTextColor = Color(0xFF9AA6B2)
+                            )
+                        )
                     }
                 }
             },
@@ -392,28 +405,103 @@ private fun VaultApp(activity: MainActivity, repository: VaultRepository, resume
 }
 
 @Composable
-private fun HomePage(count: Int, bytes: Long, available: Long, recent: List<VaultItem>, permissionGranted: Boolean, onPage: (Page) -> Unit, onItem: (VaultItem) -> Unit, onImport: () -> Unit, onCapture: () -> Unit, onGrantAccess: () -> Unit) {
-    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Spacer(Modifier.height(4.dp))
-        Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF18251F)), shape = RoundedCornerShape(22.dp)) {
-            Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("YOUR PERSONAL FILE SYSTEM", color = Color(0xFF9AE6C1), style = MaterialTheme.typography.labelMedium)
-                Text("Everything in.\nNothing lost.", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-                Row(horizontalArrangement = Arrangement.spacedBy(26.dp)) {
-                    Metric("LIBRARY ITEMS", count.toString())
-                    Metric("ARCHIVED", formatBytes(bytes))
-                    Metric("DEVICE FREE", formatBytes(available))
+private fun HomePage(
+    count: Int,
+    bytes: Long,
+    available: Long,
+    recent: List<VaultItem>,
+    permissionGranted: Boolean,
+    onPage: (Page) -> Unit,
+    onItem: (VaultItem) -> Unit,
+    onImport: () -> Unit,
+    onCapture: () -> Unit,
+    onGrantAccess: () -> Unit
+) {
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 18.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Spacer(Modifier.height(2.dp))
+        Card(
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF18271F)),
+            shape = RoundedCornerShape(24.dp)
+        ) {
+            Column(
+                Modifier.fillMaxWidth().padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(
+                            "YOUR PERSONAL FILE SYSTEM",
+                            color = Color(0xFF9AE6C1),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            "One place for everything you keep",
+                            color = Color(0xFFB8C9BE),
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    }
+                    Surface(
+                        color = Color(0xFF254334),
+                        shape = RoundedCornerShape(50.dp)
+                    ) {
+                        Row(
+                            Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            horizontalArrangement = Arrangement.spacedBy(5.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.Shield, null, tint = Color(0xFF9AE6C1), modifier = Modifier.size(13.dp))
+                            Text("ON DEVICE", color = Color(0xFFC9F3D9), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+                Text(
+                    "Everything in.\nNothing lost.",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    lineHeight = MaterialTheme.typography.headlineMedium.lineHeight
+                )
+                Text(
+                    "Capture what matters, keep your original folders intact, and find it again from one library.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFFC4D2C9)
+                )
+                HorizontalDivider(color = Color(0xFF385344))
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Metric("LIBRARY ITEMS", count.toString(), Modifier.weight(1f))
+                    Metric("ARCHIVED", formatBytes(bytes), Modifier.weight(1f))
+                    Metric("DEVICE FREE", formatBytes(available), Modifier.weight(1f))
                 }
             }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-            QuickTile("Capture", Icons.Default.ContentPaste, Modifier.weight(1f), onCapture)
-            QuickTile("Import", Icons.Default.Add, Modifier.weight(1f), onImport)
-            QuickTile("Browse", Icons.Default.FolderOpen, Modifier.weight(1f)) { onPage(Page.Files) }
+
+        Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+            Text(
+                "QUICK ACTIONS",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                QuickTile("Capture", "Save clipboard content", Icons.Default.ContentPaste, Modifier.weight(1f), onCapture)
+                QuickTile("Import", "Add files or folders", Icons.Default.Add, Modifier.weight(1f), onImport)
+                QuickTile("Browse", "Explore device storage", Icons.Default.FolderOpen, Modifier.weight(1f)) { onPage(Page.Files) }
+            }
         }
+
         if (!permissionGranted) {
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF17212B)),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF17232E)),
                 shape = RoundedCornerShape(18.dp)
             ) {
                 Row(
@@ -421,28 +509,58 @@ private fun HomePage(count: Int, bytes: Long, available: Long, recent: List<Vaul
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(11.dp)
                 ) {
-                    Icon(Icons.Default.FolderOpen, null, tint = Color(0xFF8DBBFF), modifier = Modifier.size(26.dp))
+                    Box(
+                        Modifier.size(42.dp).background(Color(0xFF21374A), RoundedCornerShape(13.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.FolderOpen, null, tint = Color(0xFF8DBBFF), modifier = Modifier.size(23.dp))
+                    }
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         Text("Connect your device library", fontWeight = FontWeight.SemiBold)
                         Text(
-                            "Allow VaultOS to index your shared folders and make existing files searchable. Your originals stay where they are.",
+                            "Allow VaultOS to index shared folders. Existing files stay in their original locations.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    FilledTonalButton(onClick = onGrantAccess, contentPadding = PaddingValues(horizontal = 12.dp)) {
-                        Text("Enable")
-                    }
+                    FilledTonalButton(
+                        onClick = onGrantAccess,
+                        contentPadding = PaddingValues(horizontal = 12.dp)
+                    ) { Text("Enable") }
                 }
             }
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text("Recently added", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-            TextButton(onClick = { onPage(Page.Incoming) }) { Text("See all") }
+
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text("Recently added", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                Text(
+                    "Your latest captures and imports",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            TextButton(onClick = { onPage(Page.Incoming) }) {
+                Text("See all")
+                Spacer(Modifier.width(4.dp))
+                Icon(Icons.Default.ArrowForward, null, modifier = Modifier.size(16.dp))
+            }
         }
-        if (recent.isEmpty()) EmptyState("Your library starts here", "Share a file to VaultOS or import documents, photos, APKs and text.")
-        else LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 12.dp)) {
-            items(recent, key = { it.id }) { item -> ItemRow(item, onClick = { onItem(item) }) }
+        if (recent.isEmpty()) {
+            EmptyState(
+                "Your library starts here",
+                "Share a file to VaultOS or import documents, photos, APKs and text."
+            )
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                recent.take(8).forEach { item ->
+                    ItemRow(item, onClick = { onItem(item) })
+                }
+            }
         }
     }
 }
@@ -506,14 +624,50 @@ private fun MorePage(onApps: () -> Unit, onSettings: () -> Unit) {
     }
 }
 
-@Composable private fun Metric(label: String, value: String) {
-    Column { Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold); Text(label, style = MaterialTheme.typography.labelSmall, color = Color.LightGray) }
+@Composable
+private fun Metric(label: String, value: String, modifier: Modifier = Modifier) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Text(
+            value,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Text(label, style = MaterialTheme.typography.labelSmall, color = Color(0xFFB8C9BE), maxLines = 1)
+    }
 }
 
-@Composable private fun QuickTile(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier, action: () -> Unit) {
-    Card(modifier.clickable(onClick = action), colors = CardDefaults.cardColors(containerColor = Color(0xFF171D24)), shape = RoundedCornerShape(16.dp)) {
-        Column(Modifier.fillMaxWidth().padding(13.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(7.dp)) {
-            Icon(icon, null, tint = Color(0xFF9AE6C1)); Text(label, style = MaterialTheme.typography.labelMedium)
+@Composable
+private fun QuickTile(
+    label: String,
+    detail: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    modifier: Modifier,
+    action: () -> Unit
+) {
+    Card(
+        modifier = modifier.heightIn(min = 112.dp).clickable(onClick = action),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF171E26)),
+        shape = RoundedCornerShape(17.dp)
+    ) {
+        Column(
+            Modifier.fillMaxWidth().padding(horizontal = 9.dp, vertical = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(7.dp)
+        ) {
+            Box(
+                Modifier.size(38.dp).background(Color(0xFF24352E), RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.Center
+            ) { Icon(icon, null, tint = Color(0xFF9AE6C1), modifier = Modifier.size(19.dp)) }
+            Text(label, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+            Text(
+                detail,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                textAlign = TextAlign.Center
+            )
         }
     }
 }
@@ -796,6 +950,14 @@ private fun normalizeLibraryLabel(raw: String): Pair<String, String>? {
 ) {
     var mode by remember { mutableStateOf("Library") }
     Column(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 4.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text("Files & storage", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(
+                "Browse your VaultOS archive, device folders or deleted items.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 6.dp)) {
             FilterChip(selected = mode == "Library", onClick = { mode = "Library" }, label = { Text("Library") }, leadingIcon = { Icon(Icons.Default.Inventory2, null) })
             FilterChip(selected = mode == "Folders", onClick = { mode = "Folders" }, label = { Text("Device folders") }, leadingIcon = { Icon(Icons.Default.FolderOpen, null) })
@@ -1460,12 +1622,30 @@ private fun loadAppCatalogue(activity: MainActivity, archivedItems: List<VaultIt
     }
 }
 
-@Composable private fun EmptyState(title: String, subtitle: String) {
-    Box(Modifier.fillMaxWidth().padding(vertical = 34.dp), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Icon(Icons.Default.Inventory2, null, tint = Color(0xFF718096), modifier = Modifier.size(38.dp))
-            Text(title, fontWeight = FontWeight.SemiBold)
-            Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+@Composable
+private fun EmptyState(title: String, subtitle: String) {
+    Box(
+        Modifier.fillMaxWidth().padding(vertical = 18.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            Modifier.fillMaxWidth().background(Color(0xFF151B22), RoundedCornerShape(18.dp)).padding(22.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(9.dp)
+        ) {
+            Box(
+                Modifier.size(48.dp).background(Color(0xFF24352E), RoundedCornerShape(15.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Default.Inventory2, null, tint = Color(0xFF9AE6C1), modifier = Modifier.size(23.dp))
+            }
+            Text(title, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+            Text(
+                subtitle,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall,
+                textAlign = TextAlign.Center
+            )
         }
     }
 }
