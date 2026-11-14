@@ -132,3 +132,8 @@ The 0.13.1 branch adds hold-repeat Backspace with Unicode grapheme-boundary dele
 ## Follow-up feedback — 2026-11-14
 
 The user reports that rapid typing is improved but the keyboard still feels clunky. Treat this as an open usability/performance acceptance issue, not a completed fix. The emoji panel existed but had no entry point; the 0.13.1 follow-up adds a visible 😊 toolbar toggle and an accessibility description. Next keyboard iteration should focus on physical-device touch feel, key spacing/height, accidental presses, candidate-strip stability and end-to-end latency before adding more prediction complexity.
+
+
+## Typing-speed follow-up — 2026-11-15
+
+User clarified the core issue: they cannot type fast enough. The active branch now removes per-key popup-window work from the default path by making key previews opt-in (still available in Tools), and defers local fuzzy typo matching until 220 ms after the last keystroke so the CPU worker does not compete with active typing. Pending fuzzy-correction work is cancelled across editor lifecycle changes. This is a targeted latency hypothesis, not yet proven; physical-device typing speed remains unverified.
