@@ -289,3 +289,8 @@ VaultOS is a local-first Android file manager and personal content library for A
 2. Confirm Android API 35 instrumentation completes.
 3. Install the release APK over the existing installation on the Redmi Note 12 Pro 5G (do not uninstall); test sustained typing, short/long backspace, selected-text deletion, emoji/diacritics, EN/PL/TR suggestions, language switching, clips, Vault and navigation.
 4. Record on-device typing responsiveness and candidate usefulness. Build-host microbenchmarks are not substitutes for IME latency measurements.
+
+
+## Session 11 — Keyboard feedback follow-up (2026-11-14)
+
+User tested VaultOS 0.13.1 and reports rapid typing is somewhat better, but the keyboard still feels clunky. User also reported no emoji button. Source inspection confirmed emojiMode and an emoji panel existed, but the normal keyboard had no control to enter emoji mode. Added a visible 😊 toolbar toggle on the existing 0.13.1 repair branch, with an accessibility description. Remaining clunky feel and real-device emoji flow are still open for physical acceptance; do not mark the keyboard complete.
