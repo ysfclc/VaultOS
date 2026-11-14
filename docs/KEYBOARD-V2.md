@@ -127,3 +127,8 @@ The repeatable JVM benchmark ran 1,000 measured correction-ranking iterations af
 ## User-feedback repair iteration — 2026-11-14
 
 The 0.13.1 branch adds hold-repeat Backspace with Unicode grapheme-boundary deletion, a 95 ms SpellCheckerSession debounce, in-place automatic Shift label updates and a merged/deduplicated typed-candidate ranking pipeline. The exact typed token remains available as the commit-space action while up to two alternative candidates are selected by source precedence. Context ranking now fills remaining slots from adjacent-word fallback evidence when trigram evidence is sparse. Broader EN/PL/TR two-word phrase priors were added. Android CI and on-device typing/prediction measurements remain release gates.
+
+
+## Follow-up feedback — 2026-11-14
+
+The user reports that rapid typing is improved but the keyboard still feels clunky. Treat this as an open usability/performance acceptance issue, not a completed fix. The emoji panel existed but had no entry point; the 0.13.1 follow-up adds a visible 😊 toolbar toggle and an accessibility description. Next keyboard iteration should focus on physical-device touch feel, key spacing/height, accidental presses, candidate-strip stability and end-to-end latency before adding more prediction complexity.
