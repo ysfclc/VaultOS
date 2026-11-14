@@ -1174,6 +1174,20 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
             requestLocalCorrections(typed, language, learnedVocabulary, row)
         }
         val correcting = currentSuggestions.isNotEmpty() || localCorrections.isNotEmpty()
+        val builtInCompletions = if (typed.isNotBlank()) {
+            KeyboardSuggestionEngine.completePrefix(language, typed, limit = 5)
+        } else emptyList()
+        val typedAlternatives = if (typed.isNotBlank()) {
+            KeyboardSuggestionEngine.rankTypedCandidates(
+                language = language,
+                typed = typed,
+                spellCheckerCandidates = currentSuggestions,
+                personalCompletions = learnedCompletions,
+                localCorrections = localCorrections,
+                builtInCompletions = builtInCompletions,
+                limit = 2
+            )
+        } else emptyList()
         // Read only a short, transient window from the active safe text field. This keeps
         // predictions aligned with the real cursor after edits, pastes or cursor movement.
         val contextWords = if (typed.isBlank() && !correcting) {
@@ -1184,9 +1198,8 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         val contextualWord = contextWords.lastOrNull().orEmpty()
         val previousContextWord = contextWords.getOrNull(contextWords.lastIndex - 1).orEmpty()
         val candidates = when {
-            typed.isNotBlank() -> (listOf(typed) + currentSuggestions + localCorrections +
-                learnedCompletions + KeyboardSuggestionEngine.completePrefix(language, typed, additionalWords = learnedCompletions)).distinct().take(3)
-            correcting -> (listOf(lastCommittedWord) + currentSuggestions).distinct().take(3)
+            typed.isNotBlank() -> (listOf(typed) + typedAlternatives).take(3)
+            correcting -> (listOf(lastCommittedWord) + currentSuggestions + localCorrections).distinct().take(3)
             contextualWord.isNotBlank() ->
                 (typingMemory.nextWords(language, previousContextWord, contextualWord) +
                     KeyboardSuggestionEngine.nextWordSuggestions(language, previousContextWord, contextualWord)).distinct().take(3)
