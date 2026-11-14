@@ -113,14 +113,52 @@ class KeyboardSuggestionEngineTest {
     }
 
     @Test
-    fun exactTwoWordContextOutranksAdjacentWordFallback() {
+    fun exactTwoWordContextLeadsAndFillsFromAdjacentWordEvidence() {
         assertEquals(
-            listOf("tomorrow", "later"),
+            listOf("tomorrow", "later", "today"),
             ContextualPredictionRanker.rank(
                 trigramCandidates = listOf("tomorrow", "later", "tomorrow"),
                 bigramCandidates = listOf("today", "soon")
             )
         )
+    }
+
+    @Test
+    fun typedCandidatesCombineSourcesAndDeduplicateWithoutRepeatingTheTypedWord() {
+        assertEquals(
+            listOf("hello", "heloworld", "heloo", "help"),
+            KeyboardSuggestionEngine.rankTypedCandidates(
+                language = "en",
+                typed = "helo",
+                spellCheckerCandidates = listOf("hello"),
+                personalCompletions = listOf("heloworld", "HELLO"),
+                localCorrections = listOf("heloo", "hello"),
+                builtInCompletions = listOf("help", "heloworld"),
+                limit = 4
+            )
+        )
+    }
+
+    @Test
+    fun typedCandidateRankingHonorsLimitAndRejectsBlankCandidates() {
+        assertEquals(
+            listOf("świat", "świetnie"),
+            KeyboardSuggestionEngine.rankTypedCandidates(
+                language = "pl",
+                typed = "św",
+                spellCheckerCandidates = listOf("", "świat", "śW"),
+                personalCompletions = listOf("świetnie"),
+                limit = 2
+            )
+        )
+        assertTrue(KeyboardSuggestionEngine.rankTypedCandidates("en", "hello", limit = 0).isEmpty())
+    }
+
+    @Test
+    fun expandedTwoWordContextsCoverCommonDailyPhrases() {
+        assertEquals(listOf("to", "help", "a"), KeyboardSuggestionEngine.nextWordSuggestions("en", "I", "need"))
+        assertEquals(listOf("mi", "to", "sprawdzić"), KeyboardSuggestionEngine.nextWordSuggestions("pl", "czy", "możesz"))
+        assertEquals(listOf("ama", "ve", "sadece"), KeyboardSuggestionEngine.nextWordSuggestions("tr", "ben", "istiyorum"))
     }
 
     @Test
