@@ -1,6 +1,6 @@
 # VaultOS Neural Keyboard — V2 product increment
 
-_Status: KBD-1 responsiveness and KBD-2 contextual prediction source implemented; Vercel JVM build/test/benchmark passed, Android-backed learning tests compile but await emulator execution, and Redmi device acceptance remains pending._
+_Status: KBD-1/KBD-2 source and the 0.13.1 typing repair are implemented; GitHub validation run 43642774636 is in progress, and Redmi Note 12 Pro 5G acceptance remains pending._
 
 ## Problem statement
 
@@ -123,3 +123,7 @@ The Android build workflow runs the API 35 Google APIs emulator suite as an inde
 ## 500-word correction benchmark — Vercel host (2026-11-12)
 
 The repeatable JVM benchmark ran 1,000 measured correction-ranking iterations after 150 warm-ups with a 500-word personal vocabulary. Result: **p50 105 μs, p95 160 μs**. This is a Vercel Linux host measurement of the pure correction-ranking path only; it is not an IME end-to-end or Redmi device latency result. All 43 JVM tests passed in the same forced run. The six Android-backed SharedPreferences tests compiled but were not executed because the Vercel sandbox exposed no /dev/kvm.
+
+## User-feedback repair iteration — 2026-11-14
+
+The 0.13.1 branch adds hold-repeat Backspace with Unicode grapheme-boundary deletion, a 95 ms SpellCheckerSession debounce, in-place automatic Shift label updates and a merged/deduplicated typed-candidate ranking pipeline. The exact typed token remains available as the commit-space action while up to two alternative candidates are selected by source precedence. Context ranking now fills remaining slots from adjacent-word fallback evidence when trigram evidence is sparse. Broader EN/PL/TR two-word phrase priors were added. Android CI and on-device typing/prediction measurements remain release gates.
