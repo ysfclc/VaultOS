@@ -1,6 +1,6 @@
 # VaultOS — project status
 
-**Release line:** 0.13.0 · **Application ID:** `com.vaultos.app` · **Target:** Redmi Note 12 Pro 5G
+**Release line:** 0.13.1 · **Application ID:** `com.vaultos.app` · **Target:** Redmi Note 12 Pro 5G
 
 ## Product contract
 
@@ -316,3 +316,8 @@ Verification status: test source and Gradle dependencies were committed and re-f
 - Temporary download page: https://sb-4y1nz0v7zv7e.vercel.run/ ; direct APK: https://sb-4y1nz0v7zv7e.vercel.run/VaultOS-0.13.0.apk . The route was externally fetched and verified. It is tied to the non-persistent sandbox and expires when that session stops (45-minute maximum); download and keep a local copy.
 - This avoids snapshot storage, but is not a permanent Vercel deployment or release asset. Do not describe it as durable hosting.
 - No `/dev/kvm` emulator or physical Redmi test was available. Keep Android instrumentation execution and Redmi Note 12 Pro 5G acceptance open.
+
+
+## Keyboard and UI repair — 2026-11-14
+
+The 0.13.1 branch addresses user-reported slow typing, Backspace hold behavior and low-value recommendations. It adds grapheme-aware deletion, key-down repeat, debounced SpellCheckerSession requests, in-place automatic Shift updates, merged candidate ranking, contextual fallbacks and a Home/navigation visual hierarchy pass. See `docs/STATE.md` Session 10 and `docs/TASKS.md` Phase 15. GitHub Actions run 43642774636 is the validation run; do not call the change accepted until both jobs and the Redmi physical-device matrix pass.
