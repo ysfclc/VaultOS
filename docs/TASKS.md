@@ -341,3 +341,11 @@ Do not mark this phase complete from unit tests alone; device acceptance is mand
 - [ ] Confirm API 35 connected instrumentation for private typing memory.
 - [ ] Install in place on Redmi Note 12 Pro 5G and verify normal typing, held Backspace, Unicode/diacritics, selected text, EN/PL/TR recommendations, clipboard/Vault keyboard modes, large font, TalkBack and app navigation.
 - [ ] Record real-device typing latency and prediction usefulness. Do not treat a CI build or host-side microbenchmark as physical keyboard acceptance.
+
+
+## Phase 16 — Keyboard usability follow-up (2026-11-14)
+
+- [x] Expose the existing emoji panel through a visible keyboard toolbar button; provide an accessibility description and retain the ABC return action.
+- [ ] Re-test rapid typing on the Redmi Note 12 Pro 5G and identify the source of the remaining clunky feel (touch targets, spacing, key height, gesture handling, candidate-strip behavior and measured end-to-end latency).
+- [ ] Refine the typing layout based on observed mis-taps and comfort; do not infer acceptance from a successful build.
+- [ ] Verify emoji insertion and return-to-typing behavior in WhatsApp, Chrome and ChatGPT.
