@@ -180,17 +180,44 @@ object KeyboardSuggestionEngine {
             "i\u001fam" to listOf("not", "going", "sure"),
             "thank\u001fyou" to listOf("for", "so", "very"),
             "i\u001fthink" to listOf("that", "it", "we"),
-            "looking\u001fforward" to listOf("to")
+            "looking\u001fforward" to listOf("to"),
+            "i\u001fneed" to listOf("to", "help", "a"),
+            "i\u001fwant" to listOf("to", "you", "a"),
+            "i\u001fwill" to listOf("be", "let", "try"),
+            "we\u001fneed" to listOf("to", "a", "more"),
+            "you\u001fcan" to listOf("also", "use", "do"),
+            "can\u001fyou" to listOf("please", "help", "check"),
+            "do\u001fyou" to listOf("think", "have", "know"),
+            "how\u001fare" to listOf("you", "things", "we"),
+            "let\u001fme" to listOf("know", "check", "see"),
+            "there\u001fis" to listOf("a", "no", "one"),
+            "going\u001fto" to listOf("be", "do", "the")
         ),
         "pl" to mapOf(
             "nie\u001fwiem" to listOf("czy", "jak", "co"),
             "w\u001ftym" to listOf("momencie", "czasie", "przypadku"),
-            "dzień\u001fdobry" to listOf("wszystkim", "bardzo")
+            "dzień\u001fdobry" to listOf("wszystkim", "bardzo"),
+            "to\u001fjest" to listOf("bardzo", "ważne", "dobrze"),
+            "czy\u001fmożesz" to listOf("mi", "to", "sprawdzić"),
+            "jak\u001fsię" to listOf("masz", "czujesz", "udało"),
+            "mam\u001fpytanie" to listOf("dotyczące", "o", "w"),
+            "na\u001fpewno" to listOf("tak", "nie", "będę"),
+            "dzięki\u001fza" to listOf("pomoc", "informacje", "odpowiedź"),
+            "w\u001ftej" to listOf("sprawie", "chwili", "kwestii"),
+            "co\u001fsię" to listOf("stało", "dzieje", "zmieniło")
         ),
         "tr" to mapOf(
             "ben\u001fde" to listOf("öyle", "bugün", "istiyorum"),
             "çok\u001fteşekkür" to listOf("ederim", "ler"),
-            "bir\u001fşey" to listOf("söylemek", "var", "diyeceğim")
+            "bir\u001fşey" to listOf("söylemek", "var", "diyeceğim"),
+            "ben\u001fistiyorum" to listOf("ama", "ve", "sadece"),
+            "çok\u001fiyi" to listOf("oldu", "görünüyor", "hissettiriyor"),
+            "ne\u001fzaman" to listOf("geliyorsun", "başlıyor", "uygun"),
+            "şu\u001fanda" to listOf("müsaitim", "meşgulüm", "buradayım"),
+            "lütfen\u001fbana" to listOf("yardım", "haber", "söyle"),
+            "yardım\u001feder" to listOf("misin", "mi", "diye"),
+            "teşekkür\u001federim" to listOf("çok", "yardımın", "desteğin"),
+            "daha\u001fsonra" to listOf("görüşürüz", "konuşuruz", "yazarım")
         )
     )
 
@@ -219,6 +246,37 @@ object KeyboardSuggestionEngine {
             .asSequence()
             .filter { it.startsWith(normalized) && !it.equals(normalized, ignoreCase = true) }
             .distinct()
+            .take(limit)
+            .toList()
+    }
+
+    /**
+     * Combines candidate sources without allowing the currently typed token to crowd
+     * every alternative out of the strip. Source order is intentional: platform
+     * typo candidates, frequently used personal words, local typo matches, then
+     * static offline prefix completions.
+     */
+    fun rankTypedCandidates(
+        language: String,
+        typed: String,
+        spellCheckerCandidates: List<String> = emptyList(),
+        personalCompletions: List<String> = emptyList(),
+        localCorrections: List<String> = emptyList(),
+        builtInCompletions: List<String> = emptyList(),
+        limit: Int = 2
+    ): List<String> {
+        if (limit <= 0) return emptyList()
+        val wordLocale = locale(language)
+        val normalized = typed.trim().lowercase(wordLocale)
+        return sequenceOf(
+            spellCheckerCandidates,
+            personalCompletions,
+            localCorrections,
+            builtInCompletions
+        ).flatten()
+            .map(String::trim)
+            .filter { it.isNotBlank() && !it.lowercase(wordLocale).equals(normalized, ignoreCase = false) }
+            .distinctBy { it.lowercase(wordLocale) }
             .take(limit)
             .toList()
     }
