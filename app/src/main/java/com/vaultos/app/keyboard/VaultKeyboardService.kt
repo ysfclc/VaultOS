@@ -64,6 +64,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     private val letterKeyViews = mutableListOf<Pair<String, TextView>>()
     private val shiftKeyViews = mutableListOf<TextView>()
     private var pendingSpellCheck: Runnable? = null
+    private var pendingLocalCorrection: Runnable? = null
     private var activeBackspaceView: View? = null
     private var backspaceRepeater: Runnable? = null
     private var backspaceRepeatCount = 0
@@ -116,6 +117,8 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         stopBackspaceRepeat()
         pendingSpellCheck?.let(mainHandler::removeCallbacks)
         pendingSpellCheck = null
+        pendingLocalCorrection?.let(mainHandler::removeCallbacks)
+        pendingLocalCorrection = null
         suggestionRequestGate.invalidate()
         correctionExecutor?.shutdownNow()
         correctionExecutor = null
@@ -131,6 +134,8 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
         super.onStartInput(attribute, restarting)
         inputGeneration++
+        pendingLocalCorrection?.let(mainHandler::removeCallbacks)
+        pendingLocalCorrection = null
         suggestionRequestGate.invalidate()
         localCorrectionWord = ""
         localCorrectionSuggestions = emptyList()
@@ -183,6 +188,8 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
 
     override fun onFinishInput() {
         inputGeneration++
+        pendingLocalCorrection?.let(mainHandler::removeCallbacks)
+        pendingLocalCorrection = null
         suggestionRequestGate.invalidate()
         localCorrectionWord = ""
         localCorrectionSuggestions = emptyList()
@@ -735,7 +742,9 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         private fun oneHandedSide(): Int = getSharedPreferences(PREFS, MODE_PRIVATE).getInt(KEY_ONE_HANDED, 0).coerceIn(0, 2)
     private fun oneHandedLabel(): String = when (oneHandedSide()) { 1 -> "Left"; 2 -> "Right"; else -> "Off" }
     private fun numberRowEnabled(): Boolean = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_NUMBER_ROW, false)
-    private fun keyPreviewEnabled(): Boolean = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_KEY_PREVIEW, true)
+    // Popup previews create and dismiss a window for every tap. Keep them opt-in so
+    // the default typing path stays light; users can still enable them in Tools.
+    private fun keyPreviewEnabled(): Boolean = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_KEY_PREVIEW, false)
     private fun keySoundsEnabled(): Boolean = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_SOUND, false)
     private fun keyboardThemeDark(): Boolean = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_THEME_DARK, true)
 
@@ -1273,35 +1282,48 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         vocabulary: List<String>,
         targetRow: LinearLayout
     ) {
-        val token = suggestionRequestGate.issue()
+        // Don't run fuzzy matching while the user is actively typing. Each new
+        // character replaces this timer; the worker starts only after a short pause.
+        pendingLocalCorrection?.let(mainHandler::removeCallbacks)
         val session = inputGeneration
         val immutableVocabulary = vocabulary.toList()
-        val executor = correctionExecutor ?: return
-        // Keep at most one pending ranking request. An already-running request may finish,
-        // but its generation token prevents it from touching a newer editor state.
-        executor.queue.clear()
-        runCatching {
-            executor.execute {
-                val result = KeyboardSuggestionEngine.nearbyCorrections(
-                    language = language,
-                    input = word,
-                    additionalWords = immutableVocabulary
-                )
-                mainHandler.post {
-                    if (!suggestionRequestGate.isCurrent(token) ||
-                        inputGeneration != session ||
-                        typedWord.toString() != word ||
-                        selectedLanguageCode() != language ||
-                        suggestionRow !== targetRow ||
-                        currentSuggestions.isNotEmpty() ||
-                        !isSafeForSuggestions(currentInputEditorInfo)
-                    ) return@post
-                    localCorrectionWord = word
-                    localCorrectionSuggestions = result
-                    renderSuggestions()
+        val request = Runnable {
+            pendingLocalCorrection = null
+            if (inputGeneration != session ||
+                typedWord.toString() != word ||
+                selectedLanguageCode() != language ||
+                suggestionRow !== targetRow ||
+                currentSuggestions.isNotEmpty() ||
+                !isSafeForSuggestions(currentInputEditorInfo)
+            ) return@Runnable
+            val token = suggestionRequestGate.issue()
+            val executor = correctionExecutor ?: return@Runnable
+            executor.queue.clear()
+            runCatching {
+                executor.execute {
+                    val result = KeyboardSuggestionEngine.nearbyCorrections(
+                        language = language,
+                        input = word,
+                        additionalWords = immutableVocabulary
+                    )
+                    mainHandler.post {
+                        if (!suggestionRequestGate.isCurrent(token) ||
+                            inputGeneration != session ||
+                            typedWord.toString() != word ||
+                            selectedLanguageCode() != language ||
+                            suggestionRow !== targetRow ||
+                            currentSuggestions.isNotEmpty() ||
+                            !isSafeForSuggestions(currentInputEditorInfo)
+                        ) return@post
+                        localCorrectionWord = word
+                        localCorrectionSuggestions = result
+                        renderSuggestions()
+                    }
                 }
             }
         }
+        pendingLocalCorrection = request
+        mainHandler.postDelayed(request, 220L)
     }
 
     private fun suggestionPillBackground(): android.graphics.drawable.Drawable {
