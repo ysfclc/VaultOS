@@ -330,7 +330,7 @@ jobs:
           {
             echo "## VaultOS Android build"
             echo "- Device target: Redmi Note 12 Pro 5G / Android 13+"
-            echo "- Release: 0.13.1 (versionCode 14)"
+            echo "- Release: 0.13.1 (versionCode 15)"
             echo "- Signed debug and release APKs use the persistent certificate carried forward from 0.2.0"
             echo "- Compile SDK: 35"
             echo "- Java: 17"
