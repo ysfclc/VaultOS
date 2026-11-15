@@ -332,7 +332,7 @@ User tested VaultOS 0.13.1 and reports rapid typing is somewhat better, but the 
 **Corrections committed on the 0.13.1 branch**
 - Fixed the clipboard integrity test fixture: `café` and `cafè` are distinct strings with equal UTF-8 byte counts. The prior `café` / `caff` fixture incorrectly asserted equal byte lengths and failed before testing the hash mismatch.
 - Corrected both Android workflow summaries to report version 0.13.1 / versionCode 15, matching `app/build.gradle.kts`.
-- Workflow runs triggered by individual commits were cancelled by subsequent pushes. Latest consolidated candidate head is `bf663430`; a clean validation run for that exact head is required. No pass or APK artifact is claimed yet.
+- Workflow runs triggered by individual commits were cancelled by subsequent pushes. Latest consolidated candidate head before this documentation refresh is `2c8e756a`; its validation run is expected to supersede earlier cancelled runs. No pass or APK artifact is claimed yet.
 
 **Security / release hold**
 - Repository visibility is still public. `signing/vaultos-stable.keystore` and static signing values remain tracked; treat the signing identity as exposed.

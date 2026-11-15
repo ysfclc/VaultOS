@@ -367,6 +367,7 @@ Do not mark this phase complete from unit tests alone; device acceptance is mand
 
 - [x] Correct the invalid UTF-8 equal-byte-length fixture (`café` vs `cafè`) so the test reaches the SHA-256 mismatch assertion.
 - [x] Correct both mirrored Android workflow build summaries to version 0.13.1 / versionCode 15.
+- [x] Use exact dictionary words (`dzień`, `merhaba`, `hello`) for the multilingual false-correction controls so the smoke test measures false positives rather than missing vocabulary.
 - [ ] Confirm run 43683981709: JVM suite, lint, signed APK build, certificate verification and artifact/release publication.
 - [ ] Confirm API 35 instrumentation result; diagnose the observed emulator ADB `Broken pipe` / exit 224 separately from app test failures.
 - [x] Copy unique PR #2 cursor-safe autocorrect code/tests and PR #3 multilingual smoke-evaluation assets/docs into the 0.13.1 release branch; verify on the consolidated head before closing superseded PRs.

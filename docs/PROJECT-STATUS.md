@@ -334,3 +334,6 @@ The 0.13.1 branch addresses user-reported slow typing, Backspace hold behavior a
 
 
 **Consolidation update (2026-11-15):** PR #2's cursor-safe autocorrect guard and regression tests, and PR #3's multilingual smoke fixture, JVM harness and corpus-policy docs, have been copied into the 0.13.1 release branch. Original PRs remain open pending consolidated CI verification. The historical `ubuntu-22.04` workflow tweak from PR #2 was intentionally not copied; it is infrastructure-only.
+
+
+The multilingual smoke fixture's correct-token controls were corrected to exact dictionary entries (`hello`, `dzień`, `merhaba`) before validation; no broad language-quality claim is made from this 25-row curated fixture.
