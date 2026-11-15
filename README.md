@@ -4,7 +4,7 @@
 
 ## What is implemented
 
-Start with `docs/STATE.md` for the session ledger and `docs/SPEC.md` for product requirements and traceability. `docs/DECISIONS.md` and `docs/RISKS.md` record durable architecture choices and risks; `CHANGELOG.md` records release history. The existing `docs/PROJECT-STATUS.md`, `docs/TASKS.md`, `docs/ARCHITECTURE.md`, and `docs/RELEASE-PLAN.md` retain implementation detail, architecture context, phased tasks, and release planning. The adaptive predictive keyboard V2 direction and delivery gates are defined in `docs/KEYBOARD-V2.md`. VaultOS 0.13.1 also includes a feedback-driven typing and Home UX repair; physical Redmi acceptance remains required.
+Start with [`docs/PRODUCT-NORTH-STAR.md`](docs/PRODUCT-NORTH-STAR.md) for the product's purpose and decision rules, then `docs/STATE.md` for the session ledger and `docs/SPEC.md` for requirements and traceability. `docs/DECISIONS.md` and `docs/RISKS.md` record durable architecture choices and risks; `CHANGELOG.md` records release history. The existing `docs/PROJECT-STATUS.md`, `docs/TASKS.md`, `docs/ARCHITECTURE.md`, and `docs/RELEASE-PLAN.md` retain implementation detail, architecture context, phased tasks, and release planning. The adaptive predictive keyboard V2 direction and delivery gates are defined in `docs/KEYBOARD-V2.md`. VaultOS 0.13.1 also includes a feedback-driven typing and Home UX repair; physical Redmi acceptance remains required.
 
 - **Android share target:** receive `ACTION_SEND`, `ACTION_SEND_MULTIPLE`, selected text (`ACTION_PROCESS_TEXT`), and incoming content URIs. Shared files are streamed into the private VaultOS archive and catalogued.
 - **Manual import:** import one or many documents through Android's system picker.
