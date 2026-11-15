@@ -361,3 +361,20 @@ Do not mark this phase complete from unit tests alone; device acceptance is mand
 - [ ] Verify automatic and manual capture, multi-item clips, long text, sensitive/password exclusions and keyboard retrieval on the Redmi Note 12 Pro 5G.
 
 **Integrity rule:** a history event is readable only when both the archived item and the event's own payload metadata validate. A failed check returns unavailable content; never silently substitute a preview or another event's text.
+
+
+## Phase 18 — release hygiene and branch consolidation (2026-11-15)
+
+- [x] Correct the invalid UTF-8 equal-byte-length fixture (`café` vs `cafè`) so the test reaches the SHA-256 mismatch assertion.
+- [x] Correct both mirrored Android workflow build summaries to version 0.13.1 / versionCode 15.
+- [ ] Confirm run 43683981709: JVM suite, lint, signed APK build, certificate verification and artifact/release publication.
+- [ ] Confirm API 35 instrumentation result; diagnose the observed emulator ADB `Broken pipe` / exit 224 separately from app test failures.
+- [ ] Consolidate unique PR #2 cursor-safe autocorrect code and PR #3 multilingual evaluation assets into the 0.13.1 release branch; preserve their docs and regression tests.
+- [ ] Run the complete CI matrix on the consolidated branch; do not merge draft PRs or report success before checks finish.
+- [ ] Update PR #5 release notes and close/retarget superseded PRs only after verifying all their unique commits are preserved.
+- [ ] Restore repository visibility to private (owner action; GitHub connector cannot change repository settings in this session).
+- [ ] Design and test signing-certificate migration / Android update continuity before removing the exposed historical signing material. Do not rotate the key blindly or uninstall the installed app.
+- [ ] Merge the verified consolidated release into `main` and confirm `main` points at the expected merge commit.
+- [ ] Add Room-backed clipboard repository tests, backup/restore round-trip/corruption tests and Room migration tests.
+
+**Release rule:** a successful JVM build does not imply Android instrumentation passed; a CI-signed APK does not imply Redmi device acceptance; a private repository does not make a historically exposed signing key secret again.
