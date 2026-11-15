@@ -349,3 +349,15 @@ Do not mark this phase complete from unit tests alone; device acceptance is mand
 - [ ] Re-test rapid typing on the Redmi Note 12 Pro 5G and identify the source of the remaining clunky feel (touch targets, spacing, key height, gesture handling, candidate-strip behavior and measured end-to-end latency).
 - [ ] Refine the typing layout based on observed mis-taps and comfort; do not infer acceptance from a successful build.
 - [ ] Verify emoji insertion and return-to-typing behavior in WhatsApp, Chrome and ChatGPT.
+
+
+## Phase 17 — clipboard history integrity hardening (2026-11-15)
+
+- [x] Verify text read from a clipboard-history event against that event's own recorded UTF-8 byte count and SHA-256, in addition to the archived VaultItem integrity check.
+- [x] Reject attempts to read file-type history events through the text retrieval path.
+- [x] Add five pure JVM regression cases for multilingual UTF-8/emoji payloads, same-length content corruption, truncated/extended byte counts, legacy entries without a hash and empty payloads.
+- [ ] Run the complete JVM suite, lint and signed APK build for this increment; record the exact Actions run and signing result.
+- [ ] Add Room-backed repository tests for event insertion, duplicate-payload event separation, pin/delete/clear behavior and missing/corrupt payload handling.
+- [ ] Verify automatic and manual capture, multi-item clips, long text, sensitive/password exclusions and keyboard retrieval on the Redmi Note 12 Pro 5G.
+
+**Integrity rule:** a history event is readable only when both the archived item and the event's own payload metadata validate. A failed check returns unavailable content; never silently substitute a preview or another event's text.
