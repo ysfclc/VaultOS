@@ -331,3 +331,6 @@ The 0.13.1 branch addresses user-reported slow typing, Backspace hold behavior a
 - Corrected both mirrored Android workflow summaries to 0.13.1 / versionCode 15.
 - CI run [43683981709](https://github.com/ysfclc/VaultOS/actions/runs/43683981709) is the validation run for these corrections. At the time of this note both jobs were in progress; no test/build/instrumentation success or APK artifact is claimed.
 - Next: complete CI, consolidate PR #2 and #3 without dropping code, rerun CI, resolve repository visibility owner-side, then merge only the verified release branch.
+
+
+**Consolidation update (2026-11-15):** PR #2's cursor-safe autocorrect guard and regression tests, and PR #3's multilingual smoke fixture, JVM harness and corpus-policy docs, have been copied into the 0.13.1 release branch. Original PRs remain open pending consolidated CI verification. The historical `ubuntu-22.04` workflow tweak from PR #2 was intentionally not copied; it is infrastructure-only.

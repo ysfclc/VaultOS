@@ -326,13 +326,13 @@ User tested VaultOS 0.13.1 and reports rapid typing is somewhat better, but the 
 **Repository and PR state**
 - Default branch remains `main` at `0ac8f2f6d42c8d5ca7e5c9c7943224794df10a63`.
 - `fix/keyboard-typing-and-ux-0.13.1` contains the 0.13.1 app/keyboard work plus clipboard payload-integrity hardening; it is 28 commits ahead of main at the start of this checkpoint.
-- PR #5 remains open and draft. PR #2 (cursor-safe autocorrect) and PR #3 (multilingual evaluation baseline) are separate draft branches and are not included in PR #5. PR #4 is a closed temporary CI retry; PR #1 is closed.
-- Do not merge until the consolidated change set passes JVM tests, lint, signed APK/signature verification and Android instrumentation. Preserve PR #2 and #3 work; consolidate rather than abandon it.
+- PR #5 remains open and draft. The unique cursor-safe autocorrect implementation/tests from PR #2 and multilingual smoke-evaluation assets from PR #3 have been copied into this release branch; their original PRs remain open on `main` until the consolidated candidate is verified. PR #4 is a closed temporary CI retry; PR #1 is closed.
+- PR #2 and #3 implementation/test assets are consolidated in this branch (the temporary runner OS tweak from PR #2 was intentionally not copied). Verify tests, lint, signed APK/signature and instrumentation before closing the superseded PRs or merging PR #5.
 
 **Corrections committed on the 0.13.1 branch**
 - Fixed the clipboard integrity test fixture: `café` and `cafè` are distinct strings with equal UTF-8 byte counts. The prior `café` / `caff` fixture incorrectly asserted equal byte lengths and failed before testing the hash mismatch.
 - Corrected both Android workflow summaries to report version 0.13.1 / versionCode 15, matching `app/build.gradle.kts`.
-- The workflow run triggered by these changes is `43683981709`; at ledger update time both build and instrumentation jobs were still running. No pass or APK artifact is claimed yet.
+- Workflow runs triggered by individual commits were cancelled by subsequent pushes. Latest consolidated candidate head is `bf663430`; a clean validation run for that exact head is required. No pass or APK artifact is claimed yet.
 
 **Security / release hold**
 - Repository visibility is still public. `signing/vaultos-stable.keystore` and static signing values remain tracked; treat the signing identity as exposed.
@@ -341,7 +341,7 @@ User tested VaultOS 0.13.1 and reports rapid typing is somewhat better, but the 
 
 **Next actions**
 1. Wait for run 43683981709 and inspect both job logs/artifacts.
-2. Integrate PR #2 and PR #3 into the feature branch without losing their unique code/docs; run CI again on the consolidated head.
+2. Verify the consolidated cursor-safety and multilingual evaluation code/tests now present in the feature branch; then close superseded PR #2 and #3 without merging them independently.
 3. Reconcile PR #5 description and project status with actual verification evidence.
 4. Restore repository privacy (owner action), then design signing-key migration with an in-place update test.
 5. Merge the verified consolidated PR into main; re-fetch main and compare branch ancestry after merge.

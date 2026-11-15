@@ -369,7 +369,7 @@ Do not mark this phase complete from unit tests alone; device acceptance is mand
 - [x] Correct both mirrored Android workflow build summaries to version 0.13.1 / versionCode 15.
 - [ ] Confirm run 43683981709: JVM suite, lint, signed APK build, certificate verification and artifact/release publication.
 - [ ] Confirm API 35 instrumentation result; diagnose the observed emulator ADB `Broken pipe` / exit 224 separately from app test failures.
-- [ ] Consolidate unique PR #2 cursor-safe autocorrect code and PR #3 multilingual evaluation assets into the 0.13.1 release branch; preserve their docs and regression tests.
+- [x] Copy unique PR #2 cursor-safe autocorrect code/tests and PR #3 multilingual smoke-evaluation assets/docs into the 0.13.1 release branch; verify on the consolidated head before closing superseded PRs.
 - [ ] Run the complete CI matrix on the consolidated branch; do not merge draft PRs or report success before checks finish.
 - [ ] Update PR #5 release notes and close/retarget superseded PRs only after verifying all their unique commits are preserved.
 - [ ] Restore repository visibility to private (owner action; GitHub connector cannot change repository settings in this session).
