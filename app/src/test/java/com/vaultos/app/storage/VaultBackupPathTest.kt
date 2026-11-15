@@ -2,9 +2,11 @@ package com.vaultos.app.storage
 
 import java.io.File
 import java.nio.file.Files
+import java.io.IOException
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Assume
 import org.junit.Test
 
 class VaultBackupPathTest {
@@ -68,10 +70,12 @@ class VaultBackupPathTest {
             val link = File(vault, "linked")
             try {
                 Files.createSymbolicLink(link.toPath(), outside.toPath())
-            } catch (_: UnsupportedOperationException) {
-                return
-            } catch (_: SecurityException) {
-                return
+            } catch (failure: UnsupportedOperationException) {
+                Assume.assumeNoException("Host does not support symbolic links", failure)
+            } catch (failure: SecurityException) {
+                Assume.assumeNoException("Host does not permit symbolic links", failure)
+            } catch (failure: IOException) {
+                Assume.assumeNoException("Host could not create a symbolic link", failure)
             }
             assertNull(resolveVaultRelativePath(vault, "linked/secret.txt"))
         } finally {
