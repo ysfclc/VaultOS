@@ -2,17 +2,17 @@
 _Last updated: 2026-11-15 by Continuity Engineer — release hygiene checkpoint_
 
 ## 1. Product snapshot
-VaultOS is a local-first Android file manager and personal content library for Android 9+. It combines a non-destructive index of existing shared storage with a private archive for incoming and newly detected content, a searchable/organizable Room catalogue, file operations, an optional capture keyboard, a DocumentsProvider, app/APK catalogue, and manual SAF backup/restore. “Complete” means data-safe operation, tested restore/migration compatibility, reliable everyday UX on the target Redmi Note 12 Pro 5G, and a reproducible signed release. Build success alone is not device acceptance.
+VaultOS is a local-first personal capture and retrieval layer for Android 9+: capture information and files from supported Android entry points, preserve complete payloads privately, connect them to one catalogue, retrieve them through global search and reuse surfaces, and recover them through tested backup/restore. The keyboard is optional infrastructure, not the product definition. `docs/PRODUCT-NORTH-STAR.md` is the durable source of truth for vision and roadmap trade-offs. “Complete” means data-safe operation, tested restore/migration compatibility, reliable everyday UX on the target Redmi Note 12 Pro 5G, and a reproducible signed release. Build success alone is not device acceptance.
 
 ## 2. Status board
 | Area | State | Notes |
 |---|---|---|
-| Share/import and private archive | 🟡 partial | Implemented; no direct repository-level regression suite or physical share acceptance recorded |
+| Share/import and private archive | 🟡 partial | Four Android-backed capture/retrieval tests now exist for complete UTF-8 round-trip, beyond-preview search, dedupe and tamper rejection; emulator execution and physical share acceptance remain pending |
 | Storage index and catch-up scan | 🟡 partial | Resumable scan and MediaStore tracking implemented; Xiaomi timing/device behavior unverified |
 | Unified library, search, organization | 🟡 partial | Implemented; database and UI integration coverage is thin |
 | File operations and ZIP safety | ✅ done | Core operations have 10 JVM regression tests; device UX acceptance remains separate |
 | Clipboard history and capture IME | 🟡 partial | Gallery and capture flow implemented; event-level UTF-8 byte/hash readback guard plus five pure JVM regression cases added; Room-backed repository tests and physical app matrix remain open |
-| Keyboard suggestions | 🟡 partial | KBD-1/KBD-2 source implemented; 43 JVM tests pass; 500-word host benchmark p50/p95=105/160 μs; six Android instrumentation tests compile but await emulator execution; Redmi acceptance open |
+| Keyboard suggestions | 🟡 partial | KBD-1/KBD-2 source implemented; 43 JVM tests and 500-word host benchmark p50/p95=105/160 μs previously passed; six Android typing-memory tests plus four core repository tests are now in the instrumentation suite; API 35 execution pending; Redmi acceptance open |
 | Metadata extraction | 🟡 partial | Parser tests exist; end-to-end extraction/provider behavior lacks integration tests |
 | Backup and restore | 🟡 partial | v1/v2 paths implemented; no automated round-trip, corruption, or migration test suite identified |
 | DocumentsProvider | 🟡 partial | Implemented; no provider interoperability test evidence |
@@ -23,8 +23,8 @@ VaultOS is a local-first Android file manager and personal content library for A
 ## 3. Currently in flight
 - 1.0.0 acceptance — Vercel build/test/lint/release verification is green; GitHub hosted-runner provisioning and Redmi physical-device matrix/data migration/restore evidence remain open.
 - GOV-001 signing migration — blocked on replacement keystore/secrets and an update-continuity decision; preserve the existing key until migration is proven.
-- Keyboard V2 — KBD-1/KBD-2 source is committed; JVM suite and 500-word host benchmark pass; Android-backed test APK compiles, but API 35 hosted emulator boot currently fails before tests can start; emulator cold-boot remediation is in the latest CI run; candidate UX and Redmi acceptance remain; see docs/KEYBOARD-V2.md.
-- Test-coverage uplift — backup/restore, Room migrations, scan worker, clipboard repository, and DocumentsProvider still lack identified automated integration tests. Clipboard event-level payload integrity now has pure JVM coverage; see Phase 17 in docs/TASKS.md.
+- Keyboard V2 — KBD-1/KBD-2 source is committed; JVM suite and 500-word host benchmark pass; candidate UX and Redmi acceptance remain; see docs/KEYBOARD-V2.md. The API 35 emulator now boots, but the test script was failing before tests because it invoked Bash-only `set -o pipefail` under `/usr/bin/sh`; both workflow mirrors now use POSIX `set -eu`. The next final-head run must prove tests actually execute.
+- Core capture/retrieval — `VaultRepositoryInstrumentedTest` adds four Android-backed tests against real Room + private files: multilingual long-text fidelity, search beyond preview, duplicate archive reuse and same-length tamper rejection. Source is committed; no emulator pass is claimed yet. Backup/restore, Room migrations, scan worker, clipboard repository and DocumentsProvider still need integration coverage; see Phase 19 in docs/TASKS.md.
 
 ## 4. Known gaps & stubs
 - VaultBackupManager.kt:22,136 — backup/restore exists, but no automated v1/v2 round-trip, corrupt-manifest, checksum-failure, or path-safety tests were found.
@@ -355,3 +355,31 @@ User tested VaultOS 0.13.1 and reports rapid typing is somewhat better, but the 
 - Prior run 43684374671: JVM tests, lint, debug/release APK assembly, APK signature verification, artifact upload and private draft release publication passed. API 35 instrumentation failed before tests started because the emulator's package service was unavailable (cmd: Can't find service: package). A retry reproduced the emulator failure; no keyboard assertion failed because the test APK could not be installed.
 - New workflow run 43687738003 is in progress at the time of this checkpoint. Do not mark instrumentation green until its test results show actual executed tests.
 - PR #5 remains open and unmerged; main is unchanged. Repository visibility remains public and signing material remains tracked. This is a critical security hold, not a documentation-only issue. Do not rotate/delete the old signing key or issue a new update build until an update-lineage migration is tested.
+
+
+## Session 13 — product north star and core capture/retrieval increment (2026-11-15)
+
+**Product intent recovered and made durable**
+- The original user problem was long-text clipboard truncation on the Redmi Note 12 Pro 5G: preserve the complete content and paste/retrieve it later.
+- The product grew into a local-first personal capture and retrieval layer, not a keyboard-first utility. Its core loop is capture → preserve → connect → retrieve → recover.
+- Added `docs/PRODUCT-NORTH-STAR.md` and linked it from the README. It records the product definition, local-first/privacy contract, preservation of originals, event/content separation, Android boundaries, acceptance signals and roadmap priority.
+- Future work must improve the weakest link in capture, preservation, retrieval or recovery. Keyboard polish supports those jobs but cannot displace them.
+
+**Core product work added**
+- Added `VaultRepositoryInstrumentedTest` with four Android-backed cases using the real Room database and app-private file archive: long multilingual UTF-8 exact round-trip; global search for text beyond the preview; verified duplicate-payload reuse; and rejection of same-byte-length tampering.
+- These are test sources only until the API 35 emulator actually executes them. No pass is claimed.
+
+**CI diagnosis and correction**
+- The previous API 35 job successfully booted the emulator, then exited before ADB readiness or Gradle instrumentation because `reactivecircus/android-emulator-runner` invoked the script with `/usr/bin/sh` while the script began with Bash-only `set -euo pipefail`.
+- Both mirrored workflows now use POSIX `set -eu`; the step is renamed to “Run Android-backed persistence tests”.
+- The next run for the final branch head must demonstrate test APK installation and actual executed tests. A green emulator boot alone is not a test pass.
+
+**Still blocked**
+- Repository is still public; the tracked historical keystore and static signing values remain compromised. Owner must change visibility to private; signing migration requires a tested update-continuity design.
+- PR #5 remains unmerged; `main` remains untouched.
+- No physical Redmi acceptance or backup/restore test is claimed.
+
+**Next**
+1. Verify the final-head workflow, including all ten Android-backed tests (six typing-memory plus four repository tests).
+2. Expand core data assurance with backup/restore v1/v2 round-trip/corruption tests and Room migration coverage.
+3. Resolve GOV-001 before merge/release; then install over the existing Redmi app and verify capture, full-text retrieval, keyboard use, and recovery.
