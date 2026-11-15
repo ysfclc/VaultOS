@@ -379,3 +379,19 @@ Do not mark this phase complete from unit tests alone; device acceptance is mand
 - [ ] Add Room-backed clipboard repository tests, backup/restore round-trip/corruption tests and Room migration tests.
 
 **Release rule:** a successful JVM build does not imply Android instrumentation passed; a CI-signed APK does not imply Redmi device acceptance; a private repository does not make a historically exposed signing key secret again.
+
+
+## Phase 19 — capture and retrieval integrity (2026-11-15)
+
+This phase returns the roadmap to VaultOS's original job: preserve complete content and make it reliably retrievable. See `docs/PRODUCT-NORTH-STAR.md`. The keyboard remains an optional surface; do not make it the product centre.
+
+- [x] Record the durable product north star, core loop (capture → preserve → connect → retrieve → recover), non-negotiable privacy/data-fidelity rules and roadmap priority.
+- [x] Add Android-backed repository tests using the real Room database and app-private archive for long multilingual UTF-8 round-trip, search beyond the 2,000-character preview, verified duplicate payload reuse, and same-byte-length tamper rejection.
+- [ ] Execute all Android-backed persistence tests on the API 35 emulator and record actual test counts/results; source compilation alone is not acceptance.
+- [ ] Add Android-backed backup/restore round-trip and failure-path tests for v1/v2 manifests, missing/corrupt payloads, path traversal, collisions, tags, collections, metadata and Recycle Bin state.
+- [ ] Add Room migration tests across every supported schema version before changing the schema.
+- [ ] Add Room-backed clipboard event tests proving distinct capture events can share a verified payload without losing timestamps/context.
+- [ ] Verify share-sheet, document-picker, selected-text, long-text and clipboard capture flows on the Redmi Note 12 Pro 5G; install updates in place and never uninstall as a test shortcut.
+- [ ] Keep physical-device acceptance separate from emulator results.
+
+**Acceptance rule:** a green build does not prove content survived capture, search or restore. The complete content must round-trip exactly, search beyond its preview, fail closed after tampering, and remain recoverable through a tested backup.
