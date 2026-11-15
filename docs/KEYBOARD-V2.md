@@ -142,3 +142,8 @@ User clarified the core issue: they cannot type fast enough. The active branch n
 ## Delayed auto-correct cursor safety
 
 Opt-in automatic correction is permitted only when the delayed SpellChecker result still refers to the exact committed word at the original collapsed cursor position. The callback verifies the absolute cursor anchor, confirms the word-plus-trailing-space suffix immediately before the cursor, and rejects non-empty selections. If the editor cannot provide a verifiable extracted-text selection offset, the correction is skipped. The implementation lives in `CommittedWordReplacementGuard.kt` and is covered by pure JVM regression tests. This is a safety guard, not a promise that every third-party editor exposes reliable cursor offsets.
+
+
+## Multilingual evaluation baseline
+
+The repository includes a 25-row curated EN/PL/TR smoke fixture and a deterministic JVM harness that reports next-word, prefix-completion and correction top-1/top-3 counts plus correct-token controls. This is a diagnostic smoke test, not a representative natural-language benchmark and not a product-quality claim. No external corpus or lexicon is bundled. Any future language resources require documented source, immutable version, license, attribution, redistribution permission, preprocessing and checksum; never derive corpus material from private user content.
