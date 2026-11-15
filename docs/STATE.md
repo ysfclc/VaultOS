@@ -1,5 +1,5 @@
 # State Ledger
-_Last updated: 2026-11-12 by Continuity Engineer — Vercel build fallback_
+_Last updated: 2026-11-15 by Continuity Engineer — release hygiene checkpoint_
 
 ## 1. Product snapshot
 VaultOS is a local-first Android file manager and personal content library for Android 9+. It combines a non-destructive index of existing shared storage with a private archive for incoming and newly detected content, a searchable/organizable Room catalogue, file operations, an optional capture keyboard, a DocumentsProvider, app/APK catalogue, and manual SAF backup/restore. “Complete” means data-safe operation, tested restore/migration compatibility, reliable everyday UX on the target Redmi Note 12 Pro 5G, and a reproducible signed release. Build success alone is not device acceptance.
@@ -319,3 +319,30 @@ User tested VaultOS 0.13.1 and reports rapid typing is somewhat better, but the 
 1. Verify the branch's JVM tests, lint, signed APK build and signing-certificate check in GitHub Actions.
 2. Add Room-backed repository tests for separate events sharing one archived payload, event readback, pin/delete/clear and missing/corrupt content.
 3. Continue with the actual gallery/retrieval UX only after these data-integrity checks are established; preserve the existing gallery rather than replacing it.
+
+
+## Session 11 — release hygiene checkpoint (2026-11-15)
+
+**Repository and PR state**
+- Default branch remains `main` at `0ac8f2f6d42c8d5ca7e5c9c7943224794df10a63`.
+- `fix/keyboard-typing-and-ux-0.13.1` contains the 0.13.1 app/keyboard work plus clipboard payload-integrity hardening; it is 28 commits ahead of main at the start of this checkpoint.
+- PR #5 remains open and draft. PR #2 (cursor-safe autocorrect) and PR #3 (multilingual evaluation baseline) are separate draft branches and are not included in PR #5. PR #4 is a closed temporary CI retry; PR #1 is closed.
+- Do not merge until the consolidated change set passes JVM tests, lint, signed APK/signature verification and Android instrumentation. Preserve PR #2 and #3 work; consolidate rather than abandon it.
+
+**Corrections committed on the 0.13.1 branch**
+- Fixed the clipboard integrity test fixture: `café` and `cafè` are distinct strings with equal UTF-8 byte counts. The prior `café` / `caff` fixture incorrectly asserted equal byte lengths and failed before testing the hash mismatch.
+- Corrected both Android workflow summaries to report version 0.13.1 / versionCode 15, matching `app/build.gradle.kts`.
+- The workflow run triggered by these changes is `43683981709`; at ledger update time both build and instrumentation jobs were still running. No pass or APK artifact is claimed yet.
+
+**Security / release hold**
+- Repository visibility is still public. `signing/vaultos-stable.keystore` and static signing values remain tracked; treat the signing identity as exposed.
+- GitHub connector in this session supports repository content/PR operations but not repository visibility settings. Owner action required: Settings → Danger Zone → Change visibility → Private. Public forks, stars/watchers and private-repository feature availability have consequences; review GitHub's visibility warning before confirming.
+- Do not delete or regenerate the existing signing key until a tested Android signing lineage / update-continuity plan exists. No key rotation has been performed.
+
+**Next actions**
+1. Wait for run 43683981709 and inspect both job logs/artifacts.
+2. Integrate PR #2 and PR #3 into the feature branch without losing their unique code/docs; run CI again on the consolidated head.
+3. Reconcile PR #5 description and project status with actual verification evidence.
+4. Restore repository privacy (owner action), then design signing-key migration with an in-place update test.
+5. Merge the verified consolidated PR into main; re-fetch main and compare branch ancestry after merge.
+6. Add Room-backed clipboard repository tests, backup/restore fixtures and Room migration tests as subsequent increments.
