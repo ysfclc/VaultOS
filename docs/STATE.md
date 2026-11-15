@@ -11,7 +11,7 @@ VaultOS is a local-first Android file manager and personal content library for A
 | Storage index and catch-up scan | 🟡 partial | Resumable scan and MediaStore tracking implemented; Xiaomi timing/device behavior unverified |
 | Unified library, search, organization | 🟡 partial | Implemented; database and UI integration coverage is thin |
 | File operations and ZIP safety | ✅ done | Core operations have 10 JVM regression tests; device UX acceptance remains separate |
-| Clipboard history and capture IME | 🟡 partial | Implemented; Android selected-IME boundary applies; physical app matrix open |
+| Clipboard history and capture IME | 🟡 partial | Gallery and capture flow implemented; event-level UTF-8 byte/hash readback guard plus five pure JVM regression cases added; Room-backed repository tests and physical app matrix remain open |
 | Keyboard suggestions | 🟡 partial | KBD-1/KBD-2 source implemented; 43 JVM tests pass; 500-word host benchmark p50/p95=105/160 μs; six Android instrumentation tests compile but await emulator execution; Redmi acceptance open |
 | Metadata extraction | 🟡 partial | Parser tests exist; end-to-end extraction/provider behavior lacks integration tests |
 | Backup and restore | 🟡 partial | v1/v2 paths implemented; no automated round-trip, corruption, or migration test suite identified |
@@ -24,13 +24,13 @@ VaultOS is a local-first Android file manager and personal content library for A
 - 1.0.0 acceptance — Vercel build/test/lint/release verification is green; GitHub hosted-runner provisioning and Redmi physical-device matrix/data migration/restore evidence remain open.
 - GOV-001 signing migration — blocked on replacement keystore/secrets and an update-continuity decision; preserve the existing key until migration is proven.
 - Keyboard V2 — KBD-1/KBD-2 source is committed; Vercel JVM tests and the 500-word host benchmark pass; Android-backed tests compile but await emulator execution; candidate UX and Redmi acceptance remain; see docs/KEYBOARD-V2.md.
-- Test-coverage uplift — backup/restore, Room migrations, scan worker, clipboard repository, and DocumentsProvider currently lack identified automated integration tests.
+- Test-coverage uplift — backup/restore, Room migrations, scan worker, clipboard repository, and DocumentsProvider still lack identified automated integration tests. Clipboard event-level payload integrity now has pure JVM coverage; see Phase 17 in docs/TASKS.md.
 
 ## 4. Known gaps & stubs
 - VaultBackupManager.kt:22,136 — backup/restore exists, but no automated v1/v2 round-trip, corrupt-manifest, checksum-failure, or path-safety tests were found.
 - VaultDatabase.kt:403 — Room database/migrations have no identified migration regression suite.
 - StorageScanWorker.kt:18 and VaultRepository.kt:135,243 — indexing/scanning behavior has no identified worker/repository test suite.
-- ClipboardHistoryRepository.kt:25,52,76 — clipboard event capture/readback has no identified repository-level tests.
+- ClipboardHistoryRepository.kt — Room-backed capture/history repository tests are still missing. ClipboardPayloadIntegrity.kt now has five pure JVM regression tests for event-level readback validation.
 - VaultDocumentsProvider.kt:26 — system provider behavior has no identified automated interoperability tests.
 - Device acceptance steps in docs/DEVICE-TEST-PLAN.md remain unrecorded; CI is not a substitute.
 - Backups are not encrypted by VaultOS; the destination is user-selected.
@@ -294,3 +294,28 @@ VaultOS is a local-first Android file manager and personal content library for A
 ## Session 11 — Keyboard feedback follow-up (2026-11-14)
 
 User tested VaultOS 0.13.1 and reports rapid typing is somewhat better, but the keyboard still feels clunky. User also reported no emoji button. Source inspection confirmed emojiMode and an emoji panel existed, but the normal keyboard had no control to enter emoji mode. Added a visible 😊 toolbar toggle on the existing 0.13.1 repair branch, with an accessibility description. Remaining clunky feel and real-device emoji flow are still open for physical acceptance; do not mark the keyboard complete.
+
+
+## Session 12 — clipboard history integrity increment (2026-11-15)
+
+**Product audit**
+- The clipboard-history table, event capture, searchable gallery, pin/delete/clear actions, full-text copy and keyboard Clips retrieval already exist from Phases 7–8. Do not create a parallel gallery or duplicate storage model.
+- Automatic clipboard capture remains bounded by Android's selected-IME policy. A regular background app cannot silently observe clipboard changes while another keyboard is active.
+- Existing VaultRepository.readFullText() verifies the archived VaultItem's own byte count and SHA-256. The history repository previously trusted that result without checking the separate metadata recorded on the clipboard event.
+
+**Implemented on fix/keyboard-typing-and-ux-0.13.1**
+- Added ClipboardPayloadIntegrity as a pure Kotlin verifier.
+- ClipboardHistoryRepository.readText() now rejects non-text events and validates the returned text against that event's own UTF-8 byte count and SHA-256 after the VaultItem integrity check.
+- Capture-time SHA-256 now uses the same helper as readback verification.
+- Added five JVM regression tests: multilingual/emoji UTF-8, same-byte-count content corruption, truncated/extended byte count, legacy entries without a hash, and empty payload.
+- Updated docs/SPEC.md and docs/TASKS.md; Phase 17 tracks the next clipboard-history test and device-acceptance work.
+
+**Verification**
+- Source changes and documentation were written directly to the existing GitHub repair branch. CI for the completed increment has not yet been confirmed.
+- No Room-backed repository test, emulator run, APK verification, or Redmi physical-device test is claimed.
+- Existing package ID, Room schema, signing configuration, clipboard event table and archive format are unchanged.
+
+**Next**
+1. Verify the branch's JVM tests, lint, signed APK build and signing-certificate check in GitHub Actions.
+2. Add Room-backed repository tests for separate events sharing one archived payload, event readback, pin/delete/clear and missing/corrupt content.
+3. Continue with the actual gallery/retrieval UX only after these data-integrity checks are established; preserve the existing gallery rather than replacing it.
