@@ -924,7 +924,9 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
             }
             "?123", "123" -> { symbols = true; refreshKeyboard() }
             "ABC" -> { symbols = false; refreshKeyboard() }
-            "⌫" -> deleteBackward()
+            "⌫" -> {
+                autoCorrectCursorPosition = null
+                deleteBackward()
             }
             "←" -> sendCursorKey(KeyEvent.KEYCODE_DPAD_LEFT)
             "→" -> sendCursorKey(KeyEvent.KEYCODE_DPAD_RIGHT)
@@ -1449,7 +1451,6 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         activeSpellCheckWord = ""
         currentSuggestions = emptyList()
         activeSuggestionInputGeneration = -1
-        autoCorrectCursorPosition = null
         spellCheckGeneration++
         if (isSafeForSuggestions(currentInputEditorInfo)) {
             val manager = getSystemService(Context.TEXT_SERVICES_MANAGER_SERVICE) as? TextServicesManager
