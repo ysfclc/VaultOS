@@ -16,7 +16,7 @@ class ClipboardPayloadIntegrityTest {
     @Test
     fun rejectsPayloadWithSameByteCountButDifferentContent() {
         val original = "café"
-        val changed = "caff"
+        val changed = "cafè"
         val originalBytes = original.toByteArray(Charsets.UTF_8)
         val changedBytes = changed.toByteArray(Charsets.UTF_8)
 
