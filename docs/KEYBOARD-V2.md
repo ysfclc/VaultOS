@@ -137,3 +137,8 @@ The user reports that rapid typing is improved but the keyboard still feels clun
 ## Typing-speed follow-up — 2026-11-15
 
 User clarified the core issue: they cannot type fast enough. The active branch now removes per-key popup-window work from the default path by making key previews opt-in (still available in Tools), and defers local fuzzy typo matching until 220 ms after the last keystroke so the CPU worker does not compete with active typing. Pending fuzzy-correction work is cancelled across editor lifecycle changes. This is a targeted latency hypothesis, not yet proven; physical-device typing speed remains unverified.
+
+
+## Delayed auto-correct cursor safety
+
+Opt-in automatic correction is permitted only when the delayed SpellChecker result still refers to the exact committed word at the original collapsed cursor position. The callback verifies the absolute cursor anchor, confirms the word-plus-trailing-space suffix immediately before the cursor, and rejects non-empty selections. If the editor cannot provide a verifiable extracted-text selection offset, the correction is skipped. The implementation lives in `CommittedWordReplacementGuard.kt` and is covered by pure JVM regression tests. This is a safety guard, not a promise that every third-party editor exposes reliable cursor offsets.
