@@ -7,7 +7,6 @@ import com.vaultos.app.data.VaultDatabase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
-import java.security.MessageDigest
 import java.util.UUID
 
 /**
@@ -30,7 +29,7 @@ class ClipboardHistoryRepository(private val context: Context) {
     ): ClipboardHistoryEntry? = withContext(Dispatchers.IO) {
         if (text.isEmpty()) return@withContext null
         val bytes = text.toByteArray(Charsets.UTF_8)
-        val hash = MessageDigest.getInstance("SHA-256").digest(bytes).toHex()
+        val hash = ClipboardPayloadIntegrity.sha256(bytes)
         val item = vault.saveText(text, "Clipboard capture")
         val entry = ClipboardHistoryEntry(
             id = UUID.randomUUID().toString(),
@@ -74,15 +73,15 @@ class ClipboardHistoryRepository(private val context: Context) {
     }
 
     suspend fun readText(entry: ClipboardHistoryEntry): String? = withContext(Dispatchers.IO) {
+        if (entry.contentType != "text") return@withContext null
         val item = entry.itemId?.let { dao.getById(it) } ?: return@withContext null
-        vault.readFullText(item)
+        val text = vault.readFullText(item) ?: return@withContext null
+        if (ClipboardPayloadIntegrity.matches(text, entry.byteCount, entry.contentHash)) text else null
     }
 
     suspend fun setPinned(id: String, pinned: Boolean) = dao.setClipboardPinned(id, pinned)
     suspend fun delete(id: String) = dao.deleteClipboardHistory(id)
     suspend fun clearUnpinned() = dao.clearUnpinnedClipboardHistory()
-
-    private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it.toInt() and 0xff) }
 
     companion object { private const val PREVIEW_LIMIT = 420 }
 }
