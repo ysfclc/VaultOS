@@ -383,3 +383,25 @@ User tested VaultOS 0.13.1 and reports rapid typing is somewhat better, but the 
 1. Verify the final-head workflow, including all ten Android-backed tests (six typing-memory plus four repository tests).
 2. Expand core data assurance with backup/restore v1/v2 round-trip/corruption tests and Room migration coverage.
 3. Resolve GOV-001 before merge/release; then install over the existing Redmi app and verify capture, full-text retrieval, keyboard use, and recovery.
+
+
+## Session 14 — backup manifest path containment (2026-11-15)
+
+**Threat fixed**
+- Backup manifests are external input. Restore previously resolved `trashOriginalRelativePath` directly with `File(vault, path)`, allowing a crafted manifest to persist an absolute or traversal path that could later be used as a destination by Recycle Bin restore.
+- The archived `relativePath` fallback also relied on an unchecked manifest path when no restored-tree mapping existed.
+
+**Implementation**
+- Added `resolveVaultRelativePath`: reject blank, NUL-containing and absolute values; canonicalize the target; reject the vault root itself and any path not strictly beneath the canonical vault root. Canonicalization also detects symlink escapes.
+- Use the same resolver for archived payload paths and Recycle Bin original destinations. An invalid trash destination becomes null so the existing safe category/name fallback is used.
+- No backup format or Room schema change.
+
+**Regression coverage**
+- Added five JVM tests: valid nested path, parent traversal, absolute path, blank/root aliases and symlink escape.
+- Tests are committed but not yet verified by a completed CI run. Symlink test must report as skipped (not passed) if the host cannot create symlinks.
+
+**Next**
+1. Execute the full JVM/lint/build job on this final head and inspect exact results.
+2. Execute API 35 instrumentation for the ten Android-backed tests.
+3. Add real backup/restore round-trip coverage for v1/v2, collisions, integrity failure and restored organization/recycle-bin state.
+4. Keep security hold and physical Redmi acceptance open.
