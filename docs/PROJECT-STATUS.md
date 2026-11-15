@@ -321,3 +321,13 @@ Verification status: test source and Gradle dependencies were committed and re-f
 ## Keyboard and UI repair — 2026-11-14
 
 The 0.13.1 branch addresses user-reported slow typing, Backspace hold behavior and low-value recommendations. It adds grapheme-aware deletion, key-down repeat, debounced SpellCheckerSession requests, in-place automatic Shift updates, merged candidate ranking, contextual fallbacks and a Home/navigation visual hierarchy pass. See `docs/STATE.md` Session 10 and `docs/TASKS.md` Phase 15. GitHub Actions run 43642774636 is the validation run; do not call the change accepted until both jobs and the Redmi physical-device matrix pass.
+
+
+## Session 11 — release hygiene checkpoint (2026-11-15)
+
+- Repository remains public; tracked historical signing keystore/static credentials are a critical open risk (RISK-002). No visibility change or key rotation was performed.
+- PR #5 remains draft. PR #2 and #3 are separate draft branches and their unique work is not yet consolidated into PR #5. PR #4 is a closed temporary CI retry.
+- Corrected the equal-byte-length UTF-8 test fixture (`café` / `cafè`) after Actions identified that the former fixture had unequal UTF-8 byte counts.
+- Corrected both mirrored Android workflow summaries to 0.13.1 / versionCode 15.
+- CI run [43683981709](https://github.com/ysfclc/VaultOS/actions/runs/43683981709) is the validation run for these corrections. At the time of this note both jobs were in progress; no test/build/instrumentation success or APK artifact is claimed.
+- Next: complete CI, consolidate PR #2 and #3 without dropping code, rerun CI, resolve repository visibility owner-side, then merge only the verified release branch.
