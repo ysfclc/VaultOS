@@ -4,7 +4,7 @@ _Last reconstructed: 2026-11-12 from the running source tree and the existing pr
 
 ## Product definition
 
-VaultOS is a local-first Android file manager and personal content library. It gives one device a searchable view across existing shared storage and a private archive for imported or newly discovered content. It also provides optional clipboard/keyboard utilities, file management, metadata, installed-app inventory, a system DocumentsProvider, and user-directed external backup/restore.
+VaultOS is a local-first personal capture and retrieval layer for Android. It preserves complete content collected through share/import, manual capture, the optional selected-IME clipboard path, and non-destructive device-storage indexing, then makes that content searchable, organizable, reusable and recoverable through one private library. The keyboard is an optional capture/retrieval surface, not the product itself. See `docs/PRODUCT-NORTH-STAR.md` for the durable product definition, core loop, priorities and roadmap rules.
 
 The primary device acceptance target is the Xiaomi Redmi Note 12 Pro 5G. The supported Android baseline is API 28 (Android 9); compile/target SDK is 35.
 
@@ -32,7 +32,7 @@ A requirement is ✅ only when its implementation, passing test evidence, and do
 
 | Req ID | Requirement | Implementation | Test evidence | Documentation | Status |
 |---|---|---|---|---|---|
-| R-001 | Accept single/multiple shares, document-picker imports and selected text; preserve complete long text. | MainActivity.kt:122; VaultRepository.kt:24,105,173,393 | No repository/import integration tests identified. Manual acceptance: DEVICE-TEST-PLAN.md steps 4–7. | README.md sections “What is implemented” and “Long text”; PROJECT-STATUS.md | 🟡 |
+| R-001 | Accept single/multiple shares, document-picker imports and selected text; preserve complete long text. | MainActivity.kt:122; VaultRepository.kt:24,105,173,393 | `VaultRepositoryInstrumentedTest`: full multilingual UTF-8 round-trip, search beyond preview, verified duplicate reuse and same-length tamper rejection. Source added; API 35 execution and Redmi acceptance pending. Manual share/import acceptance remains. | README.md; PRODUCT-NORTH-STAR.md; DEVICE-TEST-PLAN.md | 🟡 |
 | R-002 | Index existing accessible storage non-destructively, then catch up incrementally and resumably. | VaultRepository.kt:135,173,243; StorageScanWorker.kt:18 | No worker/repository scan tests identified. Manual acceptance: DEVICE-TEST-PLAN.md steps 1–3,11. | ARCHITECTURE.md “Storage model” and “Android integration”; README.md | 🟡 |
 | R-003 | Provide a unified catalogue, global search, tags, collections, saved searches, duplicates and related items. | VaultDatabase.kt:55–144,176,218–293,319; MainActivity.kt:170–175 | No Room/UI integration tests identified. Manual global-search acceptance: DEVICE-TEST-PLAN.md Phase 13 step 3. | README.md “Unified library” and “Personal organization”; TASKS.md Phase 4/13 | 🟡 |
 | R-004 | Make copy/move, ZIP create/extract and recursive delete cancellation-safe, atomic where applicable, bounded and resistant to path traversal/symlinks. | FileOperations.kt:20–31,36,99,125,195,256–298 | FileOperationsTest.kt:19–166 — 10 tests covering round-trip, cancellation cleanup, move, Zip Slip, symlink refusal, preflight and atomic copy. Latest hosted testDebugUnitTest passed in run 42261718395. | ARCHITECTURE.md “Recycle Bin and file operations”; README.md “Phase 2” and “Phase 6” | ✅ |
@@ -48,9 +48,9 @@ A requirement is ✅ only when its implementation, passing test evidence, and do
 
 ## Current test inventory
 
-The JVM suite includes pure tests for file classification and operations, metadata parsing, keyboard suggestion/ranking behavior, asynchronous suggestion request gating, and clipboard payload integrity. ClipboardPayloadIntegrityTest adds five cases covering exact multilingual UTF-8 payloads, same-byte-count content corruption, byte-count mismatches, legacy rows without a hash, and empty payloads. The latest documented hosted run does not include this new clipboard-integrity increment; its CI result is pending.
+The JVM suite includes pure tests for file classification and operations, metadata parsing, keyboard suggestion/ranking behavior, asynchronous suggestion request gating, and clipboard payload integrity. ClipboardPayloadIntegrityTest adds five cases covering exact multilingual UTF-8 payloads, same-byte-count content corruption, byte-count mismatches, legacy rows without a hash, and empty payloads. New Android-backed `VaultRepositoryInstrumentedTest` source covers four core capture/retrieval invariants against the actual Room database and app-private file archive; the test source has not yet been executed on the API 35 emulator.
 
-Important missing automated coverage: repository import/readback, scan worker/resume state, Room migrations, Room-backed clipboard history persistence and IME capture integration, backup/restore compatibility and corruption recovery, DocumentsProvider interoperability, and Compose/IME end-to-end behavior.
+Important missing automated coverage: share/document-provider import paths and long-text repository behavior beyond the new focused instrumentation tests; scan worker/resume state; Room migrations; Room-backed clipboard history persistence and IME capture integration; backup/restore compatibility, organization round-trip and corruption recovery; DocumentsProvider interoperability; and Compose/IME end-to-end behavior.
 
 ## Release acceptance
 
