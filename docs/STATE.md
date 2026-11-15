@@ -23,7 +23,7 @@ VaultOS is a local-first Android file manager and personal content library for A
 ## 3. Currently in flight
 - 1.0.0 acceptance — Vercel build/test/lint/release verification is green; GitHub hosted-runner provisioning and Redmi physical-device matrix/data migration/restore evidence remain open.
 - GOV-001 signing migration — blocked on replacement keystore/secrets and an update-continuity decision; preserve the existing key until migration is proven.
-- Keyboard V2 — KBD-1/KBD-2 source is committed; Vercel JVM tests and the 500-word host benchmark pass; Android-backed tests compile but await emulator execution; candidate UX and Redmi acceptance remain; see docs/KEYBOARD-V2.md.
+- Keyboard V2 — KBD-1/KBD-2 source is committed; JVM suite and 500-word host benchmark pass; Android-backed test APK compiles, but API 35 hosted emulator boot currently fails before tests can start; emulator cold-boot remediation is in the latest CI run; candidate UX and Redmi acceptance remain; see docs/KEYBOARD-V2.md.
 - Test-coverage uplift — backup/restore, Room migrations, scan worker, clipboard repository, and DocumentsProvider still lack identified automated integration tests. Clipboard event-level payload integrity now has pure JVM coverage; see Phase 17 in docs/TASKS.md.
 
 ## 4. Known gaps & stubs
@@ -45,9 +45,9 @@ VaultOS is a local-first Android file manager and personal content library for A
 - No checked-in Gradle wrapper was found. The local runtime used for this session has no mounted /testbed checkout; repository inspection/writes are through the connected GitHub repository.
 
 ## 6. Next three increments
-1. Verify the full Android build, lint, JVM suite and API 35 instrumentation suite; execute the 500-word correction benchmark and record p50/p95.
-2. Obtain hosted Android build/test/lint/instrumentation evidence and execute the 500-word benchmark; fix any emulator or device-specific failures.
-3. KBD-3 candidate UX and KBD-4 EN/PL/TR Redmi Note 12 Pro 5G acceptance. Resume backup/restore integrity tests after the keyboard predictor has a verified baseline.
+1. Complete the latest GitHub Actions run after the API 35 emulator cold-boot/readiness-check fix; confirm all six Android-backed tests actually execute and pass.
+2. Contain GOV-001: restore private repository visibility, then design and test signing-certificate rotation/lineage without breaking updates to existing installations.
+3. Merge the consolidated keyboard PR only after CI and security gates; then install over the existing app and complete KBD-3 candidate UX plus KBD-4 EN/PL/TR Redmi Note 12 Pro 5G acceptance.
 
 ## 7. Open questions for the human
 - [ ] When will replacement signing material and GitHub Actions secrets be available for GOV-001? Default: do not rotate or delete the existing identity; keep the remediation blocked.
@@ -346,3 +346,12 @@ User tested VaultOS 0.13.1 and reports rapid typing is somewhat better, but the 
 4. Restore repository privacy (owner action), then design signing-key migration with an in-place update test.
 5. Merge the verified consolidated PR into main; re-fetch main and compare branch ancestry after merge.
 6. Add Room-backed clipboard repository tests, backup/restore fixtures and Room migration tests as subsequent increments.
+
+
+## Session Handoff — 2026-11-15 (PR #5 consolidation)
+
+- PR #5 consolidates the cursor-safe autocorrect guard and multilingual keyboard evaluation harness; PR #2 and PR #3 were closed as superseded after their relevant changes were integrated.
+- Latest PR head includes the Android API 35 emulator workflow hardening: cold boot, software GPU, wipe-data/no-snapshot options, extended boot timeout, and explicit Android package-manager readiness check before connected tests.
+- Prior run 43684374671: JVM tests, lint, debug/release APK assembly, APK signature verification, artifact upload and private draft release publication passed. API 35 instrumentation failed before tests started because the emulator's package service was unavailable (cmd: Can't find service: package). A retry reproduced the emulator failure; no keyboard assertion failed because the test APK could not be installed.
+- New workflow run 43687738003 is in progress at the time of this checkpoint. Do not mark instrumentation green until its test results show actual executed tests.
+- PR #5 remains open and unmerged; main is unchanged. Repository visibility remains public and signing material remains tracked. This is a critical security hold, not a documentation-only issue. Do not rotate/delete the old signing key or issue a new update build until an update-lineage migration is tested.
