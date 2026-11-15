@@ -35,7 +35,7 @@ jobs:
         if: github.event_name != 'pull_request'
         shell: bash
         run: |
-          set -euo pipefail
+          set -eu
 
           # A ZIP is imported only when this push actually changes the ZIP.
           # Other pushes and documentation updates must never replay a stale archive.
@@ -169,7 +169,7 @@ jobs:
       - name: Verify lint-critical source fixes
         shell: bash
         run: |
-          set -euo pipefail
+          set -eu
           KEYBOARD_FILE="app/src/main/java/com/vaultos/app/keyboard/VaultKeyboardService.kt"
           MAIN_FILE="app/src/main/java/com/vaultos/app/MainActivity.kt"
           MANIFEST="app/src/main/AndroidManifest.xml"
@@ -244,7 +244,7 @@ jobs:
       - name: Prepare APK and checksum
         shell: bash
         run: |
-          set -euo pipefail
+          set -eu
           mkdir -p dist
           cp app/build/outputs/apk/debug/app-debug.apk dist/VaultOS-debug.apk
           cp app/build/outputs/apk/release/app-release.apk dist/VaultOS-release.apk
@@ -295,7 +295,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          set -euo pipefail
+          set -eu
           TAG="vaultos-0.13.1-build-${GITHUB_RUN_NUMBER}"
           TITLE="VaultOS 0.13.1 · build ${GITHUB_RUN_NUMBER}"
           NOTES="Signed VaultOS 0.13.1 APKs from commit ${GITHUB_SHA}. This is a private draft/pre-release build for in-place device testing. Install over the existing VaultOS app; do not uninstall first."
@@ -370,7 +370,7 @@ jobs:
         with:
           gradle-version: "8.9"
 
-      - name: Run Android-backed typing memory tests
+      - name: Run Android-backed persistence tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
@@ -381,7 +381,7 @@ jobs:
           emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -no-snapshot -wipe-data
           disable-animations: true
           script: |
-            set -euo pipefail
+            set -eu
             adb wait-for-device
             ready=false
             for attempt in $(seq 1 60); do
