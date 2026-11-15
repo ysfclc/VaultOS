@@ -395,3 +395,17 @@ This phase returns the roadmap to VaultOS's original job: preserve complete cont
 - [ ] Keep physical-device acceptance separate from emulator results.
 
 **Acceptance rule:** a green build does not prove content survived capture, search or restore. The complete content must round-trip exactly, search beyond its preview, fail closed after tampering, and remain recoverable through a tested backup.
+
+
+## Phase 20 — backup manifest containment and recovery hardening (2026-11-15)
+
+- [x] Treat backup manifest paths as untrusted input; canonicalize and strictly contain all restored file and Recycle Bin destination paths beneath the private vault root.
+- [x] Reject blank, NUL-containing, absolute, parent-traversal and vault-root aliases; canonicalization rejects symlink escapes.
+- [x] Apply containment to both archived `relativePath` and `trashOriginalRelativePath`; invalid Recycle Bin destinations fall back to the repository's safe category/name destination.
+- [x] Preserve the existing v1/v2 backup manifest formats and Room schema.
+- [x] Add five pure JVM path-resolution regression tests.
+- [ ] Execute the new tests in CI; source committed is not test evidence.
+- [ ] Add Android-backed v1/v2 backup/restore round-trip tests for payload integrity, collisions, tags, collections, metadata and Recycle Bin state.
+- [ ] Test missing/corrupt payload failure paths and confirm restore never overwrites existing different content.
+
+**Acceptance rule:** no path supplied by a backup manifest may cause restore or later Recycle Bin actions to read, write, overwrite or delete outside the app-private vault.
