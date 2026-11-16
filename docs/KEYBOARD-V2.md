@@ -152,3 +152,26 @@ The repository includes a 25-row curated EN/PL/TR smoke fixture and a determinis
 ## Keyboard UX redesign
 
 A source-based UX audit and staged redesign plan now lives in [docs/KEYBOARD-UX-REDESIGN.md](KEYBOARD-UX-REDESIGN.md). It covers action-bar hierarchy, candidate-state clarity, adaptive geometry, EN/PL/TR character access, integrated Clips/Vault modes, discoverability and accessibility. This is a planning artifact only; implementation and Redmi acceptance remain open.
+
+## Live composing-text input — 2026-11-16
+
+User feedback confirms that the keyboard still does not feel fast or natural enough. Source review identified a fundamental interaction gap: normal letter taps were committed individually with `commitText()`, so the editor never received a live composing word as it does with mature IMEs.
+
+**Implemented on the 0.13.1 repair branch**
+- Normal letter input now maintains an active composing word with `setComposingText()` where the target editor supports it.
+- Word boundaries, punctuation, Enter, cursor movement, language changes, mode changes and VaultOS text insertion explicitly finish the composing region.
+- Backspace edits the composing word by grapheme and updates the active composing region.
+- Polish/Turkish alternate-character entry follows the same composing path.
+- If an editor rejects composing updates, the keyboard falls back to committed character insertion rather than duplicating the current word.
+
+**Not yet proven**
+- This is a foundational IME interaction correction, not a claim of Gboard parity or measured speed improvement.
+- Hosted compile/tests and Android-backed editor tests must pass before acceptance.
+- Redmi Note 12 Pro 5G testing must confirm no duplicated/lost characters, correct backspace, candidate behavior and improved perceived responsiveness in Notes, Chrome, WhatsApp and ChatGPT.
+
+**Next engineering priorities**
+1. Add focused composing-session regression coverage, including editors that reject composing updates.
+2. Measure missed taps and end-to-end key-to-visible-text latency on the Redmi.
+3. Rework key hit geometry and touch interaction from measured errors, not arbitrary key enlargement.
+4. Improve EN/PL/TR candidate quality with a properly sourced, licensed local lexicon and representative evaluation data.
+5. Treat glide typing as a separate later capability; do not add it before reliable tap typing is accepted.
