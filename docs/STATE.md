@@ -420,3 +420,32 @@ User tested VaultOS 0.13.1 and reports rapid typing is somewhat better, but the 
 - Candidate cells now describe current word, spelling correction, completion and next-word prediction to accessibility services, with a restrained outlined affordance for secondary candidates.
 - Commit is part of PR #5. Automated Android build, unit tests, lint and API 35 instrumentation are pending for this head. Physical Redmi Note 12 Pro 5G acceptance remains required.
 - Do not call the redesign complete or claim speed improvement until device acceptance and repeatable measurements.
+
+## Session 15 — live composing-text typing pass (2026-11-16)
+
+**User feedback**
+- The user reports that VaultOS typing speed remains poor and the keyboard does not feel like Gboard. Treat this as a core acceptance failure, not a cosmetic preference.
+
+**Source finding**
+- Normal letter taps previously called `InputConnection.commitText()` individually. The active editor was not given a live composing word, unlike the standard composing-text flow used by mature IMEs.
+- Prediction remains a small deterministic EN/PL/TR baseline plus Android SpellCheckerSession and optional local typing memory. There is no glide typing or neural Gboard-equivalent language model.
+
+**Implemented on `fix/keyboard-typing-and-ux-0.13.1`**
+- Added live composing-word updates with `setComposingText()` where supported, retaining a committed-character fallback for editors that reject composing updates.
+- Finish composing at word/punctuation/Enter/cursor/language/mode/paste boundaries.
+- Backspace edits the composing token using grapheme boundaries and refreshes the composing region.
+- Polish/Turkish alternate-letter insertion uses the same composing path.
+- Source commits: `99ac2d25eca649f2817d055154a132b4083ef6c3` and `630c723c6c810f5366dfd4feb34c7d6b60d34ed1`.
+
+**Verification and acceptance**
+- CI for the updated head is not yet confirmed. Do not claim this improves speed until CI and editor behavior are tested.
+- Add focused regression coverage for composing success/failure, deletion, punctuation, selection, cursor movement and language changes.
+- Physical Redmi Note 12 Pro 5G acceptance remains mandatory.
+- No merge or APK distribution. The repository's public historical signing material remains a release/security blocker.
+
+**Next**
+1. Validate the current source and CI.
+2. Add automated composing-session tests or a focused Android-backed IME/editor harness.
+3. Measure key-to-visible-text latency, missed taps and correction usefulness on the Redmi.
+4. Only then tune geometry, touch behavior and licensed local EN/PL/TR prediction resources.
+5. Keep glide typing as a later, separately scoped feature.
