@@ -92,6 +92,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     private var emojiMode = false
     private var keyPreviewPopup: PopupWindow? = null
     private var typedWord = StringBuilder()
+    private var isComposingWord = false
     private var lastCommittedWord = ""
     private var previousWordForPrediction = ""
     private var previousPreviousWordForPrediction = ""
@@ -134,6 +135,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
         super.onStartInput(attribute, restarting)
+        isComposingWord = false
         inputGeneration++
         pendingLocalCorrection?.let(mainHandler::removeCallbacks)
         pendingLocalCorrection = null
@@ -189,6 +191,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     }
 
     override fun onFinishInput() {
+        finishComposingWord()
         inputGeneration++
         pendingLocalCorrection?.let(mainHandler::removeCallbacks)
         pendingLocalCorrection = null
@@ -289,12 +292,15 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
             }
         }
         addToolbarKey(top, "😊", active = emojiMode, weight = 0.8f) {
+            finishComposingWord()
             emojiMode = true; clipboardMode = false; commandsMode = false; refreshKeyboard()
         }
         addToolbarKey(top, "Clips", active = clipboardMode, weight = 1.05f) {
+            finishComposingWord()
             clipboardMode = true; commandsMode = false; emojiMode = false; clipboardQuery = ""; refreshKeyboard()
         }
         addToolbarKey(top, "Vault", active = commandsMode, weight = 1.0f) {
+            finishComposingWord()
             commandsMode = true; clipboardMode = false; emojiMode = false; commandQuery = ""; refreshKeyboard()
         }
         addToolbarKey(top, "${selectedLanguageCode().uppercase(Locale.ROOT)} ▾", active = false, weight = 1.0f) {
@@ -916,10 +922,16 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         else -> emptyList()
     }
 
+    private fun finishComposingWord() {
+        if (isComposingWord) currentInputConnection?.finishComposingText()
+        isComposingWord = false
+    }
+
     private fun handleKey(key: String) {
         if (clipboardMode) { handleClipboardSearchKey(key); return }
         if (commandsMode) { handleCommandSearchKey(key); return }
         if (emojiMode) {
+            finishComposingWord()
             if (key == "⌫") currentInputConnection?.deleteSurroundingText(1, 0)
             else if (key !in setOf("space", "↵")) currentInputConnection?.commitText(key, 1)
             emojiMode = false
@@ -945,6 +957,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
             "→" -> sendCursorKey(KeyEvent.KEYCODE_DPAD_RIGHT)
             "space" -> handleSmartSpace()
             "↵" -> {
+                finishComposingWord()
                 val action = currentInputEditorInfo?.imeOptions?.and(EditorInfo.IME_MASK_ACTION) ?: EditorInfo.IME_ACTION_NONE
                 if (action != EditorInfo.IME_ACTION_NONE && action != EditorInfo.IME_ACTION_UNSPECIFIED) currentInputConnection?.performEditorAction(action)
                 else currentInputConnection?.commitText("\n", 1)
@@ -964,12 +977,29 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
             else -> {
                 val value = if (shifted || capsLock) key.uppercase(inputLocale()) else key
                 autoCorrectCursorPosition = null
-                currentInputConnection?.commitText(value, 1)
                 if (value.length == 1 && value[0].isLetter()) {
+                    val nextWord = typedWord.toString() + value
+                    val connection = currentInputConnection
+                    if (connection != null) {
+                        if (isComposingWord) {
+                            if (!connection.setComposingText(nextWord, 1)) {
+                                connection.finishComposingText()
+                                connection.commitText(value, 1)
+                                isComposingWord = false
+                            }
+                        } else if (typedWord.isEmpty()) {
+                            isComposingWord = connection.setComposingText(value, 1)
+                            if (!isComposingWord) connection.commitText(value, 1)
+                        } else {
+                            connection.commitText(value, 1)
+                        }
+                    }
                     typedWord.append(value)
                     lastCommittedWord = ""
                     requestWordSuggestions(typedWord.toString())
                 } else {
+                    finishComposingWord()
+                    currentInputConnection?.commitText(value, 1)
                     if (typedWord.isNotBlank()) {
                         val committedWord = typedWord.toString()
                         learnWord(committedWord, previousWordForPrediction, previousPreviousWordForPrediction)
@@ -1023,7 +1053,25 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         val connection = currentInputConnection ?: return
         val selected = connection.getSelectedText(0)
         if (!selected.isNullOrEmpty()) {
+            finishComposingWord()
             connection.commitText("", 1)
+        } else if (isComposingWord) {
+            val composing = typedWord.toString()
+            val removeLength = previousGraphemeLength(composing)
+            val shortened = if (removeLength > 0) composing.dropLast(removeLength) else ""
+            if (shortened.isEmpty()) {
+                finishComposingWord()
+                typedWord.clear()
+            } else if (connection.setComposingText(shortened, 1)) {
+                typedWord.setLength(0)
+                typedWord.append(shortened)
+            } else {
+                connection.finishComposingText()
+                connection.deleteSurroundingText(removeLength, 0)
+                isComposingWord = false
+                typedWord.setLength(0)
+                typedWord.append(shortened)
+            }
         } else {
             val before = connection.getTextBeforeCursor(64, 0)?.toString().orEmpty()
             val deleteLength = previousGraphemeLength(before)
@@ -1039,8 +1087,10 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         // a committed word, selected text, external edits and multi-code-unit characters.
         val cursorText = connection.getTextBeforeCursor(120, 0)?.toString().orEmpty()
         val wordBeforeCursor = Regex("""[\p{L}][\p{L}'’\-]*$""").find(cursorText)?.value.orEmpty()
-        typedWord.setLength(0)
-        typedWord.append(wordBeforeCursor)
+        if (!isComposingWord) {
+            typedWord.setLength(0)
+            typedWord.append(wordBeforeCursor)
+        }
         lastCommittedWord = ""
         activeSpellCheckWord = ""
         localCorrectionWord = ""
@@ -1128,6 +1178,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
             currentSuggestions = emptyList()
             spellCheckGeneration++
         }
+        finishComposingWord()
         currentInputConnection?.commitText(" ", 1)
         typedWord.clear()
         // Capture the absolute cursor anchor only after the trailing space is committed.
@@ -1151,8 +1202,13 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         val word = composingWord.ifBlank { lastCommittedWord }
         if (word.isBlank()) return
         currentInputConnection?.let { connection ->
-            connection.deleteSurroundingText(word.length + if (committedWord) 1 else 0, 0)
-            connection.commitText("$value ", 1)
+            if (isComposingWord) {
+                connection.commitText("$value ", 1)
+                isComposingWord = false
+            } else {
+                connection.deleteSurroundingText(word.length + if (committedWord) 1 else 0, 0)
+                connection.commitText("$value ", 1)
+            }
         }
         learnWord(value, previousWordForPrediction, previousPreviousWordForPrediction)
         typedWord.clear()
@@ -1413,6 +1469,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     }
 
     private fun applyNextWordSuggestion(value: String, previousContextWord: String, contextWord: String) {
+        finishComposingWord()
         learnWord(value, contextWord, previousContextWord)
         currentInputConnection?.commitText("$value ", 1)
         typedWord.clear()
@@ -1430,6 +1487,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     }
 
     private fun sendCursorKey(code: Int) {
+        finishComposingWord()
         autoCorrectCursorPosition = null
         currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, code))
         currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, code))
@@ -1516,6 +1574,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
 
     private fun selectKeyboardLanguage(language: String) {
         if (language !in setOf("en", "pl", "tr") || language == selectedLanguageCode()) return
+        finishComposingWord()
         getSharedPreferences(PREFS, MODE_PRIVATE).edit().putString(KEY_LANGUAGE, language).apply()
         localCorrectionWord = ""
         localCorrectionSuggestions = emptyList()
@@ -1653,6 +1712,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     }
 
     private suspend fun insertText(text: String): Int {
+        finishComposingWord()
         val connection = currentInputConnection ?: return 0
         var inserted = 0
         for (part in text.chunked(8_000)) {
