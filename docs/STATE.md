@@ -405,3 +405,10 @@ User tested VaultOS 0.13.1 and reports rapid typing is somewhat better, but the 
 2. Execute API 35 instrumentation for the ten Android-backed tests.
 3. Add real backup/restore round-trip coverage for v1/v2, collisions, integrity failure and restored organization/recycle-bin state.
 4. Keep security hold and physical Redmi acceptance open.
+
+
+## Keyboard UX audit — 2026-11-16
+
+- Reviewed the active 0.13.1 keyboard source and documented concrete UI gaps and a staged redesign in `docs/KEYBOARD-UX-REDESIGN.md`.
+- This does not mark keyboard UX as fixed. KBD-3 candidate UX, adaptive layout, EN/PL/TR discoverability, accessibility and Redmi Note 12 Pro 5G acceptance remain open.
+- Keep keyboard redesign focused on comfort, clarity and reliable typing; do not add visual effects or features that compete with the typing path.
