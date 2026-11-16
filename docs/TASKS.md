@@ -326,3 +326,19 @@ Do not mark this phase complete from unit tests alone; device acceptance is mand
 
 
 **Current blocker (2026-11-13):** Vercel refused the initial deployment with HTTP 402 `api-deployments-free-per-day` (more than 100 API deployments today; retry after 24 hours). The connected project settings and source pipeline are in place, but production build/download verification remains unchecked until Vercel accepts a deployment.
+
+## Phase 14 — USB-C OTG diagnostics and external-drive import (planned)
+
+**Status:** roadmap only. No USB implementation is present. Follow `docs/USB-OTG-PLAN.md`; do not treat these tasks as completed or in-flight implementation.
+
+- [ ] USB-1: reproduce and classify the Redmi Note 12 Pro 5G + USB-C flash-drive case; record Android/API, MIUI/HyperOS, drive model, connector/adapter and observable system behavior.
+- [ ] USB-2: add a diagnostic-only USB Host screen using `UsbManager` enumeration, interface descriptors, attach/detach handling and user-mediated USB permission; redact device serial identifiers.
+- [ ] USB-2: distinguish no device enumerated, detected unsupported device, detected storage interface, permission denied, and OS-mounted volume states.
+- [ ] USB-3: add an External USB entry to Files and use Android's system document/volume access for drives that Android has mounted.
+- [ ] USB-3: route explicitly selected external files through the existing VaultRepository import pipeline with streaming, SHA-256, duplicate handling, cancellation and source-preservation checks.
+- [ ] USB-3: cover drive removal, permission revocation, partial reads, large files, collisions and cleanup of temporary payloads.
+- [ ] USB-4 (conditional): perform a separate read-only USB Mass Storage Bulk-Only Transport/SCSI feasibility spike only if Android enumerates the drive but does not expose a mounted volume.
+- [ ] USB-4 (conditional): document tested transport, partition and filesystem limits, threat model and stop/go decision in an ADR before any production integration.
+- [ ] USB-5: complete the physical Redmi USB acceptance matrix; do not infer OTG support from CI or emulator tests.
+
+**Safety boundary:** VaultOS must not format, repair, partition, write to, rename, move or delete files on an attached USB drive. An app cannot repair missing electrical host-mode negotiation or make an unenumerated device appear.
