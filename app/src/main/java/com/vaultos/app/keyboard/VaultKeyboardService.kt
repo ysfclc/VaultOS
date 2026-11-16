@@ -874,7 +874,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                 setOnClickListener {
                     tapFeedback(this)
                     playKeySound(this)
-                    currentInputConnection?.commitText(if (shifted || capsLock) value.uppercase(inputLocale()) else value, 1)
+                    insertAlternate(value)
                     popup?.dismiss()
                     if (shifted && !capsLock) { shifted = false; refreshKeyboard() }
                 }
@@ -925,6 +925,42 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     private fun finishComposingWord() {
         if (isComposingWord) currentInputConnection?.finishComposingText()
         isComposingWord = false
+    }
+
+    private fun insertAlternate(alternate: String) {
+        val connection = currentInputConnection ?: return
+        val value = if (shifted || capsLock) alternate.uppercase(inputLocale()) else alternate
+        if (value.length == 1 && value[0].isLetter()) {
+            val nextWord = typedWord.toString() + value
+            if (isComposingWord) {
+                if (!connection.setComposingText(nextWord, 1)) {
+                    connection.finishComposingText()
+                    connection.commitText(value, 1)
+                    isComposingWord = false
+                }
+            } else if (typedWord.isEmpty()) {
+                isComposingWord = connection.setComposingText(value, 1)
+                if (!isComposingWord) connection.commitText(value, 1)
+            } else {
+                connection.commitText(value, 1)
+            }
+            typedWord.append(value)
+            lastCommittedWord = ""
+            requestWordSuggestions(typedWord.toString())
+        } else {
+            finishComposingWord()
+            connection.commitText(value, 1)
+            if (typedWord.isNotBlank()) {
+                val committed = typedWord.toString()
+                learnWord(committed, previousWordForPrediction, previousPreviousWordForPrediction)
+                previousPreviousWordForPrediction = previousWordForPrediction
+                previousWordForPrediction = committed
+            }
+            typedWord.clear()
+            lastCommittedWord = ""
+            currentSuggestions = emptyList()
+        }
+        renderSuggestions()
     }
 
     private fun handleKey(key: String) {
