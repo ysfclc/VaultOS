@@ -163,6 +163,7 @@ This is a source-level improvement hypothesis only. It does not provide glide ty
 
 Committed on the 0.13.1 branch:
 - Letter taps are resolved against the nearest letter-key centre at release, correcting edge-of-key slips without changing the visual key dimensions. Modifier and punctuation keys keep their dedicated hit areas.
+- Long-press alternate-character selection takes precedence over nearest-key rerouting, so a held key cannot accidentally type a neighboring base letter.
 - Horizontal and vertical gaps between key surfaces were reduced from 4/6 dp to 2/4 dp, respectively, to reduce dead zones without enlarging the keyboard.
 - Candidate-strip rendering is coalesced to one short UI-frame update. Text is still sent to the editor immediately; repeated rapid key taps no longer trigger a full candidate-strip rebuild for every event.
 - Added pure JVM tests for nearest-key selection, outer-edge tolerance, out-of-range touches and empty rows.
