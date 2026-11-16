@@ -180,6 +180,6 @@ User feedback confirms that the keyboard still does not feel fast or natural eno
 
 - Spell-check requests now debounce for 140 ms instead of 95 ms, reducing redundant requests during rapid typing while keeping prefix candidates available from the local engine.
 - Fuzzy local correction is not scheduled for two-character prefixes; the correction engine already requires at least three characters.
-- Autocorrection now defaults on for users without an explicit preference, matching a familiar everyday-keyboard default. Existing explicit on/off preferences are preserved, and the setting remains available in keyboard tools.
+- Autocorrection remains opt-in, preserving the product's conservative correction-safety policy. Existing explicit on/off preferences are preserved, and the setting remains available in keyboard tools.
 - Autocorrection remains disabled in password, email, URL, filter, autocomplete and other unsafe/non-suggestion fields.
-- This improves default behavior and reduces avoidable work; only Redmi testing can establish whether it feels faster or whether corrections are acceptable across EN/PL/TR.
+- The spell-check debounce and correction threshold reduce avoidable work during rapid typing; only Redmi testing can establish whether this feels faster across EN/PL/TR.
