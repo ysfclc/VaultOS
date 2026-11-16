@@ -175,3 +175,11 @@ User feedback confirms that the keyboard still does not feel fast or natural eno
 3. Improve EN/PL/TR candidate quality with a properly sourced, licensed local lexicon and representative evaluation data.
 4. Validate adaptive geometry and TalkBack on the physical device.
 5. Treat glide typing as a separate later capability; do not add it before reliable tap typing is accepted.
+
+## Input responsiveness and default correction tuning — 2026-11-16
+
+- Spell-check requests now debounce for 140 ms instead of 95 ms, reducing redundant requests during rapid typing while keeping prefix candidates available from the local engine.
+- Fuzzy local correction is not scheduled for two-character prefixes; the correction engine already requires at least three characters.
+- Autocorrection now defaults on for users without an explicit preference, matching a familiar everyday-keyboard default. Existing explicit on/off preferences are preserved, and the setting remains available in keyboard tools.
+- Autocorrection remains disabled in password, email, URL, filter, autocomplete and other unsafe/non-suggestion fields.
+- This improves default behavior and reduces avoidable work; only Redmi testing can establish whether it feels faster or whether corrections are acceptable across EN/PL/TR.
