@@ -16,6 +16,10 @@ VaultOS is a local-first Android file manager and personal content library. It c
 - Keep all content local. No network permission, account, analytics, or cloud AI.
 - Provide manually configured SAF backup/restore to USB, external storage, or a user-selected document provider.
 
+## Planned capability — USB-C OTG and external storage
+
+USB-C OTG diagnostics and explicit import from externally attached storage have been added to the roadmap, not to the application. The work is staged: reproduce the target-phone behavior, detect observable USB Host state, use Android-mounted volumes through the system document/volume route, then evaluate a custom read-only USB Mass Storage reader only if required. The current Redmi + flash-drive case remains undiagnosed. No USB code or device support is claimed. See `docs/USB-OTG-PLAN.md`, `docs/TASKS.md` Phase 14 and the USB section in `docs/DEVICE-TEST-PLAN.md`.
+
 ## Implemented in 0.1.0 source
 
 - [x] Kotlin + Jetpack Compose Android application shell.
