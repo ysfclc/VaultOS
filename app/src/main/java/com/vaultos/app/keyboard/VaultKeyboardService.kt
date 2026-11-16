@@ -490,6 +490,9 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                                 view.translationZ = 0f
                                 val nearest = nearestLetterKey(row, event.rawX)
                                 if (nearest != null && nearest !== view) {
+                                    // The original child owns this gesture; clear its pressed
+                                    // state because we intentionally suppress its click.
+                                    view.isPressed = false
                                     tapFeedback(nearest)
                                     playKeySound(nearest)
                                     handleKey(nearest.tag as? String ?: key)
