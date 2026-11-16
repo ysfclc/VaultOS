@@ -157,4 +157,14 @@ A first interaction correction is now committed on the 0.13.1 branch:
 - Preserve the same behavior for Polish/Turkish long-press alternate letters.
 - Fall back to committed character input when an editor rejects composition.
 
-This is a source-level improvement hypothesis only. It has not yet passed CI or been accepted on the Redmi. It does not provide glide typing, Gboard's neural prediction, or a measured speed result. The next pass must combine editor regression tests, device latency/touch-accuracy measurements, and a better local prediction resource before any claim that typing feels comparable to Gboard.
+This is a source-level improvement hypothesis only. It does not provide glide typing, Gboard's neural prediction, or a measured speed result.
+
+## Second implementation pass — touch accuracy and input responsiveness
+
+Committed on the 0.13.1 branch:
+- Letter taps are resolved against the nearest letter-key centre at release, correcting edge-of-key slips without changing the visual key dimensions. Modifier and punctuation keys keep their dedicated hit areas.
+- Horizontal and vertical gaps between key surfaces were reduced from 4/6 dp to 2/4 dp, respectively, to reduce dead zones without enlarging the keyboard.
+- Candidate-strip rendering is coalesced to one short UI-frame update. Text is still sent to the editor immediately; repeated rapid key taps no longer trigger a full candidate-strip rebuild for every event.
+- Added pure JVM tests for nearest-key selection, outer-edge tolerance, out-of-range touches and empty rows.
+
+Still required: CI execution, physical Redmi tests for missed taps and perceived latency, plus candidate quality work. No claim of Gboard parity or measured speed gain is made.
