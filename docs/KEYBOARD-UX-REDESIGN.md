@@ -145,3 +145,16 @@ Implemented on the 0.13.1 branch:
 - Non-primary candidate cells have a restrained outlined surface, while the current word retains the existing accent pill.
 
 Still open: physical-device layout review, TalkBack validation, adaptive geometry, locale-specific key access and the remaining KBD-3 interaction work. This is not a claim of completed keyboard UX or improved typing speed.
+
+## Typing interaction pass — 2026-11-16
+
+The user reports that typing speed and overall feel remain substantially below Gboard. The source audit found that every normal letter was being sent with `commitText()`; the editor therefore did not receive a live composing word.
+
+A first interaction correction is now committed on the 0.13.1 branch:
+- Use `setComposingText()` for an active word where supported by the editor.
+- Finish composition at punctuation, space, Enter, cursor movement, language/mode changes and paste boundaries.
+- Keep backspace grapheme-aware while updating the composing word.
+- Preserve the same behavior for Polish/Turkish long-press alternate letters.
+- Fall back to committed character input when an editor rejects composition.
+
+This is a source-level improvement hypothesis only. It has not yet passed CI or been accepted on the Redmi. It does not provide glide typing, Gboard's neural prediction, or a measured speed result. The next pass must combine editor regression tests, device latency/touch-accuracy measurements, and a better local prediction resource before any claim that typing feels comparable to Gboard.
