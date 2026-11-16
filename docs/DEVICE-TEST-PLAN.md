@@ -193,3 +193,20 @@ Run after installing the 0.13.0 release APK over the existing VaultOS installati
 12. **Accessibility / layout:** test TalkBack focus order, label announcements, landscape, large font/display scale and gesture navigation. No bottom-bar control, popup row or primary keyboard key may become unreachable.
 
 Record the Android/API version, MIUI/HyperOS version, VaultOS build, font/display scaling, active keyboard, and any key errors. Build success is not evidence of device usability. Any failure in steps 2–7 blocks acceptance.
+
+## USB-C OTG / external-drive acceptance — planned
+
+Run on the actual Redmi Note 12 Pro 5G. Record the Android/API level, MIUI/HyperOS build, VaultOS version, flash-drive make/model/capacity, connector type and any adapter/hub. Do not format, repartition or write to the test drive as part of acceptance.
+
+1. **Baseline and host detection:** use a drive known to work on a PC. Record whether Android shows a USB notification, a removable volume in system file browsing, and whether VaultOS's USB diagnostic enumerates a device. “No device enumerated” must not be reported as a proven physical port failure.
+2. **Control peripheral:** connect a known-good low-power USB mouse or keyboard through the same connection path. Record whether Android enumerates it and whether it works. This helps distinguish general host-mode/connection issues from storage-interface/mount issues.
+3. **Connection variants:** test direct USB-C, a known-good compatible OTG adapter where relevant, another flash drive, and a powered hub only when appropriate. Change one variable at a time.
+4. **Permission lifecycle:** test USB permission grant and denial, detach/re-attach, app background/foreground and permission revocation. The diagnostic must not retain or expose unnecessary serial identifiers.
+5. **Mounted-volume browse:** when Android exposes the drive, open it using system document/volume access. Verify folders and file names without writing to the source.
+6. **Import integrity:** import a small file and a large file through the existing VaultOS pipeline. Compare byte counts and SHA-256 with the source; confirm duplicate handling and that the USB originals remain unchanged.
+7. **Failure and cancellation:** detach during browse and during import; simulate unreadable/removed files where practical. Confirm clear errors, safe cancellation, deletion of partial VaultOS temporary files and no false success state.
+8. **Unsupported/unmounted state:** if Android enumerates the device but does not mount it, show that distinction. Do not claim arbitrary filesystem support or invoke a raw reader unless the separate USB-4 feasibility gate has been approved.
+9. **Physical boundary:** if Android enumerates no device, repeat with a known-good low-power peripheral and connection path. Record the observations; VaultOS must not claim to switch on OTG, diagnose USB-C electrical negotiation, or repair insufficient power.
+10. **Privacy and source preservation:** verify no USB contents are uploaded, no automatic full-drive archive occurs, and the source drive has not been renamed, moved, deleted, formatted or modified by VaultOS.
+
+CI and emulator tests can cover descriptor parsing and state logic, but they do not replace actual Redmi OTG/USB-device acceptance. See `docs/USB-OTG-PLAN.md`.
