@@ -1096,7 +1096,13 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
             val removeLength = previousGraphemeLength(composing)
             val shortened = if (removeLength > 0) composing.dropLast(removeLength) else ""
             if (shortened.isEmpty()) {
-                finishComposingWord()
+                if (!connection.setComposingText("", 1)) {
+                    connection.finishComposingText()
+                    connection.deleteSurroundingText(removeLength, 0)
+                } else {
+                    connection.finishComposingText()
+                }
+                isComposingWord = false
                 typedWord.clear()
             } else if (connection.setComposingText(shortened, 1)) {
                 typedWord.setLength(0)
