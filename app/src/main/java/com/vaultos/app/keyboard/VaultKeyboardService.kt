@@ -449,6 +449,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                 "⇧" -> if (capsLock) "⇪" else "⇧"
                 else -> key
             }
+            var alternateLongPressHandled = false
             val keyView = TextView(this).apply {
                 text = if (!symbols && key.length == 1 && key[0].isLetter()) {
                     if (shifted || capsLock) key.uppercase(inputLocale()) else key
@@ -479,6 +480,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                     setOnTouchListener { view, event ->
                         when (event.actionMasked) {
                             MotionEvent.ACTION_DOWN -> {
+                                alternateLongPressHandled = false
                                 view.scaleX = 0.92f
                                 view.scaleY = 0.92f
                                 view.translationZ = dp(7).toFloat()
@@ -488,6 +490,11 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                                 view.scaleX = 1f
                                 view.scaleY = 1f
                                 view.translationZ = 0f
+                                if (alternateLongPressHandled) {
+                                    view.isPressed = false
+                                    mainHandler.postDelayed({ hideKeyPreview() }, 90)
+                                    return@setOnTouchListener true
+                                }
                                 val nearest = nearestLetterKey(row, event.rawX)
                                 if (nearest != null && nearest !== view) {
                                     // The original child owns this gesture; clear its pressed
@@ -552,6 +559,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                 }
                 if (key.length == 1 && key[0].isLetter()) {
                     setOnLongClickListener {
+                        alternateLongPressHandled = true
                         showAlternates(this, alternativesFor(key))
                         true
                     }
