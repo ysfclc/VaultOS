@@ -1,0 +1,26 @@
+id	locale	task	context	input	expected	notes
+en-next-01	en-US	next	I am		going	Existing two-token prior; smoke only
+en-next-02	en-US	next	thank you		for	Existing two-token prior; smoke only
+en-next-03	en-US	next	I think		that	Existing two-token prior; smoke only
+en-next-04	en-US	next	looking forward		to	Existing two-token prior; smoke only
+en-next-05	en-US	next	I		am	Existing one-token prior; smoke only
+pl-next-01	pl-PL	next	nie wiem		czy	Existing two-token prior; smoke only
+pl-next-02	pl-PL	next	w tym		momencie	Existing two-token prior; smoke only
+pl-next-03	pl-PL	next	dzień dobry		wszystkim	Existing two-token prior; smoke only
+pl-next-04	pl-PL	next	jak		się	Existing one-token prior; smoke only
+pl-next-05	pl-PL	next	nie		wiem	Existing one-token prior; smoke only
+tr-next-01	tr-TR	next	ben de		öyle	Existing two-token prior; smoke only
+tr-next-02	tr-TR	next	çok teşekkür		erim	Existing two-token prior; smoke only
+tr-next-03	tr-TR	next	bir şey		söylemek	Existing two-token prior; smoke only
+tr-next-04	tr-TR	next	merhaba		nasılsın	Existing one-token prior; smoke only
+tr-next-05	tr-TR	next	ben		de	Existing one-token prior; smoke only
+en-prefix-01	en-US	prefix		hel	hello	Existing completion list; smoke only
+pl-prefix-01	pl-PL	prefix		dzi	dzień	Locale diacritic; smoke only
+tr-prefix-01	tr-TR	prefix		merh	merhaba	Locale completion; smoke only
+en-correction-01	en-US	correction		helo	hello	Existing bounded edit-distance path; smoke only
+en-correction-02	en-US	correction		teh	the	Adjacent transposition; smoke only
+pl-correction-01	pl-PL	correction		dzien	dzień	Diacritic restoration; expected to expose current dictionary limits
+tr-correction-01	tr-TR	correction		tesekkur	teşekkür	Diacritic restoration; expected to expose current dictionary limits
+en-control-01	en-US	noisy-control		hello		Known correct word must not be corrected
+pl-control-01	pl-PL	noisy-control		żółć		Known correct token must not be corrected
+tr-control-01	tr-TR	noisy-control		ışık		Known correct token must not be corrected

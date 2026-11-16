@@ -1,10 +1,10 @@
 # VaultOS for Android
 
-**A local-first Android file library and manager (release 0.13.0).** This repository contains a native Kotlin/Jetpack Compose application, an optional capture keyboard, a DocumentsProvider, a private archive, local indexing, and manual external backup/restore.
+**A local-first Android file library and manager (release 0.13.1).** This repository contains a native Kotlin/Jetpack Compose application, an optional capture keyboard, a DocumentsProvider, a private archive, local indexing, and manual external backup/restore.
 
 ## What is implemented
 
-Start with `docs/STATE.md` for the session ledger and `docs/SPEC.md` for product requirements and traceability. `docs/DECISIONS.md` and `docs/RISKS.md` record durable architecture choices and risks; `CHANGELOG.md` records release history. The existing `docs/PROJECT-STATUS.md`, `docs/TASKS.md`, `docs/ARCHITECTURE.md`, and `docs/RELEASE-PLAN.md` retain implementation detail, architecture context, phased tasks, and release planning. The adaptive predictive keyboard V2 direction and delivery gates are defined in `docs/KEYBOARD-V2.md`.
+Start with [`docs/PRODUCT-NORTH-STAR.md`](docs/PRODUCT-NORTH-STAR.md) for the product's purpose and decision rules, then `docs/STATE.md` for the session ledger and `docs/SPEC.md` for requirements and traceability. `docs/DECISIONS.md` and `docs/RISKS.md` record durable architecture choices and risks; `CHANGELOG.md` records release history. The existing `docs/PROJECT-STATUS.md`, `docs/TASKS.md`, `docs/ARCHITECTURE.md`, and `docs/RELEASE-PLAN.md` retain implementation detail, architecture context, phased tasks, and release planning. The adaptive predictive keyboard V2 direction and delivery gates are defined in `docs/KEYBOARD-V2.md`. VaultOS 0.13.1 also includes a feedback-driven typing and Home UX repair; physical Redmi acceptance remains required.
 
 - **Android share target:** receive `ACTION_SEND`, `ACTION_SEND_MULTIPLE`, selected text (`ACTION_PROCESS_TEXT`), and incoming content URIs. Shared files are streamed into the private VaultOS archive and catalogued.
 - **Manual import:** import one or many documents through Android's system picker.
@@ -207,3 +207,10 @@ The connected Vercel project `vaultos` builds the signed Android release directl
 The pipeline provisions and caches JDK 17, Gradle 8.9, Android SDK Platform 35 and Build Tools 35.0.0 under `.vercel/cache/`, then runs JVM unit tests, Android lint and the signed release build. It verifies the existing VaultOS signing certificate before publishing anything.
 
 Each successful production deployment exposes a versioned APK, a ZIP containing that APK, SHA-256 checksums, build metadata and a mobile-friendly download page at the project domain. The build runs on Vercel's connected Git deployment; it does not depend on a temporary Sandbox or GitHub Actions runner.
+
+
+## Current release status — 0.13.1
+
+The 0.13.1 candidate is under verification on [PR #5](https://github.com/ysfclc/VaultOS/pull/5). PR #2 (cursor-safe autocorrect) and PR #3 (multilingual evaluation baseline) remain separate and must be consolidated without losing their work before the release is merged. Check [GitHub Actions](https://github.com/ysfclc/VaultOS/actions) for the exact run status; a build is not considered released until unit tests, lint, signing verification and Android instrumentation have explicit results. Redmi Note 12 Pro 5G acceptance remains separate.
+
+**Security hold:** this repository is currently public while a historical signing keystore and static signing configuration remain tracked. Treat that signing identity as exposed. The owner should restore private visibility and plan a tested signing migration. Do not uninstall an existing VaultOS installation or replace the signing identity until update continuity has been proven.

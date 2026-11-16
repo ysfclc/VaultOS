@@ -1,6 +1,6 @@
 # VaultOS Neural Keyboard — V2 product increment
 
-_Status: KBD-1 responsiveness and KBD-2 contextual prediction source implemented; Vercel JVM build/test/benchmark passed, Android-backed learning tests compile but await emulator execution, and Redmi device acceptance remains pending._
+_Status: KBD-1/KBD-2 source and the 0.13.1 typing repair are implemented; GitHub validation run 43642774636 is in progress, and Redmi Note 12 Pro 5G acceptance remains pending._
 
 ## Problem statement
 
@@ -123,3 +123,63 @@ The Android build workflow runs the API 35 Google APIs emulator suite as an inde
 ## 500-word correction benchmark — Vercel host (2026-11-12)
 
 The repeatable JVM benchmark ran 1,000 measured correction-ranking iterations after 150 warm-ups with a 500-word personal vocabulary. Result: **p50 105 μs, p95 160 μs**. This is a Vercel Linux host measurement of the pure correction-ranking path only; it is not an IME end-to-end or Redmi device latency result. All 43 JVM tests passed in the same forced run. The six Android-backed SharedPreferences tests compiled but were not executed because the Vercel sandbox exposed no /dev/kvm.
+
+## User-feedback repair iteration — 2026-11-14
+
+The 0.13.1 branch adds hold-repeat Backspace with Unicode grapheme-boundary deletion, a 95 ms SpellCheckerSession debounce, in-place automatic Shift label updates and a merged/deduplicated typed-candidate ranking pipeline. The exact typed token remains available as the commit-space action while up to two alternative candidates are selected by source precedence. Context ranking now fills remaining slots from adjacent-word fallback evidence when trigram evidence is sparse. Broader EN/PL/TR two-word phrase priors were added. Android CI and on-device typing/prediction measurements remain release gates.
+
+
+## Follow-up feedback — 2026-11-14
+
+The user reports that rapid typing is improved but the keyboard still feels clunky. Treat this as an open usability/performance acceptance issue, not a completed fix. The emoji panel existed but had no entry point; the 0.13.1 follow-up adds a visible 😊 toolbar toggle and an accessibility description. Next keyboard iteration should focus on physical-device touch feel, key spacing/height, accidental presses, candidate-strip stability and end-to-end latency before adding more prediction complexity.
+
+
+## Typing-speed follow-up — 2026-11-15
+
+User clarified the core issue: they cannot type fast enough. The active branch now removes per-key popup-window work from the default path by making key previews opt-in (still available in Tools), and defers local fuzzy typo matching until 220 ms after the last keystroke so the CPU worker does not compete with active typing. Pending fuzzy-correction work is cancelled across editor lifecycle changes. This is a targeted latency hypothesis, not yet proven; physical-device typing speed remains unverified.
+
+
+## Delayed auto-correct cursor safety
+
+Opt-in automatic correction is permitted only when the delayed SpellChecker result still refers to the exact committed word at the original collapsed cursor position. The callback verifies the absolute cursor anchor, confirms the word-plus-trailing-space suffix immediately before the cursor, and rejects non-empty selections. If the editor cannot provide a verifiable extracted-text selection offset, the correction is skipped. The implementation lives in `CommittedWordReplacementGuard.kt` and is covered by pure JVM regression tests. This is a safety guard, not a promise that every third-party editor exposes reliable cursor offsets.
+
+
+## Multilingual evaluation baseline
+
+The repository includes a 25-row curated EN/PL/TR smoke fixture and a deterministic JVM harness that reports next-word, prefix-completion and correction top-1/top-3 counts plus correct-token controls. This is a diagnostic smoke test, not a representative natural-language benchmark and not a product-quality claim. No external corpus or lexicon is bundled. Any future language resources require documented source, immutable version, license, attribution, redistribution permission, preprocessing and checksum; never derive corpus material from private user content.
+
+
+## Keyboard UX redesign
+
+A source-based UX audit and staged redesign plan now lives in [docs/KEYBOARD-UX-REDESIGN.md](KEYBOARD-UX-REDESIGN.md). It covers action-bar hierarchy, candidate-state clarity, adaptive geometry, EN/PL/TR character access, integrated Clips/Vault modes, discoverability and accessibility. This is a planning artifact only; implementation and Redmi acceptance remain open.
+
+## Live composing-text input — 2026-11-16
+
+User feedback confirms that the keyboard still does not feel fast or natural enough. Source review identified a fundamental interaction gap: normal letter taps were committed individually with `commitText()`, so the editor never received a live composing word as it does with mature IMEs.
+
+**Implemented on the 0.13.1 repair branch**
+- Normal letter input now maintains an active composing word with `setComposingText()` where the target editor supports it.
+- Word boundaries, punctuation, Enter, cursor movement, language changes, mode changes and VaultOS text insertion explicitly finish the composing region.
+- Backspace edits the composing word by grapheme and updates the active composing region.
+- Polish/Turkish alternate-character entry follows the same composing path.
+- If an editor rejects composing updates, the keyboard falls back to committed character insertion rather than duplicating the current word.
+
+**Not yet proven**
+- This is a foundational IME interaction correction, not a claim of Gboard parity or measured speed improvement.
+- Hosted compile/tests and Android-backed editor tests must pass before acceptance.
+- Redmi Note 12 Pro 5G testing must confirm no duplicated/lost characters, correct backspace, candidate behavior and improved perceived responsiveness in Notes, Chrome, WhatsApp and ChatGPT.
+
+**Next engineering priorities**
+1. Run the new touch-target unit tests and composing-text Android instrumentation tests in CI; add a rejecting-editor fallback regression case.
+2. Measure missed taps and key-to-visible-text latency on the Redmi. The source now resolves letter taps to the nearest key centre and coalesces candidate-strip rendering, but this is not yet a device-verified speed gain.
+3. Improve EN/PL/TR candidate quality with a properly sourced, licensed local lexicon and representative evaluation data.
+4. Validate adaptive geometry and TalkBack on the physical device.
+5. Treat glide typing as a separate later capability; do not add it before reliable tap typing is accepted.
+
+## Input responsiveness and default correction tuning — 2026-11-16
+
+- Spell-check requests now debounce for 140 ms instead of 95 ms, reducing redundant requests during rapid typing while keeping prefix candidates available from the local engine.
+- Fuzzy local correction is not scheduled for two-character prefixes; the correction engine already requires at least three characters.
+- Autocorrection remains opt-in, preserving the product's conservative correction-safety policy. Existing explicit on/off preferences are preserved, and the setting remains available in keyboard tools.
+- Autocorrection remains disabled in password, email, URL, filter, autocomplete and other unsafe/non-suggestion fields.
+- The spell-check debounce and correction threshold reduce avoidable work during rapid typing; only Redmi testing can establish whether this feels faster across EN/PL/TR.

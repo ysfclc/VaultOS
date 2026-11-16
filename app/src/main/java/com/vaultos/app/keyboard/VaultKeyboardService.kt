@@ -11,6 +11,7 @@ import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.RippleDrawable
 import android.graphics.drawable.StateListDrawable
 import android.inputmethodservice.InputMethodService
+import android.icu.text.BreakIterator
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -22,6 +23,7 @@ import android.view.MotionEvent
 import android.view.SoundEffectConstants
 import android.view.View
 import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputMethodManager
 import android.view.textservice.SentenceSuggestionsInfo
 import android.view.textservice.SpellCheckerSession
@@ -60,6 +62,14 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val typingMemory by lazy(LazyThreadSafetyMode.NONE) { LocalTypingMemory(applicationContext) }
     private val mainHandler = Handler(Looper.getMainLooper())
+    private val letterKeyViews = mutableListOf<Pair<String, TextView>>()
+    private val shiftKeyViews = mutableListOf<TextView>()
+    private var pendingSpellCheck: Runnable? = null
+    private var pendingLocalCorrection: Runnable? = null
+    private var pendingSuggestionRender: Runnable? = null
+    private var activeBackspaceView: View? = null
+    private var backspaceRepeater: Runnable? = null
+    private var backspaceRepeatCount = 0
     private val suggestionRequestGate = SuggestionRequestGate()
     private var correctionExecutor: ThreadPoolExecutor? = null
     private var localCorrectionWord = ""
@@ -83,6 +93,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     private var emojiMode = false
     private var keyPreviewPopup: PopupWindow? = null
     private var typedWord = StringBuilder()
+    private var isComposingWord = false
     private var lastCommittedWord = ""
     private var previousWordForPrediction = ""
     private var previousPreviousWordForPrediction = ""
@@ -106,6 +117,13 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     }
 
     override fun onDestroy() {
+        stopBackspaceRepeat()
+        pendingSpellCheck?.let(mainHandler::removeCallbacks)
+        pendingSpellCheck = null
+        pendingLocalCorrection?.let(mainHandler::removeCallbacks)
+        pendingLocalCorrection = null
+        pendingSuggestionRender?.let(mainHandler::removeCallbacks)
+        pendingSuggestionRender = null
         suggestionRequestGate.invalidate()
         correctionExecutor?.shutdownNow()
         correctionExecutor = null
@@ -120,7 +138,12 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
         super.onStartInput(attribute, restarting)
+        isComposingWord = false
         inputGeneration++
+        pendingLocalCorrection?.let(mainHandler::removeCallbacks)
+        pendingLocalCorrection = null
+        pendingSuggestionRender?.let(mainHandler::removeCallbacks)
+        pendingSuggestionRender = null
         suggestionRequestGate.invalidate()
         localCorrectionWord = ""
         localCorrectionSuggestions = emptyList()
@@ -139,6 +162,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         previousPreviousWordForPrediction = ""
         currentSuggestions = emptyList()
         activeSpellCheckWord = ""
+        autoCorrectCursorPosition = null
         spellCheckGeneration++
         spellChecker?.close()
         spellChecker = null
@@ -172,7 +196,12 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     }
 
     override fun onFinishInput() {
+        finishComposingWord()
         inputGeneration++
+        pendingLocalCorrection?.let(mainHandler::removeCallbacks)
+        pendingLocalCorrection = null
+        pendingSuggestionRender?.let(mainHandler::removeCallbacks)
+        pendingSuggestionRender = null
         suggestionRequestGate.invalidate()
         localCorrectionWord = ""
         localCorrectionSuggestions = emptyList()
@@ -185,6 +214,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         spellChecker?.close()
         spellChecker = null
         activeSpellCheckWord = ""
+        autoCorrectCursorPosition = null
         super.onFinishInput()
     }
 
@@ -209,18 +239,28 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
             renderSuggestions()
             if (getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_AUTOCORRECT, false) &&
                 looksLikeTypo && suggestions.isNotEmpty() && lastCommittedWord.isNotBlank() && typedWord.isEmpty() &&
-                inputGeneration == activeSuggestionInputGeneration
+                inputGeneration == activeSuggestionInputGeneration &&
+                lastCommittedWord.equals(requestedWord, ignoreCase = true)
             ) {
                 val replacement = suggestions.first()
                 if (!replacement.equals(lastCommittedWord, ignoreCase = true)) {
-                    currentInputConnection?.let { connection ->
-                        connection.deleteSurroundingText(lastCommittedWord.length + 1, 0)
-                        connection.commitText("$replacement ", 1)
+                    val connection = currentInputConnection
+                    val selectedText = connection?.getSelectedText(0)
+                    val beforeCursor = connection?.getTextBeforeCursor(lastCommittedWord.length + 1, 0)
+                    val currentCursor = currentCursorPosition()
+                    // Spell-check results can arrive after the user has moved the cursor.
+                    // Require the same absolute cursor anchor and exact word-plus-space suffix.
+                    if (CommittedWordReplacementGuard.canReplace(
+                            beforeCursor, selectedText, lastCommittedWord,
+                            autoCorrectCursorPosition, currentCursor
+                        )) {
+                        connection?.deleteSurroundingText(lastCommittedWord.length + 1, 0)
+                        connection?.commitText("$replacement ", 1)
+                        lastCommittedWord = replacement
+                        previousWordForPrediction = replacement
+                        currentSuggestions = emptyList()
+                        renderSuggestions()
                     }
-                    lastCommittedWord = replacement
-                    previousWordForPrediction = replacement
-                    currentSuggestions = emptyList()
-                    renderSuggestions()
                 }
             }
         }
@@ -231,12 +271,16 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     }
 
     private var activeSuggestionInputGeneration = 0
+    private var autoCorrectCursorPosition: Int? = null
 
     private fun runOnMain(block: () -> Unit) {
         if (Looper.myLooper() == Looper.getMainLooper()) block() else mainHandler.post { block() }
     }
 
     private fun buildKeyboard(): View {
+        letterKeyViews.clear()
+        shiftKeyViews.clear()
+        suggestionRow = null
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(4), dp(4), dp(4), dp(6))
@@ -246,19 +290,32 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
         }
-        addToolbarKey(top, "Type", active = !clipboardMode && !commandsMode && !emojiMode, weight = 1.15f) {
-            clipboardMode = false; commandsMode = false; emojiMode = false; refreshKeyboard()
+        // Typing is the default state, so do not spend a permanent toolbar slot
+        // on a redundant "Type" tab. Bring it back as the first action only while
+        // the user is in Clips, Vault or emoji mode.
+        if (clipboardMode || commandsMode || emojiMode) {
+            addToolbarKey(top, "Type", active = false, weight = 1.05f) {
+                clipboardMode = false; commandsMode = false; emojiMode = false; refreshKeyboard()
+            }
+        }
+        addToolbarKey(top, "😊", active = emojiMode, weight = 0.8f) {
+            finishComposingWord()
+            emojiMode = true; clipboardMode = false; commandsMode = false; refreshKeyboard()
         }
         addToolbarKey(top, "Clips", active = clipboardMode, weight = 1.05f) {
+            finishComposingWord()
             clipboardMode = true; commandsMode = false; emojiMode = false; clipboardQuery = ""; refreshKeyboard()
         }
-        addToolbarKey(top, "Vault", active = commandsMode, weight = 0.98f) {
+        addToolbarKey(top, "Vault", active = commandsMode, weight = 1.0f) {
+            finishComposingWord()
             commandsMode = true; clipboardMode = false; emojiMode = false; commandQuery = ""; refreshKeyboard()
         }
-        addToolbarKey(top, selectedLanguageCode().uppercase(Locale.ROOT), active = false, weight = 0.75f) {
-            cycleKeyboardLanguage()
+        addToolbarKey(top, "${selectedLanguageCode().uppercase(Locale.ROOT)} ▾", active = false, weight = 1.0f) {
+            showKeyboardLanguagePicker(top.getChildAt(top.childCount - 2))
         }
-        addToolbarKey(top, "Tools", active = false, weight = 0.9f) { showKeyboardTools(itAnchor = top.getChildAt(top.childCount - 1)) }
+        addToolbarKey(top, "⋯", active = false, weight = 0.65f) {
+            showKeyboardTools(itAnchor = top.getChildAt(top.childCount - 1))
+        }
         root.addView(top, LinearLayout.LayoutParams(-1, dp(46)))
 
         if (clipboardMode) {
@@ -364,6 +421,13 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
             gravity = Gravity.CENTER
             setTextColor(if (keyboardThemeDark()) Color.WHITE else Color.rgb(28, 35, 44))
             isSingleLine = true
+            contentDescription = when {
+                label == "😊" -> "Emoji keyboard"
+                label == "⋯" -> "More keyboard actions and settings"
+                label == "Type" -> "Return to typing"
+                label.endsWith("▾") -> "Keyboard language: ${selectedLanguageLabel()}. Choose language"
+                else -> label
+            }
             setPadding(dp(2), 0, dp(2), 0)
             background = keyBackground(wide = true, active = active, toolbar = true)
             setOnClickListener { tapFeedback(this); playKeySound(this); action() }
@@ -385,6 +449,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                 "⇧" -> if (capsLock) "⇪" else "⇧"
                 else -> key
             }
+            var alternateLongPressHandled = false
             val keyView = TextView(this).apply {
                 text = if (!symbols && key.length == 1 && key[0].isLetter()) {
                     if (shifted || capsLock) key.uppercase(inputLocale()) else key
@@ -402,6 +467,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                 setPadding(dp(1), 0, dp(1), 0)
                 background = keyBackground(wide = wide)
                 elevation = dp(1).toFloat()
+                tag = key
                 contentDescription = when (key) {
                     "⌫" -> "Backspace"
                     "↵" -> "Enter"
@@ -410,22 +476,51 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                     else -> key
                 }
                 setOnClickListener { tapFeedback(this); playKeySound(this); handleKey(key) }
-                setOnTouchListener { view, event ->
-                    when (event.actionMasked) {
-                        MotionEvent.ACTION_DOWN -> {
-                            view.scaleX = 0.92f
-                            view.scaleY = 0.92f
-                            view.translationZ = dp(7).toFloat()
-                            if (key.length == 1 && key != " ") showKeyPreview(view, text.toString())
-                        }
-                        MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                            view.scaleX = 1f
-                            view.scaleY = 1f
-                            view.translationZ = 0f
-                            mainHandler.postDelayed({ if (!view.isPressed) hideKeyPreview() }, 90)
+                if (key.length == 1 && key[0].isLetter()) {
+                    setOnTouchListener { view, event ->
+                        when (event.actionMasked) {
+                            MotionEvent.ACTION_DOWN -> {
+                                alternateLongPressHandled = false
+                                view.scaleX = 0.92f
+                                view.scaleY = 0.92f
+                                view.translationZ = dp(7).toFloat()
+                                showKeyPreview(view, text.toString())
+                                false
+                            }
+                            MotionEvent.ACTION_UP -> {
+                                view.scaleX = 1f
+                                view.scaleY = 1f
+                                view.translationZ = 0f
+                                if (alternateLongPressHandled) {
+                                    view.isPressed = false
+                                    mainHandler.postDelayed({ hideKeyPreview() }, 90)
+                                    return@setOnTouchListener true
+                                }
+                                val nearest = nearestLetterKey(row, event.rawX)
+                                if (nearest != null && nearest !== view) {
+                                    // The original child owns this gesture; clear its pressed
+                                    // state because we intentionally suppress its click.
+                                    view.isPressed = false
+                                    tapFeedback(nearest)
+                                    playKeySound(nearest)
+                                    handleKey(nearest.tag as? String ?: key)
+                                    mainHandler.postDelayed({ hideKeyPreview() }, 90)
+                                    true
+                                } else {
+                                    mainHandler.postDelayed({ if (!view.isPressed) hideKeyPreview() }, 90)
+                                    false
+                                }
+                            }
+                            MotionEvent.ACTION_CANCEL -> {
+                                view.scaleX = 1f
+                                view.scaleY = 1f
+                                view.translationZ = 0f
+                                hideKeyPreview()
+                                false
+                            }
+                            else -> false
                         }
                     }
-                    false
                 }
                 if (key == "space") {
                     var startX = 0f
@@ -465,6 +560,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                 }
                 if (key.length == 1 && key[0].isLetter()) {
                     setOnLongClickListener {
+                        alternateLongPressHandled = true
                         showAlternates(this, alternativesFor(key))
                         true
                     }
@@ -474,16 +570,78 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                         true
                     }
                 }
+                if (key == "⌫") {
+                    setOnTouchListener { view, event ->
+                        when (event.actionMasked) {
+                            MotionEvent.ACTION_DOWN -> {
+                                stopBackspaceRepeat()
+                                activeBackspaceView = view
+                                backspaceRepeatCount = 0
+                                view.isPressed = true
+                                view.scaleX = 0.92f
+                                view.scaleY = 0.92f
+                                view.translationZ = dp(7).toFloat()
+                                tapFeedback(view)
+                                playKeySound(view)
+                                deleteBackward()
+                                val repeat = object : Runnable {
+                                    override fun run() {
+                                        if (activeBackspaceView !== view) return
+                                        backspaceRepeatCount++
+                                        deleteBackward()
+                                        mainHandler.postDelayed(this, if (backspaceRepeatCount < 8) 72L else 38L)
+                                    }
+                                }
+                                backspaceRepeater = repeat
+                                mainHandler.postDelayed(repeat, 420L)
+                                true
+                            }
+                            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                                view.isPressed = false
+                                view.scaleX = 1f
+                                view.scaleY = 1f
+                                view.translationZ = 0f
+                                stopBackspaceRepeat()
+                                true
+                            }
+                            else -> true
+                        }
+                    }
+                }
             }
             row.addView(keyView, LinearLayout.LayoutParams(0, dp(keyHeight()), weights.getOrElse(index) { 1f }).apply {
-                setMargins(dp(2), dp(3), dp(2), dp(3))
+                // Reduce dead touch gutters without changing the visual key size.
+                setMargins(dp(1), dp(2), dp(1), dp(2))
             })
+            if (key.length == 1 && key[0].isLetter()) letterKeyViews += key to keyView
+            if (key == "⇧") shiftKeyViews += keyView
         }
         val side = oneHandedSide()
         val width = if (side == 0) -1 else dp(((resources.displayMetrics.widthPixels / resources.displayMetrics.density) * 0.84f).toInt())
         val params = LinearLayout.LayoutParams(width, dp(keyHeight() + 6))
         params.gravity = when (side) { 1 -> Gravity.START; 2 -> Gravity.END; else -> Gravity.CENTER_HORIZONTAL }
         root.addView(row, params)
+    }
+
+    private fun nearestLetterKey(row: LinearLayout, rawX: Float): TextView? {
+        val letterKeys = (0 until row.childCount).mapNotNull { index ->
+            (row.getChildAt(index) as? TextView)?.takeIf {
+                val value = it.tag as? String
+                value != null && value.length == 1 && value[0].isLetter()
+            }
+        }
+        if (letterKeys.isEmpty()) return null
+        val centers = FloatArray(letterKeys.size) { index ->
+            val location = IntArray(2)
+            letterKeys[index].getLocationOnScreen(location)
+            location[0] + letterKeys[index].width / 2f
+        }
+        val nearest = KeyboardTouchTargetResolver.nearestIndex(
+            pointerX = rawX,
+            keyCenters = centers,
+            maxDistance = dp(26).toFloat()
+        ) ?: return null
+        return letterKeys.getOrNull(nearest)
     }
 
     private fun keyBackground(wide: Boolean, active: Boolean = false, toolbar: Boolean = false): RippleDrawable {
@@ -678,7 +836,9 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         private fun oneHandedSide(): Int = getSharedPreferences(PREFS, MODE_PRIVATE).getInt(KEY_ONE_HANDED, 0).coerceIn(0, 2)
     private fun oneHandedLabel(): String = when (oneHandedSide()) { 1 -> "Left"; 2 -> "Right"; else -> "Off" }
     private fun numberRowEnabled(): Boolean = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_NUMBER_ROW, false)
-    private fun keyPreviewEnabled(): Boolean = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_KEY_PREVIEW, true)
+    // Popup previews create and dismiss a window for every tap. Keep them opt-in so
+    // the default typing path stays light; users can still enable them in Tools.
+    private fun keyPreviewEnabled(): Boolean = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_KEY_PREVIEW, false)
     private fun keySoundsEnabled(): Boolean = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_SOUND, false)
     private fun keyboardThemeDark(): Boolean = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_THEME_DARK, true)
 
@@ -775,7 +935,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                 setOnClickListener {
                     tapFeedback(this)
                     playKeySound(this)
-                    currentInputConnection?.commitText(if (shifted || capsLock) value.uppercase(inputLocale()) else value, 1)
+                    insertAlternate(value)
                     popup?.dismiss()
                     if (shifted && !capsLock) { shifted = false; refreshKeyboard() }
                 }
@@ -823,10 +983,52 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         else -> emptyList()
     }
 
+    private fun finishComposingWord() {
+        if (isComposingWord) currentInputConnection?.finishComposingText()
+        isComposingWord = false
+    }
+
+    private fun insertAlternate(alternate: String) {
+        val connection = currentInputConnection ?: return
+        val value = if (shifted || capsLock) alternate.uppercase(inputLocale()) else alternate
+        if (value.length == 1 && value[0].isLetter()) {
+            val nextWord = typedWord.toString() + value
+            if (isComposingWord) {
+                if (!connection.setComposingText(nextWord, 1)) {
+                    connection.finishComposingText()
+                    connection.commitText(value, 1)
+                    isComposingWord = false
+                }
+            } else if (typedWord.isEmpty()) {
+                isComposingWord = connection.setComposingText(value, 1)
+                if (!isComposingWord) connection.commitText(value, 1)
+            } else {
+                connection.commitText(value, 1)
+            }
+            typedWord.append(value)
+            lastCommittedWord = ""
+            requestWordSuggestions(typedWord.toString())
+        } else {
+            finishComposingWord()
+            connection.commitText(value, 1)
+            if (typedWord.isNotBlank()) {
+                val committed = typedWord.toString()
+                learnWord(committed, previousWordForPrediction, previousPreviousWordForPrediction)
+                previousPreviousWordForPrediction = previousWordForPrediction
+                previousWordForPrediction = committed
+            }
+            typedWord.clear()
+            lastCommittedWord = ""
+            currentSuggestions = emptyList()
+        }
+        renderSuggestions()
+    }
+
     private fun handleKey(key: String) {
         if (clipboardMode) { handleClipboardSearchKey(key); return }
         if (commandsMode) { handleCommandSearchKey(key); return }
         if (emojiMode) {
+            finishComposingWord()
             if (key == "⌫") currentInputConnection?.deleteSurroundingText(1, 0)
             else if (key !in setOf("space", "↵")) currentInputConnection?.commitText(key, 1)
             emojiMode = false
@@ -840,24 +1042,19 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                     shifted -> { capsLock = true }
                     else -> shifted = true
                 }
-                refreshKeyboard()
+                updateKeyLabels()
             }
             "?123", "123" -> { symbols = true; refreshKeyboard() }
             "ABC" -> { symbols = false; refreshKeyboard() }
             "⌫" -> {
-                val connection = currentInputConnection ?: return
-                val selected = connection.getSelectedText(0)
-                if (!selected.isNullOrEmpty()) connection.commitText("", 1)
-                else connection.deleteSurroundingText(1, 0)
-                if (typedWord.isNotEmpty()) typedWord.deleteCharAt(typedWord.length - 1)
-                lastCommittedWord = ""
-                requestWordSuggestions(typedWord.toString())
-                renderSuggestions()
+                autoCorrectCursorPosition = null
+                deleteBackward()
             }
             "←" -> sendCursorKey(KeyEvent.KEYCODE_DPAD_LEFT)
             "→" -> sendCursorKey(KeyEvent.KEYCODE_DPAD_RIGHT)
             "space" -> handleSmartSpace()
             "↵" -> {
+                finishComposingWord()
                 val action = currentInputEditorInfo?.imeOptions?.and(EditorInfo.IME_MASK_ACTION) ?: EditorInfo.IME_ACTION_NONE
                 if (action != EditorInfo.IME_ACTION_NONE && action != EditorInfo.IME_ACTION_UNSPECIFIED) currentInputConnection?.performEditorAction(action)
                 else currentInputConnection?.commitText("\n", 1)
@@ -872,16 +1069,34 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                 shifted = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_AUTO_CAPITALIZE, true)
                 lastSpaceAt = 0L
                 renderSuggestions()
-                refreshKeyboard()
+                updateKeyLabels()
             }
             else -> {
                 val value = if (shifted || capsLock) key.uppercase(inputLocale()) else key
-                currentInputConnection?.commitText(value, 1)
+                autoCorrectCursorPosition = null
                 if (value.length == 1 && value[0].isLetter()) {
+                    val nextWord = typedWord.toString() + value
+                    val connection = currentInputConnection
+                    if (connection != null) {
+                        if (isComposingWord) {
+                            if (!connection.setComposingText(nextWord, 1)) {
+                                connection.finishComposingText()
+                                connection.commitText(value, 1)
+                                isComposingWord = false
+                            }
+                        } else if (typedWord.isEmpty()) {
+                            isComposingWord = connection.setComposingText(value, 1)
+                            if (!isComposingWord) connection.commitText(value, 1)
+                        } else {
+                            connection.commitText(value, 1)
+                        }
+                    }
                     typedWord.append(value)
                     lastCommittedWord = ""
                     requestWordSuggestions(typedWord.toString())
                 } else {
+                    finishComposingWord()
+                    currentInputConnection?.commitText(value, 1)
                     if (typedWord.isNotBlank()) {
                         val committedWord = typedWord.toString()
                         learnWord(committedWord, previousWordForPrediction, previousPreviousWordForPrediction)
@@ -898,27 +1113,124 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                     previousPreviousWordForPrediction = ""
                     shifted = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_AUTO_CAPITALIZE, true)
                     lastSpaceAt = 0L
-                    refreshKeyboard()
+                    updateKeyLabels()
                 } else if (shifted && !capsLock) {
                     shifted = false
-                    refreshKeyboard()
+                    updateKeyLabels()
                 }
                 renderSuggestions()
             }
         }
     }
 
+    private fun stopBackspaceRepeat() {
+        backspaceRepeater?.let(mainHandler::removeCallbacks)
+        backspaceRepeater = null
+        activeBackspaceView?.isPressed = false
+        activeBackspaceView = null
+    }
+
+    private fun updateKeyLabels() {
+        letterKeyViews.forEach { (letter, view) ->
+            view.text = if (shifted || capsLock) letter.uppercase(inputLocale()) else letter
+        }
+        shiftKeyViews.forEach { view -> view.text = if (capsLock) "⇪" else "⇧" }
+    }
+
+    private fun previousGraphemeLength(text: String): Int {
+        if (text.isEmpty()) return 0
+        val iterator = BreakIterator.getCharacterInstance(inputLocale())
+        iterator.setText(text)
+        val end = iterator.last()
+        val start = iterator.preceding(end)
+        return if (start == BreakIterator.DONE) Character.charCount(text.codePointBefore(end)) else end - start
+    }
+
+    private fun deleteBackward() {
+        val connection = currentInputConnection ?: return
+        val selected = connection.getSelectedText(0)
+        if (!selected.isNullOrEmpty()) {
+            finishComposingWord()
+            connection.commitText("", 1)
+        } else if (isComposingWord) {
+            val composing = typedWord.toString()
+            val removeLength = previousGraphemeLength(composing)
+            val shortened = if (removeLength > 0) composing.dropLast(removeLength) else ""
+            if (shortened.isEmpty()) {
+                if (!connection.setComposingText("", 1)) {
+                    connection.finishComposingText()
+                    connection.deleteSurroundingText(removeLength, 0)
+                } else {
+                    connection.finishComposingText()
+                }
+                isComposingWord = false
+                typedWord.clear()
+            } else if (connection.setComposingText(shortened, 1)) {
+                typedWord.setLength(0)
+                typedWord.append(shortened)
+            } else {
+                connection.finishComposingText()
+                connection.deleteSurroundingText(removeLength, 0)
+                isComposingWord = false
+                typedWord.setLength(0)
+                typedWord.append(shortened)
+            }
+        } else {
+            val before = connection.getTextBeforeCursor(64, 0)?.toString().orEmpty()
+            val deleteLength = previousGraphemeLength(before)
+            if (deleteLength > 0) {
+                connection.deleteSurroundingText(deleteLength, 0)
+            } else {
+                connection.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
+                connection.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DEL))
+            }
+        }
+
+        // Re-sync the composing word from the actual cursor. This handles the space after
+        // a committed word, selected text, external edits and multi-code-unit characters.
+        val cursorText = connection.getTextBeforeCursor(120, 0)?.toString().orEmpty()
+        val wordBeforeCursor = Regex("""[\p{L}][\p{L}'’\-]*$""").find(cursorText)?.value.orEmpty()
+        if (!isComposingWord) {
+            typedWord.setLength(0)
+            typedWord.append(wordBeforeCursor)
+        }
+        lastCommittedWord = ""
+        activeSpellCheckWord = ""
+        localCorrectionWord = ""
+        localCorrectionSuggestions = emptyList()
+        currentSuggestions = emptyList()
+        requestWordSuggestions(typedWord.toString())
+        renderSuggestions()
+    }
+
     private fun requestWordSuggestions(word: String) {
         spellCheckGeneration++
         val requestId = spellCheckGeneration
+        pendingSpellCheck?.let(mainHandler::removeCallbacks)
+        pendingSpellCheck = null
+        activeSpellCheckWord = ""
         currentSuggestions = emptyList()
-        if (word.length < 2 || !isSafeForSuggestions(currentInputEditorInfo) || spellChecker == null) {
-            activeSpellCheckWord = ""
-            renderSuggestions()
-            return
+        if (word.length < 2 || !isSafeForSuggestions(currentInputEditorInfo) || spellChecker == null) return
+
+        val session = inputGeneration
+        val language = selectedLanguageCode()
+        val request = object : Runnable {
+            override fun run() {
+                pendingSpellCheck = null
+                if (requestId != spellCheckGeneration ||
+                    inputGeneration != session ||
+                    selectedLanguageCode() != language ||
+                    typedWord.toString() != word ||
+                    !isSafeForSuggestions(currentInputEditorInfo)
+                ) return
+                val activeSpellChecker = spellChecker ?: return
+                activeSpellCheckWord = word
+                activeSpellChecker.getSuggestions(arrayOf(TextInfo(word, requestId, requestId)), 3, false)
+            }
         }
-        activeSpellCheckWord = word
-        spellChecker?.getSuggestions(arrayOf(TextInfo(word, requestId, requestId)), 3, false)
+        pendingSpellCheck = request
+        // Spell checking is useful after a pause, not between rapid key taps.
+        mainHandler.postDelayed(request, 140L)
     }
 
     private fun learnWord(word: String, previousWord: String = "", previousPreviousWord: String = "") {
@@ -956,22 +1268,35 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
 
     private fun commitSpace() {
         val word = typedWord.toString()
-        if (word.isNotBlank() && isSafeForSuggestions(currentInputEditorInfo)) {
+        val shouldCheck = word.isNotBlank() && isSafeForSuggestions(currentInputEditorInfo)
+        if (shouldCheck) {
             learnWord(word, previousWordForPrediction, previousPreviousWordForPrediction)
             lastCommittedWord = word
             previousPreviousWordForPrediction = previousWordForPrediction
             previousWordForPrediction = word
             activeSuggestionInputGeneration = inputGeneration
-            requestWordSuggestions(word)
         } else {
             lastCommittedWord = ""
             activeSpellCheckWord = ""
             currentSuggestions = emptyList()
             spellCheckGeneration++
         }
+        finishComposingWord()
         currentInputConnection?.commitText(" ", 1)
         typedWord.clear()
+        // Capture the absolute cursor anchor only after the trailing space is committed.
+        // If the editor cannot provide a collapsed selection offset, auto-correct stays off.
+        autoCorrectCursorPosition = if (shouldCheck) currentCursorPosition() else null
+        if (shouldCheck) requestWordSuggestions(word)
         renderSuggestions()
+    }
+
+    private fun currentCursorPosition(): Int? {
+        val extracted = currentInputConnection?.getExtractedText(ExtractedTextRequest(), 0) ?: return null
+        if (extracted.startOffset < 0 || extracted.selectionStart < 0 ||
+            extracted.selectionStart != extracted.selectionEnd
+        ) return null
+        return extracted.startOffset + extracted.selectionStart
     }
 
     private fun applySuggestion(value: String) {
@@ -980,8 +1305,13 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         val word = composingWord.ifBlank { lastCommittedWord }
         if (word.isBlank()) return
         currentInputConnection?.let { connection ->
-            connection.deleteSurroundingText(word.length + if (committedWord) 1 else 0, 0)
-            connection.commitText("$value ", 1)
+            if (isComposingWord) {
+                connection.commitText("$value ", 1)
+                isComposingWord = false
+            } else {
+                connection.deleteSurroundingText(word.length + if (committedWord) 1 else 0, 0)
+                connection.commitText("$value ", 1)
+            }
         }
         learnWord(value, previousWordForPrediction, previousPreviousWordForPrediction)
         typedWord.clear()
@@ -995,6 +1325,22 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     }
 
     private fun renderSuggestions() {
+        val targetRow = suggestionRow ?: return
+        pendingSuggestionRender?.let(mainHandler::removeCallbacks)
+        val session = inputGeneration
+        val render = Runnable {
+            pendingSuggestionRender = null
+            if (session == inputGeneration && suggestionRow === targetRow) {
+                renderSuggestionsNow()
+            }
+        }
+        pendingSuggestionRender = render
+        // Coalesce rapid taps: text reaches the editor immediately, while the
+        // candidate strip refreshes at most once per short UI frame.
+        mainHandler.postDelayed(render, 16L)
+    }
+
+    private fun renderSuggestionsNow() {
         val row = suggestionRow ?: return
         // A render represents a new UI snapshot; any older worker result is now stale.
         suggestionRequestGate.invalidate()
@@ -1036,6 +1382,9 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                 cell.typeface = android.graphics.Typeface.DEFAULT
                 cell.gravity = Gravity.CENTER
                 cell.background = null
+                cell.contentDescription = if (index == 0) "Input language: ${selectedLanguageLabel()}" else null
+                cell.isClickable = false
+                cell.isFocusable = false
                 cell.setTextColor(if (keyboardThemeDark()) Color.rgb(143, 155, 171) else Color.rgb(112, 124, 139))
                 cell.setOnClickListener(null)
                 cell.setOnLongClickListener(null)
@@ -1055,10 +1404,24 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         val localCorrections = if (typed.isNotBlank() && currentSuggestions.isEmpty() && localCorrectionWord == typed) {
             localCorrectionSuggestions
         } else emptyList()
-        if (typed.length >= 2 && currentSuggestions.isEmpty() && localCorrectionWord != typed) {
+        if (typed.length >= 3 && currentSuggestions.isEmpty() && localCorrectionWord != typed) {
             requestLocalCorrections(typed, language, learnedVocabulary, row)
         }
         val correcting = currentSuggestions.isNotEmpty() || localCorrections.isNotEmpty()
+        val builtInCompletions = if (typed.isNotBlank()) {
+            KeyboardSuggestionEngine.completePrefix(language, typed, limit = 5)
+        } else emptyList()
+        val typedAlternatives = if (typed.isNotBlank()) {
+            KeyboardSuggestionEngine.rankTypedCandidates(
+                language = language,
+                typed = typed,
+                spellCheckerCandidates = currentSuggestions,
+                personalCompletions = learnedCompletions,
+                localCorrections = localCorrections,
+                builtInCompletions = builtInCompletions,
+                limit = 2
+            )
+        } else emptyList()
         // Read only a short, transient window from the active safe text field. This keeps
         // predictions aligned with the real cursor after edits, pastes or cursor movement.
         val contextWords = if (typed.isBlank() && !correcting) {
@@ -1069,9 +1432,8 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         val contextualWord = contextWords.lastOrNull().orEmpty()
         val previousContextWord = contextWords.getOrNull(contextWords.lastIndex - 1).orEmpty()
         val candidates = when {
-            typed.isNotBlank() -> (listOf(typed) + currentSuggestions + localCorrections +
-                learnedCompletions + KeyboardSuggestionEngine.completePrefix(language, typed, additionalWords = learnedCompletions)).distinct().take(3)
-            correcting -> (listOf(lastCommittedWord) + currentSuggestions).distinct().take(3)
+            typed.isNotBlank() -> (listOf(typed) + typedAlternatives).take(3)
+            correcting -> (listOf(lastCommittedWord) + currentSuggestions + localCorrections).distinct().take(3)
             contextualWord.isNotBlank() ->
                 (typingMemory.nextWords(language, previousContextWord, contextualWord) +
                     KeyboardSuggestionEngine.nextWordSuggestions(language, previousContextWord, contextualWord)).distinct().take(3)
@@ -1099,6 +1461,16 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
             item.textSize = if (isCurrent) 13f else 13.5f
             item.typeface = if (isCurrent) android.graphics.Typeface.DEFAULT_BOLD else android.graphics.Typeface.DEFAULT
             item.gravity = Gravity.CENTER
+            item.isClickable = true
+            item.isFocusable = true
+            val candidateKind = when {
+                isCurrent -> "Current word"
+                candidate in currentSuggestions || candidate in localCorrections -> "Spelling correction"
+                typed.isNotBlank() -> "Word completion"
+                correcting -> "Spelling correction"
+                else -> "Next-word prediction"
+            }
+            item.contentDescription = "$candidateKind: $candidate"
             item.setTextColor(
                 when {
                     isCurrent && keyboardThemeDark() -> Color.rgb(177, 244, 211)
@@ -1107,7 +1479,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                     else -> Color.rgb(45, 55, 68)
                 }
             )
-            item.background = if (isCurrent) suggestionPillBackground() else null
+            item.background = if (isCurrent) suggestionPillBackground() else suggestionCandidateBackground()
             item.setOnLongClickListener {
                 if (typed.isNotBlank() && candidate.equals(typed, ignoreCase = true)) {
                     typingMemory.addToDictionary(language, typed)
@@ -1141,35 +1513,48 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         vocabulary: List<String>,
         targetRow: LinearLayout
     ) {
-        val token = suggestionRequestGate.issue()
+        // Don't run fuzzy matching while the user is actively typing. Each new
+        // character replaces this timer; the worker starts only after a short pause.
+        pendingLocalCorrection?.let(mainHandler::removeCallbacks)
         val session = inputGeneration
         val immutableVocabulary = vocabulary.toList()
-        val executor = correctionExecutor ?: return
-        // Keep at most one pending ranking request. An already-running request may finish,
-        // but its generation token prevents it from touching a newer editor state.
-        executor.queue.clear()
-        runCatching {
-            executor.execute {
-                val result = KeyboardSuggestionEngine.nearbyCorrections(
-                    language = language,
-                    input = word,
-                    additionalWords = immutableVocabulary
-                )
-                mainHandler.post {
-                    if (!suggestionRequestGate.isCurrent(token) ||
-                        inputGeneration != session ||
-                        typedWord.toString() != word ||
-                        selectedLanguageCode() != language ||
-                        suggestionRow !== targetRow ||
-                        currentSuggestions.isNotEmpty() ||
-                        !isSafeForSuggestions(currentInputEditorInfo)
-                    ) return@post
-                    localCorrectionWord = word
-                    localCorrectionSuggestions = result
-                    renderSuggestions()
+        val request = Runnable {
+            pendingLocalCorrection = null
+            if (inputGeneration != session ||
+                typedWord.toString() != word ||
+                selectedLanguageCode() != language ||
+                suggestionRow !== targetRow ||
+                currentSuggestions.isNotEmpty() ||
+                !isSafeForSuggestions(currentInputEditorInfo)
+            ) return@Runnable
+            val token = suggestionRequestGate.issue()
+            val executor = correctionExecutor ?: return@Runnable
+            executor.queue.clear()
+            runCatching {
+                executor.execute {
+                    val result = KeyboardSuggestionEngine.nearbyCorrections(
+                        language = language,
+                        input = word,
+                        additionalWords = immutableVocabulary
+                    )
+                    mainHandler.post {
+                        if (!suggestionRequestGate.isCurrent(token) ||
+                            inputGeneration != session ||
+                            typedWord.toString() != word ||
+                            selectedLanguageCode() != language ||
+                            suggestionRow !== targetRow ||
+                            currentSuggestions.isNotEmpty() ||
+                            !isSafeForSuggestions(currentInputEditorInfo)
+                        ) return@post
+                        localCorrectionWord = word
+                        localCorrectionSuggestions = result
+                        renderSuggestions()
+                    }
                 }
             }
         }
+        pendingLocalCorrection = request
+        mainHandler.postDelayed(request, 220L)
     }
 
     private fun suggestionPillBackground(): android.graphics.drawable.Drawable {
@@ -1177,6 +1562,15 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         return GradientDrawable().apply {
             setColor(if (dark) Color.rgb(37, 62, 57) else Color.rgb(210, 239, 225))
             cornerRadius = dp(9).toFloat()
+        }
+    }
+
+    private fun suggestionCandidateBackground(): android.graphics.drawable.Drawable {
+        val dark = keyboardThemeDark()
+        return GradientDrawable().apply {
+            setColor(if (dark) Color.rgb(27, 33, 42) else Color.rgb(240, 244, 248))
+            cornerRadius = dp(9).toFloat()
+            setStroke(dp(1), if (dark) Color.rgb(48, 58, 72) else Color.rgb(220, 226, 233))
         }
     }
 
@@ -1194,6 +1588,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     }
 
     private fun applyNextWordSuggestion(value: String, previousContextWord: String, contextWord: String) {
+        finishComposingWord()
         learnWord(value, contextWord, previousContextWord)
         currentInputConnection?.commitText("$value ", 1)
         typedWord.clear()
@@ -1211,6 +1606,8 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     }
 
     private fun sendCursorKey(code: Int) {
+        finishComposingWord()
+        autoCorrectCursorPosition = null
         currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, code))
         currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, code))
         typedWord.clear()
@@ -1253,12 +1650,55 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     private fun selectedLanguageCode(): String = getSharedPreferences(PREFS, MODE_PRIVATE)
         .getString(KEY_LANGUAGE, "en")?.lowercase(Locale.ROOT)?.takeIf { it in setOf("en", "pl", "tr") } ?: "en"
 
-    private fun cycleKeyboardLanguage() {
-        val languages = listOf("en", "pl", "tr")
-        val next = languages[(languages.indexOf(selectedLanguageCode()) + 1) % languages.size]
-        getSharedPreferences(PREFS, MODE_PRIVATE).edit().putString(KEY_LANGUAGE, next).apply()
+    private fun showKeyboardLanguagePicker(anchor: View) {
+        val dark = keyboardThemeDark()
+        val menu = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(6), dp(6), dp(6), dp(6))
+            setBackgroundColor(if (dark) Color.rgb(20, 26, 34) else Color.rgb(247, 249, 252))
+        }
+        var popup: PopupWindow? = null
+        val options = listOf(
+            "en" to "English",
+            "pl" to "Polski",
+            "tr" to "Türkçe"
+        )
+        options.forEach { (code, label) ->
+            val selected = code == selectedLanguageCode()
+            val option = TextView(this).apply {
+                text = if (selected) "✓  $label" else label
+                textSize = 13.5f
+                gravity = Gravity.CENTER_VERTICAL
+                minHeight = dp(46)
+                setPadding(dp(12), dp(6), dp(12), dp(6))
+                setTextColor(if (dark) Color.rgb(240, 245, 250) else Color.rgb(27, 38, 51))
+                background = keyBackground(wide = true, active = selected, toolbar = true)
+                contentDescription = if (selected) "$label, current keyboard language" else "Switch keyboard language to $label"
+                setOnClickListener {
+                    popup?.dismiss()
+                    selectKeyboardLanguage(code)
+                }
+            }
+            menu.addView(option, LinearLayout.LayoutParams(-1, dp(46)).apply {
+                bottomMargin = dp(3)
+            })
+        }
+        popup = PopupWindow(menu, dp(156), -2, true).apply {
+            isOutsideTouchable = true
+            elevation = dp(12).toFloat()
+            setBackgroundDrawable(android.graphics.drawable.ColorDrawable(Color.TRANSPARENT))
+            showAsDropDown(anchor, -dp(12), 0, Gravity.END)
+        }
+    }
+
+    private fun selectKeyboardLanguage(language: String) {
+        if (language !in setOf("en", "pl", "tr") || language == selectedLanguageCode()) return
+        finishComposingWord()
+        getSharedPreferences(PREFS, MODE_PRIVATE).edit().putString(KEY_LANGUAGE, language).apply()
         localCorrectionWord = ""
         localCorrectionSuggestions = emptyList()
+        pendingSpellCheck?.let(mainHandler::removeCallbacks)
+        pendingSpellCheck = null
         spellChecker?.close()
         spellChecker = null
         activeSpellCheckWord = ""
@@ -1391,6 +1831,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     }
 
     private suspend fun insertText(text: String): Int {
+        finishComposingWord()
         val connection = currentInputConnection ?: return 0
         var inserted = 0
         for (part in text.chunked(8_000)) {

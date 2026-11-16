@@ -1,6 +1,6 @@
 # VaultOS — project status
 
-**Release line:** 0.13.0 · **Application ID:** `com.vaultos.app` · **Target:** Redmi Note 12 Pro 5G
+**Release line:** 0.13.1 · **Application ID:** `com.vaultos.app` · **Target:** Redmi Note 12 Pro 5G
 
 ## Product contract
 
@@ -316,3 +316,24 @@ Verification status: test source and Gradle dependencies were committed and re-f
 - Temporary download page: https://sb-4y1nz0v7zv7e.vercel.run/ ; direct APK: https://sb-4y1nz0v7zv7e.vercel.run/VaultOS-0.13.0.apk . The route was externally fetched and verified. It is tied to the non-persistent sandbox and expires when that session stops (45-minute maximum); download and keep a local copy.
 - This avoids snapshot storage, but is not a permanent Vercel deployment or release asset. Do not describe it as durable hosting.
 - No `/dev/kvm` emulator or physical Redmi test was available. Keep Android instrumentation execution and Redmi Note 12 Pro 5G acceptance open.
+
+
+## Keyboard and UI repair — 2026-11-14
+
+The 0.13.1 branch addresses user-reported slow typing, Backspace hold behavior and low-value recommendations. It adds grapheme-aware deletion, key-down repeat, debounced SpellCheckerSession requests, in-place automatic Shift updates, merged candidate ranking, contextual fallbacks and a Home/navigation visual hierarchy pass. See `docs/STATE.md` Session 10 and `docs/TASKS.md` Phase 15. GitHub Actions run 43642774636 is the validation run; do not call the change accepted until both jobs and the Redmi physical-device matrix pass.
+
+
+## Session 11 — release hygiene checkpoint (2026-11-15)
+
+- Repository remains public; tracked historical signing keystore/static credentials are a critical open risk (RISK-002). No visibility change or key rotation was performed.
+- PR #5 remains draft. PR #2 and #3 are separate draft branches and their unique work is not yet consolidated into PR #5. PR #4 is a closed temporary CI retry.
+- Corrected the equal-byte-length UTF-8 test fixture (`café` / `cafè`) after Actions identified that the former fixture had unequal UTF-8 byte counts.
+- Corrected both mirrored Android workflow summaries to 0.13.1 / versionCode 15.
+- CI run [43683981709](https://github.com/ysfclc/VaultOS/actions/runs/43683981709) is the validation run for these corrections. At the time of this note both jobs were in progress; no test/build/instrumentation success or APK artifact is claimed.
+- Next: complete CI, consolidate PR #2 and #3 without dropping code, rerun CI, resolve repository visibility owner-side, then merge only the verified release branch.
+
+
+**Consolidation update (2026-11-15):** PR #2's cursor-safe autocorrect guard and regression tests, and PR #3's multilingual smoke fixture, JVM harness and corpus-policy docs, have been copied into the 0.13.1 release branch. Original PRs remain open pending consolidated CI verification. The historical `ubuntu-22.04` workflow tweak from PR #2 was intentionally not copied; it is infrastructure-only.
+
+
+The multilingual smoke fixture's correct-token controls were corrected to exact dictionary entries (`hello`, `dzień`, `merhaba`) before validation; no broad language-quality claim is made from this 25-row curated fixture.

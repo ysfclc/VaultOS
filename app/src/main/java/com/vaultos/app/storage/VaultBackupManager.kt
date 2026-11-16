@@ -16,6 +16,19 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 
+/**
+ * Resolves a manifest-relative path only when its canonical target remains strictly
+ * inside the private vault. Canonicalization also catches traversal through symlinks.
+ */
+internal fun resolveVaultRelativePath(vaultRoot: File, relativePath: String): File? = runCatching {
+    if (relativePath.isBlank() || relativePath.indexOf('\u0000') >= 0) return@runCatching null
+    val supplied = File(relativePath)
+    if (supplied.isAbsolute) return@runCatching null
+    val root = vaultRoot.canonicalFile
+    val target = File(root, relativePath).canonicalFile
+    if (target == root || !target.toPath().startsWith(root.toPath())) null else target
+}.getOrNull()
+
 object VaultBackupManager {
     data class ResultSummary(val files: Int, val bytes: Long, val records: Int)
 
@@ -268,8 +281,8 @@ object VaultBackupManager {
                         continue
                     }
                     val relative = restoredPaths[backupRelative] ?: backupRelative
-                    val file = File(vault, relative).canonicalFile
-                    if (!file.toPath().startsWith(vault.canonicalFile.toPath()) || !file.isFile) continue
+                    val file = resolveVaultRelativePath(vault, relative) ?: continue
+                    if (!file.isFile) continue
                     if (hash != null && fileSha256(file) != hash) {
                         throw IllegalStateException("Backup integrity check failed for ${row.optString("name")}")
                     }
@@ -281,7 +294,11 @@ object VaultBackupManager {
                         isArchived = true, isPinned = row.optBoolean("isPinned"), textContent = preview,
                         isTrashed = row.optBoolean("isTrashed"),
                         trashedAt = if (row.isNull("trashedAt")) null else row.optLong("trashedAt"),
-                        trashOriginalPath = row.optString("trashOriginalRelativePath").takeIf { it.isNotBlank() && it != "null" }?.let { File(vault, it).absolutePath }
+                        // A backup manifest is untrusted input. Never persist a path that
+                        // can escape the vault when the user later restores this item from trash.
+                        trashOriginalPath = row.optString("trashOriginalRelativePath")
+                            .takeIf { it.isNotBlank() && it != "null" }
+                            ?.let { resolveVaultRelativePath(vault, it)?.absolutePath }
                     )
                     dao.upsert(item)
                     if (item.category == "Text" || item.category == "Code") repository.reindexText(item.id, file)

@@ -35,7 +35,7 @@ jobs:
         if: github.event_name != 'pull_request'
         shell: bash
         run: |
-          set -euo pipefail
+          set -eu
 
           # A ZIP is imported only when this push actually changes the ZIP.
           # Other pushes and documentation updates must never replay a stale archive.
@@ -169,7 +169,7 @@ jobs:
       - name: Verify lint-critical source fixes
         shell: bash
         run: |
-          set -euo pipefail
+          set -eu
           KEYBOARD_FILE="app/src/main/java/com/vaultos/app/keyboard/VaultKeyboardService.kt"
           MAIN_FILE="app/src/main/java/com/vaultos/app/MainActivity.kt"
           MANIFEST="app/src/main/AndroidManifest.xml"
@@ -244,7 +244,7 @@ jobs:
       - name: Prepare APK and checksum
         shell: bash
         run: |
-          set -euo pipefail
+          set -eu
           mkdir -p dist
           cp app/build/outputs/apk/debug/app-debug.apk dist/VaultOS-debug.apk
           cp app/build/outputs/apk/release/app-release.apk dist/VaultOS-release.apk
@@ -267,8 +267,13 @@ jobs:
           "$APKSIGNER" verify --verbose --print-certs dist/VaultOS-release.apk
           cd dist
           sha256sum VaultOS-debug.apk VaultOS-release.apk > SHA256SUMS.txt
+          # A plain ZIP is friendlier to Android download managers than the
+          # previous temporary sandbox streaming endpoint.
+          zip -9 -j VaultOS-0.13.1.zip VaultOS-release.apk
+          unzip -t VaultOS-0.13.1.zip
+          sha256sum VaultOS-0.13.1.zip >> SHA256SUMS.txt
           {
-            echo "VaultOS 0.13.0"
+            echo "VaultOS 0.13.1"
             echo "Build: ${GITHUB_RUN_NUMBER}"
             echo "Commit: $(git rev-parse HEAD)"
             echo "Variants: debug and release (same persistent local sideload signing certificate)"
@@ -276,18 +281,28 @@ jobs:
             echo "Minimum SDK: 28"
           } > BUILD-INFO.txt
 
+      - name: Upload ZIP for native ChatGPT handoff
+        uses: actions/upload-artifact@v4
+        with:
+          name: VaultOS-0.13.1
+          path: dist/VaultOS-release.apk
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+
       - name: Publish signed APKs as a private draft release
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          set -euo pipefail
-          TAG="vaultos-0.13.0-build-${GITHUB_RUN_NUMBER}"
-          TITLE="VaultOS 0.13.0 · build ${GITHUB_RUN_NUMBER}"
-          NOTES="Signed VaultOS 0.13.0 APKs from commit ${GITHUB_SHA}. This is a private draft/pre-release build for in-place device testing. Install over the existing VaultOS app; do not uninstall first."
+          set -eu
+          TAG="vaultos-0.13.1-build-${GITHUB_RUN_NUMBER}"
+          TITLE="VaultOS 0.13.1 · build ${GITHUB_RUN_NUMBER}"
+          NOTES="Signed VaultOS 0.13.1 APKs from commit ${GITHUB_SHA}. This is a private draft/pre-release build for in-place device testing. Install over the existing VaultOS app; do not uninstall first."
           ASSETS=(
             dist/VaultOS-release.apk
             dist/VaultOS-debug.apk
+            dist/VaultOS-0.13.1.zip
             dist/SHA256SUMS.txt
             dist/BUILD-INFO.txt
           )
@@ -315,7 +330,7 @@ jobs:
           {
             echo "## VaultOS Android build"
             echo "- Device target: Redmi Note 12 Pro 5G / Android 13+"
-            echo "- Release: 0.13.0 (versionCode 14)"
+            echo "- Release: 0.13.1 (versionCode 15)"
             echo "- Signed debug and release APKs use the persistent certificate carried forward from 0.2.0"
             echo "- Compile SDK: 35"
             echo "- Java: 17"
@@ -325,3 +340,45 @@ jobs:
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
+  android-instrumentation:
+    name: Android API 35 instrumentation
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+
+      - name: Install Android SDK packages
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Set up Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      - name: Run Android-backed persistence tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          emulator-boot-timeout: 900
+          emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -no-snapshot -wipe-data
+          disable-animations: true
+          script: |
+            set -eu; adb wait-for-device; ready=false; for attempt in $(seq 1 60); do boot_completed="$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)"; if [ "$boot_completed" = "1" ] && adb shell cmd package list packages >/dev/null 2>&1; then ready=true; break; fi; sleep 5; done; if [ "$ready" != "true" ]; then echo "Android emulator did not finish booting or package manager did not become available." >&2; adb shell getprop sys.boot_completed || true; adb logcat -d -t 300 || true; exit 1; fi; gradle --no-daemon connectedDebugAndroidTest

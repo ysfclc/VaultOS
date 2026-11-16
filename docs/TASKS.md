@@ -326,3 +326,86 @@ Do not mark this phase complete from unit tests alone; device acceptance is mand
 
 
 **Current blocker (2026-11-13):** Vercel refused the initial deployment with HTTP 402 `api-deployments-free-per-day` (more than 100 API deployments today; retry after 24 hours). The connected project settings and source pipeline are in place, but production build/download verification remains unchecked until Vercel accepts a deployment.
+
+
+## Phase 15 — keyboard typing and app UX repair (0.13.1)
+
+- [x] Implement touch-and-hold Backspace repeat with immediate initial deletion, bounded repeat cadence and clean cancellation on release/service teardown.
+- [x] Delete complete Unicode character boundaries, respect selected text and resync the composing token with the actual editor cursor.
+- [x] Debounce SpellCheckerSession requests and reject stale callbacks after new keystrokes, language changes or editor changes.
+- [x] Update automatic Shift labels in place rather than reconstructing the full IME view during ordinary typing.
+- [x] Rank and deduplicate candidate sources so platform typo corrections, learned personal completions, local typo matches and offline prefix completions can share the available suggestion slots.
+- [x] Merge sparse trigram results with adjacent-word fallbacks and broaden common EN/PL/TR phrase priors.
+- [x] Refresh Home dashboard hierarchy, quick-action clarity, local-first status, storage access explanation, selected navigation states, Files page heading and empty states.
+- [ ] Confirm GitHub Actions JVM tests, lint, signed APK assembly and signing-certificate verification for run [43642774636](https://github.com/ysfclc/VaultOS/actions/runs/43642774636).
+- [ ] Confirm API 35 connected instrumentation for private typing memory.
+- [ ] Install in place on Redmi Note 12 Pro 5G and verify normal typing, held Backspace, Unicode/diacritics, selected text, EN/PL/TR recommendations, clipboard/Vault keyboard modes, large font, TalkBack and app navigation.
+- [ ] Record real-device typing latency and prediction usefulness. Do not treat a CI build or host-side microbenchmark as physical keyboard acceptance.
+
+
+## Phase 16 — Keyboard usability follow-up (2026-11-14)
+
+- [x] Expose the existing emoji panel through a visible keyboard toolbar button; provide an accessibility description and retain the ABC return action.
+- [ ] Re-test rapid typing on the Redmi Note 12 Pro 5G and identify the source of the remaining clunky feel (touch targets, spacing, key height, gesture handling, candidate-strip behavior and measured end-to-end latency).
+- [ ] Refine the typing layout based on observed mis-taps and comfort; do not infer acceptance from a successful build.
+- [ ] Verify emoji insertion and return-to-typing behavior in WhatsApp, Chrome and ChatGPT.
+
+
+## Phase 17 — clipboard history integrity hardening (2026-11-15)
+
+- [x] Verify text read from a clipboard-history event against that event's own recorded UTF-8 byte count and SHA-256, in addition to the archived VaultItem integrity check.
+- [x] Reject attempts to read file-type history events through the text retrieval path.
+- [x] Add five pure JVM regression cases for multilingual UTF-8/emoji payloads, same-length content corruption, truncated/extended byte counts, legacy entries without a hash and empty payloads.
+- [ ] Run the complete JVM suite, lint and signed APK build for this increment; record the exact Actions run and signing result.
+- [ ] Add Room-backed repository tests for event insertion, duplicate-payload event separation, pin/delete/clear behavior and missing/corrupt payload handling.
+- [ ] Verify automatic and manual capture, multi-item clips, long text, sensitive/password exclusions and keyboard retrieval on the Redmi Note 12 Pro 5G.
+
+**Integrity rule:** a history event is readable only when both the archived item and the event's own payload metadata validate. A failed check returns unavailable content; never silently substitute a preview or another event's text.
+
+
+## Phase 18 — release hygiene and branch consolidation (2026-11-15)
+
+- [x] Correct the invalid UTF-8 equal-byte-length fixture (`café` vs `cafè`) so the test reaches the SHA-256 mismatch assertion.
+- [x] Correct both mirrored Android workflow build summaries to version 0.13.1 / versionCode 15.
+- [x] Use exact dictionary words (`dzień`, `merhaba`, `hello`) for the multilingual false-correction controls so the smoke test measures false positives rather than missing vocabulary.
+- [ ] Confirm run 43683981709: JVM suite, lint, signed APK build, certificate verification and artifact/release publication.
+- [ ] Confirm API 35 instrumentation result; diagnose the observed emulator ADB `Broken pipe` / exit 224 separately from app test failures.
+- [x] Copy unique PR #2 cursor-safe autocorrect code/tests and PR #3 multilingual smoke-evaluation assets/docs into the 0.13.1 release branch; verify on the consolidated head before closing superseded PRs.
+- [ ] Run the complete CI matrix on the consolidated branch; do not merge draft PRs or report success before checks finish.
+- [ ] Update PR #5 release notes and close/retarget superseded PRs only after verifying all their unique commits are preserved.
+- [ ] Restore repository visibility to private (owner action; GitHub connector cannot change repository settings in this session).
+- [ ] Design and test signing-certificate migration / Android update continuity before removing the exposed historical signing material. Do not rotate the key blindly or uninstall the installed app.
+- [ ] Merge the verified consolidated release into `main` and confirm `main` points at the expected merge commit.
+- [ ] Add Room-backed clipboard repository tests, backup/restore round-trip/corruption tests and Room migration tests.
+
+**Release rule:** a successful JVM build does not imply Android instrumentation passed; a CI-signed APK does not imply Redmi device acceptance; a private repository does not make a historically exposed signing key secret again.
+
+
+## Phase 19 — capture and retrieval integrity (2026-11-15)
+
+This phase returns the roadmap to VaultOS's original job: preserve complete content and make it reliably retrievable. See `docs/PRODUCT-NORTH-STAR.md`. The keyboard remains an optional surface; do not make it the product centre.
+
+- [x] Record the durable product north star, core loop (capture → preserve → connect → retrieve → recover), non-negotiable privacy/data-fidelity rules and roadmap priority.
+- [x] Add Android-backed repository tests using the real Room database and app-private archive for long multilingual UTF-8 round-trip, search beyond the 2,000-character preview, verified duplicate payload reuse, and same-byte-length tamper rejection.
+- [ ] Execute all Android-backed persistence tests on the API 35 emulator and record actual test counts/results; source compilation alone is not acceptance.
+- [ ] Add Android-backed backup/restore round-trip and failure-path tests for v1/v2 manifests, missing/corrupt payloads, path traversal, collisions, tags, collections, metadata and Recycle Bin state.
+- [ ] Add Room migration tests across every supported schema version before changing the schema.
+- [ ] Add Room-backed clipboard event tests proving distinct capture events can share a verified payload without losing timestamps/context.
+- [ ] Verify share-sheet, document-picker, selected-text, long-text and clipboard capture flows on the Redmi Note 12 Pro 5G; install updates in place and never uninstall as a test shortcut.
+- [ ] Keep physical-device acceptance separate from emulator results.
+
+**Acceptance rule:** a green build does not prove content survived capture, search or restore. The complete content must round-trip exactly, search beyond its preview, fail closed after tampering, and remain recoverable through a tested backup.
+
+
+## Phase 20 — backup manifest containment and recovery hardening (2026-11-15)
+
+- [x] Treat backup manifest paths as untrusted input; canonicalize and strictly contain all restored file and Recycle Bin destination paths beneath the private vault root.
+- [x] Reject blank, NUL-containing, absolute, parent-traversal and vault-root aliases; canonicalization rejects symlink escapes.
+- [x] Apply containment to both archived `relativePath` and `trashOriginalRelativePath`; invalid Recycle Bin destinations fall back to the repository's safe category/name destination.
+- [x] Preserve the existing v1/v2 backup manifest formats and Room schema.
+- [x] Add five pure JVM path-resolution regression tests.
+- [ ] Execute the new tests in CI; source committed is not test evidence.
+- [ ] Add Android-backed v1/v2 backup/restore round-trip tests for payload integrity, collisions, tags, collections, metadata and Recycle Bin state.
+- [ ] Test missing/corrupt payload failure paths and confirm restore never overwrites existing different content.
+
+**Acceptance rule:** no path supplied by a backup manifest may cause restore or later Recycle Bin actions to read, write, overwrite or delete outside the app-private vault.
