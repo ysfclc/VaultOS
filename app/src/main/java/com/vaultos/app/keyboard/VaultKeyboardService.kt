@@ -408,10 +408,11 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
             gravity = Gravity.CENTER
             setTextColor(if (keyboardThemeDark()) Color.WHITE else Color.rgb(28, 35, 44))
             isSingleLine = true
-            contentDescription = when (label) {
-                "😊" -> "Emoji keyboard"
-                "⋯" -> "More keyboard actions and settings"
-                "Type" -> "Return to typing"
+            contentDescription = when {
+                label == "😊" -> "Emoji keyboard"
+                label == "⋯" -> "More keyboard actions and settings"
+                label == "Type" -> "Return to typing"
+                label.endsWith("▾") -> "Keyboard language: ${selectedLanguageLabel()}. Choose language"
                 else -> label
             }
             setPadding(dp(2), 0, dp(2), 0)
