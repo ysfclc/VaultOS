@@ -456,3 +456,11 @@ User tested VaultOS 0.13.1 and reports rapid typing is somewhat better, but the 
 - Covers successive composing updates replacing rather than appending, empty composing text removing the final character, and finishing composition before punctuation.
 - Tests are committed but not yet executed. API 35 CI must demonstrate actual test execution; the test does not replace end-to-end Redmi IME acceptance.
 - Corrected the last-character backspace path to replace the composing region with empty text before finishing it, avoiding the original composing token being left behind.
+
+## Touch accuracy and render scheduling — 2026-11-16
+
+- Added `KeyboardTouchTargetResolver` and JVM tests. Letter release coordinates now resolve to the nearest letter-key centre within a bounded 26 dp radius; punctuation/modifier controls are unchanged.
+- Reduced horizontal key gutters from 4 dp to 2 dp and vertical gutters from 6 dp to 4 dp without changing letter-key height or row geometry.
+- Candidate-strip redraws are coalesced over a 16 ms window; input commits/composing updates remain immediate. Lifecycle cleanup cancels queued renders.
+- The original touch target's pressed state is cleared when a touch is redirected to a neighboring letter.
+- These are implementation changes awaiting CI and physical Redmi acceptance, not a proven typing-speed improvement.
