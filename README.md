@@ -21,6 +21,10 @@ Start with `docs/STATE.md` for the session ledger and `docs/SPEC.md` for product
 - **External backup/restore:** choose a SAF folder (for example, a USB drive or cloud-drive provider), copy the archive and a JSON item manifest, and restore from that backup later.
 - **Offline by design:** no `INTERNET` permission, account, analytics SDK, or cloud AI dependency.
 
+## Planned work — USB-C OTG
+
+USB-C external-drive diagnostics and explicit import are roadmap items, not implemented features. The staged plan prefers Android-mounted volumes and the existing VaultOS import pipeline; a custom raw USB reader is only a conditional read-only research option. See `docs/USB-OTG-PLAN.md` and Phase 14 in `docs/TASKS.md`.
+
 ## Android boundaries (important)
 
 Android intentionally does not allow an ordinary background application to intercept every copy/cut operation in every other app. Clipboard monitoring is available to the currently selected default input method. Therefore:

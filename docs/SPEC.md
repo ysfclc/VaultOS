@@ -25,6 +25,12 @@ The primary device acceptance target is the Xiaomi Redmi Note 12 Pro 5G. The sup
 - Merge split APK components into a universal installable APK or export another app's private state.
 - Upload, synchronize, or analyze user content with remote services.
 - Claim neural/Gboard-equivalent glide typing or prediction.
+- Guarantee USB host/OTG operation when the phone, connector, cable, power budget or USB-C role negotiation does not expose a device to Android.
+- Provide a universal raw USB driver or filesystem reader, or write/format/repair attached external drives.
+
+## Planned USB-C OTG direction
+
+USB storage is a planned source for the existing VaultOS Files/import/library flow, not a separate application. The initial implementation must diagnose observable Android USB Host state and prefer Android-mounted volumes/document providers. Only user-selected files may enter the existing local archive pipeline. The source drive remains unchanged. A raw USB Mass Storage reader is conditional research, read-only, and requires a separate feasibility/security decision. See `docs/USB-OTG-PLAN.md`.
 
 ## Requirement traceability
 
@@ -45,6 +51,7 @@ A requirement is ✅ only when its implementation, passing test evidence, and do
 | R-011 | Produce signed debug/release APKs, verify signatures/checksums, and publish a durable private release asset. | app/build.gradle.kts:8–37; .github/workflows/android-build.yml and root android-build.yml | Hosted CI run 42261718395 passed tests, lint, signed APK assembly and signature verification; release assets were published. | README.md “Build”; PROJECT-STATUS.md 0.13.0 verification | ✅ for current CI pipeline |
 | R-012 | Accept 1.0.0 only after update, backup/restore, clipboard/IME, permissions, OEM background, accessibility, layout and performance checks pass on the actual target phone. | DEVICE-TEST-PLAN.md; RELEASE-1.0-GATE.md | No physical-device results recorded. | RELEASE-PLAN.md 1.0.0; DEVICE-TEST-PLAN.md Phase 13 and release gate | 🟡 not device-verified |
 | R-013 | Provide responsive, adaptive EN/PL/TR next-word prediction using short transient context and optional bounded local learning; no typing-path disk I/O or expensive unbounded work on the main thread. | Planned: docs/KEYBOARD-V2.md; current baseline in KeyboardSuggestionEngine.kt and VaultKeyboardService.kt | Planned KBD-1/KBD-2 pure-engine, memory-compatibility and stale-result tests; device latency tests remain required. | docs/KEYBOARD-V2.md | ⚪ planned |
+| R-014 | Diagnose Android USB Host visibility and allow explicit, read-only import from USB storage when Android exposes a mounted/document-provider volume; raw USB Mass Storage fallback is conditional and separately gated. | Planned: docs/USB-OTG-PLAN.md; no implementation identified | Planned USB diagnostics, permission, mounted-volume import, failure/cancellation and physical Redmi acceptance tests; no results yet. | docs/USB-OTG-PLAN.md; TASKS.md Phase 14; DEVICE-TEST-PLAN.md | ⚪ planned |
 
 ## Current test inventory
 

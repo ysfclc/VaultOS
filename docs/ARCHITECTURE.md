@@ -46,3 +46,20 @@ FileOperations performs copy, move, ZIP create/extract, and recursive delete on 
 - `FileOperations` performs buffered IO on `Dispatchers.IO`, reports byte/file progress, checks coroutine cancellation, and stages copy/ZIP/extraction output in temporary paths before commit. Cross-filesystem move deletes the source only after the full copy has committed.
 - ZIP extraction rejects canonical paths outside the temporary extraction root and enforces 20,000 entries / 2 GiB declared expanded-size limits.
 - Browser previews decode image/PDF/video/audio artwork off the main thread; image decoding is sampled to bound memory.
+
+## USB-C OTG and removable storage (planned)
+
+This section records a future integration direction only; no USB monitor, permission flow, UI or raw reader is implemented.
+
+Preferred data flow:
+
+`USB attachment` → `UsbManager diagnostics` → `Android-mounted volume / Storage Access Framework` → `user-selected URI` → existing `VaultRepository import` → `private archive + Room catalogue`.
+
+- A future `UsbDeviceMonitor` may wrap `UsbManager` enumeration, attach/detach events, device/interface descriptors and the per-device user permission flow. USB enumeration is evidence only of what Android exposes; it does not prove that a filesystem is mounted or that the app can browse files.
+- Prefer Android's system-mounted volume/document-provider route. Use URI-based access and the existing streaming import, SHA-256, duplicate and cancellation behavior; do not assume removable volumes have stable filesystem paths.
+- The source drive is read-only from VaultOS's perspective. Importing copies selected bytes to the private archive and must not mutate the USB source.
+- If Android enumerates a Mass Storage interface but exposes no browsable volume, a future isolated feasibility spike may investigate read-only Bulk-Only Transport/SCSI block reads and a narrowly tested filesystem reader. This must not become production code without a threat model, transport/filesystem limits, regression tests and a new ADR.
+- USB-C host-mode negotiation, port state and power delivery are below the ordinary app API boundary. If Android enumerates no USB device, VaultOS can explain the observable state but cannot enable OTG or fix hardware/cable/power problems.
+- No network diagnostics, device serial tracking by default, automatic full-drive import, USB write/format/repair action, or universal filesystem compatibility claim is permitted.
+
+See `docs/USB-OTG-PLAN.md` for staged work and `docs/DEVICE-TEST-PLAN.md` for physical-device acceptance.

@@ -1,5 +1,5 @@
 # State Ledger
-_Last updated: 2026-11-12 by Continuity Engineer — Vercel build fallback_
+_Last updated: 2026-11-16 by Continuity Engineer — USB-C OTG planning handoff_
 
 ## 1. Product snapshot
 VaultOS is a local-first Android file manager and personal content library for Android 9+. It combines a non-destructive index of existing shared storage with a private archive for incoming and newly detected content, a searchable/organizable Room catalogue, file operations, an optional capture keyboard, a DocumentsProvider, app/APK catalogue, and manual SAF backup/restore. “Complete” means data-safe operation, tested restore/migration compatibility, reliable everyday UX on the target Redmi Note 12 Pro 5G, and a reproducible signed release. Build success alone is not device acceptance.
@@ -263,3 +263,37 @@ VaultOS is a local-first Android file manager and personal content library for A
 - Shell syntax and the target SDK parser were checked in a Vercel Sandbox.
 - The first deployment was not created: Vercel returned HTTP 402 `api-deployments-free-per-day` because the team exceeded 100 API deployments for the day; the response specified a 24-hour retry window. A second Git push did not produce an automatic deployment. No Vercel CLI authentication was available in the sandbox for the suggested CLI fallback.
 - Therefore the pipeline is configured in the connected project but is **not yet production-verified**. Re-trigger the Vercel production deployment after the API limit resets, then verify the deployment logs and both static download files.
+
+## Session 10 — USB-C OTG planning handoff (2026-11-16)
+
+**Goal**
+- Add the USB-C flash-drive detection/import idea to VaultOS without starting implementation or creating a separate application.
+
+**Done**
+- Confirmed the accessible repository is `ysfclc/VaultOS`, default branch `main`.
+- Read the current product specification, task ledger, architecture, project status, decision records and Redmi device test plan.
+- Created `docs/USB-OTG-PLAN.md` with staged feasibility, security constraints, architecture direction, UX states and delivery/acceptance gates.
+- Added Phase 14 to `docs/TASKS.md`, requirement R-014 to `docs/SPEC.md`, a planned architecture section to `docs/ARCHITECTURE.md`, and physical-device tests to `docs/DEVICE-TEST-PLAN.md`.
+- Added the roadmap status to `docs/PROJECT-STATUS.md`.
+- Kept the work on branch `planning/usb-otg-storage-integration`; no application source, manifest, permissions, database schema, build workflow or signing material was changed.
+
+**Technical direction**
+- Diagnose Android-visible USB Host state first using `UsbManager`; do not infer electrical host-mode status from an empty device list.
+- Prefer Android-mounted removable volumes and Storage Access Framework URI access.
+- Route explicitly selected files through the existing VaultRepository import/hash/deduplication pipeline; preserve the source drive.
+- Treat raw USB Mass Storage Bulk-Only Transport/SCSI and filesystem reading as a conditional read-only research spike, not committed first-release scope.
+
+**Verification**
+- Planning documents were written to the feature branch and their commits returned by GitHub.
+- No Gradle build, unit tests, lint, APK build, USB device test or physical Redmi test was run because no application code was changed and the phone/drive is not connected to this repository session.
+- USB support is not implemented or verified. The current user-reported “nothing happens” case remains undiagnosed.
+
+**Next**
+1. Reproduce USB-1 on the Redmi Note 12 Pro 5G with the drive and one known-good low-power USB peripheral; record Android/API and MIUI/HyperOS.
+2. Implement USB-2 diagnostics only after the physical baseline is recorded.
+3. Keep raw USB reader work blocked until USB enumeration proves it is needed and a separate feasibility/security decision is documented.
+
+**Risks / constraints**
+- Android app APIs cannot repair USB-C role negotiation, insufficient power, connector or cable faults, or a device that never enumerates.
+- Never format, repair, partition, write to, rename, move or delete source-drive content.
+- Do not add network access, serial-number tracking by default, silent full-drive ingestion or universal filesystem claims.
