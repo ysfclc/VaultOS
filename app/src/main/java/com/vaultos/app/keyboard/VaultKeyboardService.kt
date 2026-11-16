@@ -66,6 +66,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     private val shiftKeyViews = mutableListOf<TextView>()
     private var pendingSpellCheck: Runnable? = null
     private var pendingLocalCorrection: Runnable? = null
+    private var pendingSuggestionRender: Runnable? = null
     private var activeBackspaceView: View? = null
     private var backspaceRepeater: Runnable? = null
     private var backspaceRepeatCount = 0
@@ -121,6 +122,8 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         pendingSpellCheck = null
         pendingLocalCorrection?.let(mainHandler::removeCallbacks)
         pendingLocalCorrection = null
+        pendingSuggestionRender?.let(mainHandler::removeCallbacks)
+        pendingSuggestionRender = null
         suggestionRequestGate.invalidate()
         correctionExecutor?.shutdownNow()
         correctionExecutor = null
@@ -139,6 +142,8 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         inputGeneration++
         pendingLocalCorrection?.let(mainHandler::removeCallbacks)
         pendingLocalCorrection = null
+        pendingSuggestionRender?.let(mainHandler::removeCallbacks)
+        pendingSuggestionRender = null
         suggestionRequestGate.invalidate()
         localCorrectionWord = ""
         localCorrectionSuggestions = emptyList()
@@ -195,6 +200,8 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         inputGeneration++
         pendingLocalCorrection?.let(mainHandler::removeCallbacks)
         pendingLocalCorrection = null
+        pendingSuggestionRender?.let(mainHandler::removeCallbacks)
+        pendingSuggestionRender = null
         suggestionRequestGate.invalidate()
         localCorrectionWord = ""
         localCorrectionSuggestions = emptyList()
@@ -459,6 +466,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                 setPadding(dp(1), 0, dp(1), 0)
                 background = keyBackground(wide = wide)
                 elevation = dp(1).toFloat()
+                tag = key
                 contentDescription = when (key) {
                     "⌫" -> "Backspace"
                     "↵" -> "Enter"
@@ -467,22 +475,41 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                     else -> key
                 }
                 setOnClickListener { tapFeedback(this); playKeySound(this); handleKey(key) }
-                setOnTouchListener { view, event ->
-                    when (event.actionMasked) {
-                        MotionEvent.ACTION_DOWN -> {
-                            view.scaleX = 0.92f
-                            view.scaleY = 0.92f
-                            view.translationZ = dp(7).toFloat()
-                            if (key.length == 1 && key != " ") showKeyPreview(view, text.toString())
-                        }
-                        MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                            view.scaleX = 1f
-                            view.scaleY = 1f
-                            view.translationZ = 0f
-                            mainHandler.postDelayed({ if (!view.isPressed) hideKeyPreview() }, 90)
+                if (key.length == 1 && key[0].isLetter()) {
+                    setOnTouchListener { view, event ->
+                        when (event.actionMasked) {
+                            MotionEvent.ACTION_DOWN -> {
+                                view.scaleX = 0.92f
+                                view.scaleY = 0.92f
+                                view.translationZ = dp(7).toFloat()
+                                showKeyPreview(view, text.toString())
+                            }
+                            MotionEvent.ACTION_UP -> {
+                                view.scaleX = 1f
+                                view.scaleY = 1f
+                                view.translationZ = 0f
+                                val nearest = nearestLetterKey(row, event.rawX)
+                                if (nearest != null && nearest !== view) {
+                                    tapFeedback(nearest)
+                                    playKeySound(nearest)
+                                    handleKey(nearest.tag as? String ?: key)
+                                    mainHandler.postDelayed({ hideKeyPreview() }, 90)
+                                    true
+                                } else {
+                                    mainHandler.postDelayed({ if (!view.isPressed) hideKeyPreview() }, 90)
+                                    false
+                                }
+                            }
+                            MotionEvent.ACTION_CANCEL -> {
+                                view.scaleX = 1f
+                                view.scaleY = 1f
+                                view.translationZ = 0f
+                                hideKeyPreview()
+                                false
+                            }
+                            else -> false
                         }
                     }
-                    false
                 }
                 if (key == "space") {
                     var startX = 0f
@@ -571,7 +598,8 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                 }
             }
             row.addView(keyView, LinearLayout.LayoutParams(0, dp(keyHeight()), weights.getOrElse(index) { 1f }).apply {
-                setMargins(dp(2), dp(3), dp(2), dp(3))
+                // Reduce dead touch gutters without changing the visual key size.
+                setMargins(dp(1), dp(2), dp(1), dp(2))
             })
             if (key.length == 1 && key[0].isLetter()) letterKeyViews += key to keyView
             if (key == "⇧") shiftKeyViews += keyView
@@ -581,6 +609,27 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         val params = LinearLayout.LayoutParams(width, dp(keyHeight() + 6))
         params.gravity = when (side) { 1 -> Gravity.START; 2 -> Gravity.END; else -> Gravity.CENTER_HORIZONTAL }
         root.addView(row, params)
+    }
+
+    private fun nearestLetterKey(row: LinearLayout, rawX: Float): TextView? {
+        val letterKeys = (0 until row.childCount).mapNotNull { index ->
+            (row.getChildAt(index) as? TextView)?.takeIf {
+                val value = it.tag as? String
+                value != null && value.length == 1 && value[0].isLetter()
+            }
+        }
+        if (letterKeys.isEmpty()) return null
+        val centers = FloatArray(letterKeys.size) { index ->
+            val location = IntArray(2)
+            letterKeys[index].getLocationOnScreen(location)
+            location[0] + letterKeys[index].width / 2f
+        }
+        val nearest = KeyboardTouchTargetResolver.nearestIndex(
+            pointerX = rawX,
+            keyCenters = centers,
+            maxDistance = dp(26).toFloat()
+        ) ?: return null
+        return letterKeys.getOrNull(nearest)
     }
 
     private fun keyBackground(wide: Boolean, active: Boolean = false, toolbar: Boolean = false): RippleDrawable {
@@ -1264,6 +1313,22 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     }
 
     private fun renderSuggestions() {
+        val targetRow = suggestionRow ?: return
+        pendingSuggestionRender?.let(mainHandler::removeCallbacks)
+        val session = inputGeneration
+        val render = Runnable {
+            pendingSuggestionRender = null
+            if (session == inputGeneration && suggestionRow === targetRow) {
+                renderSuggestionsNow()
+            }
+        }
+        pendingSuggestionRender = render
+        // Coalesce rapid taps: text reaches the editor immediately, while the
+        // candidate strip refreshes at most once per short UI frame.
+        mainHandler.postDelayed(render, 16L)
+    }
+
+    private fun renderSuggestionsNow() {
         val row = suggestionRow ?: return
         // A render represents a new UI snapshot; any older worker result is now stale.
         suggestionRequestGate.invalidate()
