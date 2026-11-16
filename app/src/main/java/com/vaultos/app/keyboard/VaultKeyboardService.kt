@@ -1206,6 +1206,9 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                 cell.typeface = android.graphics.Typeface.DEFAULT
                 cell.gravity = Gravity.CENTER
                 cell.background = null
+                cell.contentDescription = if (index == 0) "Input language: ${selectedLanguageLabel()}" else null
+                cell.isClickable = false
+                cell.isFocusable = false
                 cell.setTextColor(if (keyboardThemeDark()) Color.rgb(143, 155, 171) else Color.rgb(112, 124, 139))
                 cell.setOnClickListener(null)
                 cell.setOnLongClickListener(null)
