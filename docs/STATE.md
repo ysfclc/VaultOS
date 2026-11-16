@@ -449,3 +449,10 @@ User tested VaultOS 0.13.1 and reports rapid typing is somewhat better, but the 
 3. Measure key-to-visible-text latency, missed taps and correction usefulness on the Redmi.
 4. Only then tune geometry, touch behavior and licensed local EN/PL/TR prediction resources.
 5. Keep glide typing as a later, separately scoped feature.
+
+## Composing-text regression coverage — 2026-11-16
+
+- Added `ComposingTextInputConnectionInstrumentedTest.kt` using Android's real `BaseInputConnection` and an `EditText` target.
+- Covers successive composing updates replacing rather than appending, empty composing text removing the final character, and finishing composition before punctuation.
+- Tests are committed but not yet executed. API 35 CI must demonstrate actual test execution; the test does not replace end-to-end Redmi IME acceptance.
+- Corrected the last-character backspace path to replace the composing region with empty text before finishing it, avoiding the original composing token being left behind.
