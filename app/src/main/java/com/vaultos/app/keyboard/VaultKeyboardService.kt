@@ -237,7 +237,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
             if (requestedWord.isNotBlank() && !activeWord.equals(requestedWord, ignoreCase = true)) return@runOnMain
             currentSuggestions = suggestions
             renderSuggestions()
-            if (getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_AUTOCORRECT, true) &&
+            if (getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_AUTOCORRECT, false) &&
                 looksLikeTypo && suggestions.isNotEmpty() && lastCommittedWord.isNotBlank() && typedWord.isEmpty() &&
                 inputGeneration == activeSuggestionInputGeneration &&
                 lastCommittedWord.equals(requestedWord, ignoreCase = true)
@@ -1715,7 +1715,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
 
     private fun keyHeight(): Int = getSharedPreferences(PREFS, MODE_PRIVATE).getInt(KEY_HEIGHT, 50).coerceIn(44, 60)
     private fun hapticsEnabled(): Boolean = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_HAPTICS, true)
-    private fun autoCorrectEnabled(): Boolean = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_AUTOCORRECT, true)
+    private fun autoCorrectEnabled(): Boolean = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_AUTOCORRECT, false)
 
     private fun toggleHaptics() {
         getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean(KEY_HAPTICS, !hapticsEnabled()).apply()
