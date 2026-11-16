@@ -1289,8 +1289,9 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
             item.isFocusable = true
             val candidateKind = when {
                 isCurrent -> "Current word"
-                correcting -> "Spelling correction"
+                candidate in currentSuggestions || candidate in localCorrections -> "Spelling correction"
                 typed.isNotBlank() -> "Word completion"
+                correcting -> "Spelling correction"
                 else -> "Next-word prediction"
             }
             item.contentDescription = "$candidateKind: $candidate"
