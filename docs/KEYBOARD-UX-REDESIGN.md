@@ -134,3 +134,14 @@ Do not simply replace every label with an icon. Recognition and accessibility ma
 - Do not claim typing-speed improvement without repeatable physical-device measurements.
 - Do not remove a feature or shortcut without documenting its replacement and testing it.
 - Keep data preservation, local-first privacy and installed-user update continuity as higher priorities than keyboard cosmetics.
+
+
+## First implementation pass — action bar and candidate affordance
+
+Implemented on the 0.13.1 branch:
+- The default typing state no longer reserves a toolbar slot for a redundant Type tab. Type appears while in Clips, Vault or emoji mode so returning to typing remains explicit.
+- The toolbar's Tools label is now a compact overflow glyph with a meaningful accessibility content description. Clips, Vault, emoji and language remain directly reachable.
+- Candidate cells now expose semantic accessibility descriptions for current word, spelling correction, word completion and next-word prediction.
+- Non-primary candidate cells have a restrained outlined surface, while the current word retains the existing accent pill.
+
+Still open: physical-device layout review, TalkBack validation, adaptive geometry, locale-specific key access and the remaining KBD-3 interaction work. This is not a claim of completed keyboard UX or improved typing speed.
