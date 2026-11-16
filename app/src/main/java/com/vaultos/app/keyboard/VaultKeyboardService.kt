@@ -485,6 +485,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                                 view.scaleY = 0.92f
                                 view.translationZ = dp(7).toFloat()
                                 showKeyPreview(view, text.toString())
+                                false
                             }
                             MotionEvent.ACTION_UP -> {
                                 view.scaleX = 1f
