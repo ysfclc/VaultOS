@@ -170,8 +170,8 @@ User feedback confirms that the keyboard still does not feel fast or natural eno
 - Redmi Note 12 Pro 5G testing must confirm no duplicated/lost characters, correct backspace, candidate behavior and improved perceived responsiveness in Notes, Chrome, WhatsApp and ChatGPT.
 
 **Next engineering priorities**
-1. Added Android instrumentation contract tests for successive composing updates, empty-composition deletion and punctuation boundaries; execute them on API 35 CI. An explicit rejecting-editor fallback test remains to be added.
-2. Measure missed taps and end-to-end key-to-visible-text latency on the Redmi.
-3. Rework key hit geometry and touch interaction from measured errors, not arbitrary key enlargement.
-4. Improve EN/PL/TR candidate quality with a properly sourced, licensed local lexicon and representative evaluation data.
+1. Run the new touch-target unit tests and composing-text Android instrumentation tests in CI; add a rejecting-editor fallback regression case.
+2. Measure missed taps and key-to-visible-text latency on the Redmi. The source now resolves letter taps to the nearest key centre and coalesces candidate-strip rendering, but this is not yet a device-verified speed gain.
+3. Improve EN/PL/TR candidate quality with a properly sourced, licensed local lexicon and representative evaluation data.
+4. Validate adaptive geometry and TalkBack on the physical device.
 5. Treat glide typing as a separate later capability; do not add it before reliable tap typing is accepted.
