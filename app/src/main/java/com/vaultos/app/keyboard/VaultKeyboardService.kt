@@ -297,8 +297,8 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         addToolbarKey(top, "Vault", active = commandsMode, weight = 1.0f) {
             commandsMode = true; clipboardMode = false; emojiMode = false; commandQuery = ""; refreshKeyboard()
         }
-        addToolbarKey(top, selectedLanguageCode().uppercase(Locale.ROOT), active = false, weight = 0.85f) {
-            cycleKeyboardLanguage()
+        addToolbarKey(top, "${selectedLanguageCode().uppercase(Locale.ROOT)} ▾", active = false, weight = 1.0f) {
+            showKeyboardLanguagePicker(top.getChildAt(top.childCount - 2))
         }
         addToolbarKey(top, "⋯", active = false, weight = 0.65f) {
             showKeyboardTools(itAnchor = top.getChildAt(top.childCount - 1))
@@ -1472,10 +1472,50 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     private fun selectedLanguageCode(): String = getSharedPreferences(PREFS, MODE_PRIVATE)
         .getString(KEY_LANGUAGE, "en")?.lowercase(Locale.ROOT)?.takeIf { it in setOf("en", "pl", "tr") } ?: "en"
 
-    private fun cycleKeyboardLanguage() {
-        val languages = listOf("en", "pl", "tr")
-        val next = languages[(languages.indexOf(selectedLanguageCode()) + 1) % languages.size]
-        getSharedPreferences(PREFS, MODE_PRIVATE).edit().putString(KEY_LANGUAGE, next).apply()
+    private fun showKeyboardLanguagePicker(anchor: View) {
+        val dark = keyboardThemeDark()
+        val menu = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(6), dp(6), dp(6), dp(6))
+            setBackgroundColor(if (dark) Color.rgb(20, 26, 34) else Color.rgb(247, 249, 252))
+        }
+        var popup: PopupWindow? = null
+        val options = listOf(
+            "en" to "English",
+            "pl" to "Polski",
+            "tr" to "Türkçe"
+        )
+        options.forEach { (code, label) ->
+            val selected = code == selectedLanguageCode()
+            val option = TextView(this).apply {
+                text = if (selected) "✓  $label" else label
+                textSize = 13.5f
+                gravity = Gravity.CENTER_VERTICAL
+                minHeight = dp(46)
+                setPadding(dp(12), dp(6), dp(12), dp(6))
+                setTextColor(if (dark) Color.rgb(240, 245, 250) else Color.rgb(27, 38, 51))
+                background = keyBackground(wide = true, active = selected, toolbar = true)
+                contentDescription = if (selected) "$label, current keyboard language" else "Switch keyboard language to $label"
+                setOnClickListener {
+                    popup?.dismiss()
+                    selectKeyboardLanguage(code)
+                }
+            }
+            menu.addView(option, LinearLayout.LayoutParams(-1, dp(46)).apply {
+                bottomMargin = dp(3)
+            })
+        }
+        popup = PopupWindow(menu, dp(156), -2, true).apply {
+            isOutsideTouchable = true
+            elevation = dp(12).toFloat()
+            setBackgroundDrawable(android.graphics.drawable.ColorDrawable(Color.TRANSPARENT))
+            showAsDropDown(anchor, -dp(12), 0, Gravity.END)
+        }
+    }
+
+    private fun selectKeyboardLanguage(language: String) {
+        if (language !in setOf("en", "pl", "tr") || language == selectedLanguageCode()) return
+        getSharedPreferences(PREFS, MODE_PRIVATE).edit().putString(KEY_LANGUAGE, language).apply()
         localCorrectionWord = ""
         localCorrectionSuggestions = emptyList()
         pendingSpellCheck?.let(mainHandler::removeCallbacks)
