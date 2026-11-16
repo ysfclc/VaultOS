@@ -147,3 +147,8 @@ Opt-in automatic correction is permitted only when the delayed SpellChecker resu
 ## Multilingual evaluation baseline
 
 The repository includes a 25-row curated EN/PL/TR smoke fixture and a deterministic JVM harness that reports next-word, prefix-completion and correction top-1/top-3 counts plus correct-token controls. This is a diagnostic smoke test, not a representative natural-language benchmark and not a product-quality claim. No external corpus or lexicon is bundled. Any future language resources require documented source, immutable version, license, attribution, redistribution permission, preprocessing and checksum; never derive corpus material from private user content.
+
+
+## Keyboard UX redesign
+
+A source-based UX audit and staged redesign plan now lives in [docs/KEYBOARD-UX-REDESIGN.md](KEYBOARD-UX-REDESIGN.md). It covers action-bar hierarchy, candidate-state clarity, adaptive geometry, EN/PL/TR character access, integrated Clips/Vault modes, discoverability and accessibility. This is a planning artifact only; implementation and Redmi acceptance remain open.
