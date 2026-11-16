@@ -280,22 +280,29 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
         }
-        addToolbarKey(top, "Type", active = !clipboardMode && !commandsMode && !emojiMode, weight = 1.15f) {
-            clipboardMode = false; commandsMode = false; emojiMode = false; refreshKeyboard()
+        // Typing is the default state, so do not spend a permanent toolbar slot
+        // on a redundant "Type" tab. Bring it back as the first action only while
+        // the user is in Clips, Vault or emoji mode.
+        if (clipboardMode || commandsMode || emojiMode) {
+            addToolbarKey(top, "Type", active = false, weight = 1.05f) {
+                clipboardMode = false; commandsMode = false; emojiMode = false; refreshKeyboard()
+            }
         }
-        addToolbarKey(top, "😊", active = emojiMode, weight = 0.68f) {
+        addToolbarKey(top, "😊", active = emojiMode, weight = 0.8f) {
             emojiMode = true; clipboardMode = false; commandsMode = false; refreshKeyboard()
         }
         addToolbarKey(top, "Clips", active = clipboardMode, weight = 1.05f) {
             clipboardMode = true; commandsMode = false; emojiMode = false; clipboardQuery = ""; refreshKeyboard()
         }
-        addToolbarKey(top, "Vault", active = commandsMode, weight = 0.98f) {
+        addToolbarKey(top, "Vault", active = commandsMode, weight = 1.0f) {
             commandsMode = true; clipboardMode = false; emojiMode = false; commandQuery = ""; refreshKeyboard()
         }
-        addToolbarKey(top, selectedLanguageCode().uppercase(Locale.ROOT), active = false, weight = 0.75f) {
+        addToolbarKey(top, selectedLanguageCode().uppercase(Locale.ROOT), active = false, weight = 0.85f) {
             cycleKeyboardLanguage()
         }
-        addToolbarKey(top, "Tools", active = false, weight = 0.9f) { showKeyboardTools(itAnchor = top.getChildAt(top.childCount - 1)) }
+        addToolbarKey(top, "⋯", active = false, weight = 0.65f) {
+            showKeyboardTools(itAnchor = top.getChildAt(top.childCount - 1))
+        }
         root.addView(top, LinearLayout.LayoutParams(-1, dp(46)))
 
         if (clipboardMode) {
@@ -401,7 +408,12 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
             gravity = Gravity.CENTER
             setTextColor(if (keyboardThemeDark()) Color.WHITE else Color.rgb(28, 35, 44))
             isSingleLine = true
-            contentDescription = if (label == "😊") "Emoji keyboard" else label
+            contentDescription = when (label) {
+                "😊" -> "Emoji keyboard"
+                "⋯" -> "More keyboard actions and settings"
+                "Type" -> "Return to typing"
+                else -> label
+            }
             setPadding(dp(2), 0, dp(2), 0)
             background = keyBackground(wide = true, active = active, toolbar = true)
             setOnClickListener { tapFeedback(this); playKeySound(this); action() }
@@ -1270,6 +1282,15 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
             item.textSize = if (isCurrent) 13f else 13.5f
             item.typeface = if (isCurrent) android.graphics.Typeface.DEFAULT_BOLD else android.graphics.Typeface.DEFAULT
             item.gravity = Gravity.CENTER
+            item.isClickable = true
+            item.isFocusable = true
+            val candidateKind = when {
+                isCurrent -> "Current word"
+                correcting -> "Spelling correction"
+                typed.isNotBlank() -> "Word completion"
+                else -> "Next-word prediction"
+            }
+            item.contentDescription = "$candidateKind: $candidate"
             item.setTextColor(
                 when {
                     isCurrent && keyboardThemeDark() -> Color.rgb(177, 244, 211)
@@ -1278,7 +1299,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                     else -> Color.rgb(45, 55, 68)
                 }
             )
-            item.background = if (isCurrent) suggestionPillBackground() else null
+            item.background = if (isCurrent) suggestionPillBackground() else suggestionCandidateBackground()
             item.setOnLongClickListener {
                 if (typed.isNotBlank() && candidate.equals(typed, ignoreCase = true)) {
                     typingMemory.addToDictionary(language, typed)
@@ -1361,6 +1382,15 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         return GradientDrawable().apply {
             setColor(if (dark) Color.rgb(37, 62, 57) else Color.rgb(210, 239, 225))
             cornerRadius = dp(9).toFloat()
+        }
+    }
+
+    private fun suggestionCandidateBackground(): android.graphics.drawable.Drawable {
+        val dark = keyboardThemeDark()
+        return GradientDrawable().apply {
+            setColor(if (dark) Color.rgb(27, 33, 42) else Color.rgb(240, 244, 248))
+            cornerRadius = dp(9).toFloat()
+            setStroke(dp(1), if (dark) Color.rgb(48, 58, 72) else Color.rgb(220, 226, 233))
         }
     }
 
