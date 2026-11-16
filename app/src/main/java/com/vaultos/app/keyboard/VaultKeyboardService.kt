@@ -237,7 +237,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
             if (requestedWord.isNotBlank() && !activeWord.equals(requestedWord, ignoreCase = true)) return@runOnMain
             currentSuggestions = suggestions
             renderSuggestions()
-            if (getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_AUTOCORRECT, false) &&
+            if (getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_AUTOCORRECT, true) &&
                 looksLikeTypo && suggestions.isNotEmpty() && lastCommittedWord.isNotBlank() && typedWord.isEmpty() &&
                 inputGeneration == activeSuggestionInputGeneration &&
                 lastCommittedWord.equals(requestedWord, ignoreCase = true)
@@ -1220,8 +1220,8 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
             }
         }
         pendingSpellCheck = request
-        // Spell checking is useful after a short pause, not after every single key.
-        mainHandler.postDelayed(request, 95L)
+        // Spell checking is useful after a pause, not between rapid key taps.
+        mainHandler.postDelayed(request, 140L)
     }
 
     private fun learnWord(word: String, previousWord: String = "", previousPreviousWord: String = "") {
@@ -1395,7 +1395,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         val localCorrections = if (typed.isNotBlank() && currentSuggestions.isEmpty() && localCorrectionWord == typed) {
             localCorrectionSuggestions
         } else emptyList()
-        if (typed.length >= 2 && currentSuggestions.isEmpty() && localCorrectionWord != typed) {
+        if (typed.length >= 3 && currentSuggestions.isEmpty() && localCorrectionWord != typed) {
             requestLocalCorrections(typed, language, learnedVocabulary, row)
         }
         val correcting = currentSuggestions.isNotEmpty() || localCorrections.isNotEmpty()
@@ -1707,7 +1707,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
 
     private fun keyHeight(): Int = getSharedPreferences(PREFS, MODE_PRIVATE).getInt(KEY_HEIGHT, 50).coerceIn(44, 60)
     private fun hapticsEnabled(): Boolean = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_HAPTICS, true)
-    private fun autoCorrectEnabled(): Boolean = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_AUTOCORRECT, false)
+    private fun autoCorrectEnabled(): Boolean = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_AUTOCORRECT, true)
 
     private fun toggleHaptics() {
         getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean(KEY_HAPTICS, !hapticsEnabled()).apply()
