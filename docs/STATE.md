@@ -412,3 +412,11 @@ User tested VaultOS 0.13.1 and reports rapid typing is somewhat better, but the 
 - Reviewed the active 0.13.1 keyboard source and documented concrete UI gaps and a staged redesign in `docs/KEYBOARD-UX-REDESIGN.md`.
 - This does not mark keyboard UX as fixed. KBD-3 candidate UX, adaptive layout, EN/PL/TR discoverability, accessibility and Redmi Note 12 Pro 5G acceptance remain open.
 - Keep keyboard redesign focused on comfort, clarity and reliable typing; do not add visual effects or features that compete with the typing path.
+
+
+## Keyboard UX implementation — 2026-11-16
+
+- First source implementation committed: default typing no longer spends a toolbar slot on Type; Type is shown when leaving Clips, Vault or emoji mode. Tools is a compact overflow glyph with an accessibility description.
+- Candidate cells now describe current word, spelling correction, completion and next-word prediction to accessibility services, with a restrained outlined affordance for secondary candidates.
+- Commit is part of PR #5. Automated Android build, unit tests, lint and API 35 instrumentation are pending for this head. Physical Redmi Note 12 Pro 5G acceptance remains required.
+- Do not call the redesign complete or claim speed improvement until device acceptance and repeatable measurements.
