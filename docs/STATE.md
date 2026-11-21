@@ -274,7 +274,7 @@ VaultOS is a local-first Android file manager and personal content library for A
 - Added five JVM regression tests for multilingual UTF-8 and supplementary characters, same-character-count payload mutation, byte-count mismatch, Unicode code-point mismatch, and missing/malformed hashes.
 - Added four Room in-memory instrumentation tests for distinct duplicate events, timestamp/pin ordering, delete/clear behavior and clipboard-history search.
 - Added four repository-level Android instrumentation tests for long multilingual capture/readback, duplicate event-to-item reuse, event metadata tampering, archive tampering and search beyond the preview. These tests use unique payload markers and remove only the test-created archive records/files.
-- Added a gallery action to open captured files through the existing non-exported FileProvider with a read grant. Before URI creation, the canonical file must be a real file strictly inside the app-private `filesDir/vault` archive; external/original content URIs are no longer used as a fallback.
+- Added a gallery action to open captured files through the existing non-exported FileProvider with a read grant. A shared `resolveArchivedVaultFile` helper requires an existing regular file strictly inside canonical `filesDir/vault`; original external content URIs are never a fallback. Four JVM tests cover in-vault files, outside/traversal paths, missing/directories and symlink escapes.
 - Added selectable, scrollable full-text inspection with a Copy all action; both full-text paths use the integrity-checked repository readback.
 - Updated requirement traceability and task/state ledgers. No database schema or existing archive format changed.
 
@@ -282,6 +282,8 @@ VaultOS is a local-first Android file manager and personal content library for A
 - app/src/main/java/com/vaultos/app/storage/ClipboardPayloadIntegrity.kt
 - app/src/main/java/com/vaultos/app/storage/ClipboardHistoryRepository.kt
 - app/src/main/java/com/vaultos/app/ClipboardHistoryActivity.kt
+- app/src/main/java/com/vaultos/app/storage/ArchivedVaultFileAccess.kt
+- app/src/test/java/com/vaultos/app/storage/ArchivedVaultFileAccessTest.kt
 - app/src/test/java/com/vaultos/app/storage/ClipboardPayloadIntegrityTest.kt
 - app/src/androidTest/java/com/vaultos/app/data/ClipboardHistoryDaoInstrumentedTest.kt
 - app/src/androidTest/java/com/vaultos/app/storage/ClipboardHistoryRepositoryInstrumentedTest.kt
