@@ -19,8 +19,8 @@ permissions:
   contents: write
 
 concurrency:
-  group: vaultos-android-${{ github.ref }}
-  cancel-in-progress: false
+  group: vaultos-android-${{ github.ref }}-${{ github.sha }}
+  cancel-in-progress: true
 
 jobs:
   android:
