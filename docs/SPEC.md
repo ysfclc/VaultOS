@@ -18,12 +18,6 @@ The primary device acceptance target is the Xiaomi Redmi Note 12 Pro 5G. The sup
 6. Build success is necessary but not sufficient for release acceptance. Device, accessibility, migration, backup/restore and update continuity must be verified independently.
 
 
-## Proposed optional community capability (not part of current build)
-
-A future, separately approved capability may help trusted contacts meet spontaneously through mutual proximity awareness. The intended experience includes trusted circles, mutual live-location consent, approximate nearby notifications, short-lived availability statuses and one-tap meetup invitations. Later possibilities include temporary event circles, group convergence, coworking/lunch/walk/study/commute overlap and opt-in practical handoff reminders.
-
-This proposal does **not** change the current local-first product invariants. Cross-device real-time proximity requires networked identity, location permissions and a service; none is currently implemented or authorized by this specification. It must pass a separate privacy, security, Android background-execution, battery and GDPR review before implementation. Mutual consent, immediate revocation, time-bounded sharing, approximate location by default, no location history by default and protection against stalking/coercion are mandatory. See [COMMUNITY-ROADMAP.md](COMMUNITY-ROADMAP.md) for requirements and delivery gates.
-
 ## Entity and data-boundary rules
 
 - Persisted concepts have one canonical Room entity each; screens and composables render those entities rather than inventing competing persisted models.
