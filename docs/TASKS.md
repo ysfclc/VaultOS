@@ -335,7 +335,8 @@ Do not mark this phase complete from unit tests alone; device acceptance is mand
 - [x] Add five pure JVM regression cases covering exact multilingual UTF-8 payloads, same-length payload mutation, byte-count mismatch, Unicode code-point mismatch and missing/malformed hashes.
 - [x] Compile and run a standalone Kotlin smoke check for the integrity helper; exact payload accepted and all four mismatch classes rejected.
 - [ ] Run the new JVM tests through Gradle with the full test, lint and Android build pipeline.
-- [ ] Add Room-backed repository tests for capture persistence, duplicate payloads as distinct events, pin/delete/clear behavior and readback mismatch rejection.
+- [x] Add four Room in-memory instrumentation tests for separate timestamped duplicate events, pin/delete behavior, clear-unpinned preservation and search metadata.
+- [ ] Execute the new DAO instrumentation tests on an API 35 emulator and add repository-level capture/readback tests.
 - [x] Add an Open captured file action for archived clipboard URI/file entries using the existing private FileProvider boundary.
 - [x] Add a selectable, scrollable full-text inspection dialog alongside full-text copy; both paths use integrity-checked readback.
 - [ ] Add Room-backed gallery/repository tests and verify file opening on the target phone without changing non-destructive archive semantics.
