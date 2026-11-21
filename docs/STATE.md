@@ -273,7 +273,7 @@ VaultOS is a local-first Android file manager and personal content library for A
 - Updated ClipboardHistoryRepository.readText to fail closed for non-text entries, missing archived records, archive-level integrity failures, or event-level metadata mismatches. Both the app gallery's full-text copy and the keyboard's paste path use this repository method.
 - Added five JVM regression tests for multilingual UTF-8 and supplementary characters, same-character-count payload mutation, byte-count mismatch, Unicode code-point mismatch, and missing/malformed hashes.
 - Added four Room in-memory instrumentation tests for distinct duplicate events, timestamp/pin ordering, delete/clear behavior and clipboard-history search.
-- Added a gallery action to open archived clipboard file/URI entries through the existing non-exported FileProvider with a read grant.
+- Added a gallery action to open captured files through the existing non-exported FileProvider with a read grant. Before URI creation, the canonical file must be a real file strictly inside the app-private `filesDir/vault` archive; external/original content URIs are no longer used as a fallback.
 - Added selectable, scrollable full-text inspection with a Copy all action; both full-text paths use the integrity-checked repository readback.
 - Updated requirement traceability and task/state ledgers. No database schema or existing archive format changed.
 
@@ -288,14 +288,15 @@ VaultOS is a local-first Android file manager and personal content library for A
 **Verified**
 - Re-fetched the changed source and test from the feature branch.
 - Compiled the integrity helper with the available Kotlin compiler and ran a standalone smoke check. Exact UTF-8 content passed; changed content, incorrect byte count, incorrect Unicode code-point count and missing hash were rejected.
-- The five new JVM tests and four Room instrumentation tests have not yet run through Gradle/emulator. No Android build, lint, APK, repository integration test or physical-device acceptance is claimed.
+- The five new JVM integrity tests passed in GitHub Actions run 44882973823. The clean Gradle unit-test, lint, debug/release APK assembly, apksigner verification and private draft-release publication job also passed in run 44887048363. Its separate API 35 instrumentation job is still running; the four Room DAO tests and existing keyboard instrumentation tests are not yet confirmed.
 
 **Next**
 1. Run the branch through the Android Gradle test/lint/build pipeline.
-2. Execute the four Room DAO instrumentation tests and add repository-level capture/readback tests for event persistence, shared payload identity and event-level readback rejection.
-3. Add Room-backed repository tests, then verify gallery file opening and clipboard capture on the physical Redmi Note 12 Pro 5G.
+2. Finish API 35 instrumentation and add repository-level capture/readback tests for event persistence, shared payload identity and event-level readback rejection.
+3. Verify the archive-only file-opening guard and clipboard capture on the physical Redmi Note 12 Pro 5G.
 
 **Risks / boundaries**
 - Existing Android selected-IME requirement and sensitive/password exclusions remain unchanged.
 - Clipboard event deletion/clearing removes history rows only; archived payloads remain in the VaultOS library as already promised by the UI.
 - No Room schema migration, signing identity change, cloud service or network permission was introduced.
+- Both mirrored Android workflows now set `cancel-in-progress: false`; a later PR update must not cancel a still-running instrumentation verification.
