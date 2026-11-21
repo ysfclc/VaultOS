@@ -340,7 +340,7 @@ Do not mark this phase complete from unit tests alone; device acceptance is mand
 - [x] Add four repository-level instrumentation tests for long multilingual capture/readback, separate history events sharing one archived item, event hash/byte/code-point mismatch rejection, and same-length archive tampering plus search beyond the preview.
 - [ ] Complete DAO and repository API 35 instrumentation after the TCG emulator boot fix. Latest run 44887048363 passed the separate build/lint/APK job; its instrumentation job remains in progress.
 - [x] Add an Open captured file action for archived clipboard entries using the private FileProvider; resolve and require a real file strictly inside `filesDir/vault`, with no fallback to the original external content URI.
-- [x] Extract the canonical private-archive path resolver and add four JVM tests for valid files, outside/traversal paths, missing/directories and symlink escapes.
+- [x] Extract the canonical private-archive path resolver and add four JVM tests for valid files, outside/traversal paths, missing/directories and symlink escapes; run a standalone Kotlin smoke check covering the same path boundaries successfully.
 - [x] Add a selectable, scrollable full-text inspection dialog alongside full-text copy; both paths use integrity-checked readback.
 - [ ] Add Room-backed gallery/repository tests and verify file opening on the target phone without changing non-destructive archive semantics.
 - [ ] Complete Redmi Note 12 Pro 5G clipboard acceptance across Chrome, ChatGPT, WhatsApp, Notes and password fields.
