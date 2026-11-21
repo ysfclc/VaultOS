@@ -355,3 +355,19 @@ Do not mark this phase complete from unit tests alone; device acceptance is mand
 - [x] Raise API 35 emulator boot timeout to 900 seconds, explicitly select SwiftShader/no-snapshot/wipe-data options, wait for Android and Package Manager readiness before Gradle, and upload logcat/package/process diagnostics even on failure.
 
 **Boundary:** automatic monitoring still requires VaultOS to be the selected Android input method. This increment does not claim universal background clipboard interception.
+
+## Proposed future direction — community presence and spontaneous meetups
+
+See [COMMUNITY-ROADMAP.md](COMMUNITY-ROADMAP.md). This is a product-roadmap proposal, not implemented functionality and not a commitment to add background tracking.
+
+- [ ] Validate trusted-circle proximity alerts as a real user need (friends mutually share live location and are notified when they are close enough for a spontaneous coffee, cigarette break, walk or catch-up).
+- [ ] Define mutual-consent sharing, time limits, pause/revoke/block controls, approximate-location defaults, retention and anti-stalking threat model.
+- [ ] Decide whether connected community presence belongs in an optional module/service, preserving the existing local-first vault contract.
+- [ ] Prototype trusted circles, availability windows, nearby state and one-tap meet-now invitations with simulated locations only.
+- [ ] Run Android background-location, battery, freshness, notification-deduplication and revocation technical spike before requesting real location permissions.
+- [ ] Private alpha: mutual opt-in, temporary sessions, approximate proximity alerts and one-to-one invitations.
+- [ ] Safety/reliability gate before any broader rollout.
+- [ ] Consider later extensions: group convergence, temporary event circles, short-lived "free now" statuses, coworking/lunch/walk/study/commute overlap, and opt-in handoff reminders for borrowed items.
+- [ ] Evaluate success by mutually accepted real-world meetups, alert usefulness, false positives, battery impact and safety—not screen time or alert volume.
+
+**Non-negotiable boundary:** no public nearby map, stranger discovery, automatic exact-location exposure, permanent location history, inferred home/work routines, or hidden sharing. No INTERNET/location permissions or backend dependency are added to the current build as part of this roadmap entry.
