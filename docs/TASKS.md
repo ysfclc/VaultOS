@@ -337,7 +337,8 @@ Do not mark this phase complete from unit tests alone; device acceptance is mand
 - [x] Run the five new JVM integrity regression tests through Gradle; GitHub Actions PR run 44882973823 passed the clean testDebugUnitTest, lintDebug, assembleDebug and assembleRelease job.
 - [x] Add four Room in-memory instrumentation tests for separate timestamped duplicate events, pin/delete behavior, clear-unpinned preservation and search metadata.
 - [x] Add an explicit ANDROID_I_WANT_MY_TCG=yes environment setting to both Android workflow YAML copies so API 35 emulator 37.3.10 can boot without hardware acceleration.
-- [ ] Complete API 35 instrumentation after the TCG emulator boot fix; add repository-level capture/readback tests. Latest run 44887048363 passed the separate build/lint/APK job; its instrumentation job remains in progress.
+- [x] Add four repository-level instrumentation tests for long multilingual capture/readback, separate history events sharing one archived item, event hash/byte/code-point mismatch rejection, and same-length archive tampering plus search beyond the preview.
+- [ ] Complete DAO and repository API 35 instrumentation after the TCG emulator boot fix. Latest run 44887048363 passed the separate build/lint/APK job; its instrumentation job remains in progress.
 - [x] Add an Open captured file action for archived clipboard entries using the private FileProvider; canonicalize and require a real file strictly inside `filesDir/vault`, with no fallback to the original external content URI.
 - [x] Add a selectable, scrollable full-text inspection dialog alongside full-text copy; both paths use integrity-checked readback.
 - [ ] Add Room-backed gallery/repository tests and verify file opening on the target phone without changing non-destructive archive semantics.
