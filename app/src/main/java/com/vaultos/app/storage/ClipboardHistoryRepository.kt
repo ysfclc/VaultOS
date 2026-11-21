@@ -87,6 +87,11 @@ class ClipboardHistoryRepository(private val context: Context) {
         text
     }
 
+    suspend fun capturedItem(entry: ClipboardHistoryEntry) = withContext(Dispatchers.IO) {
+        if (entry.contentType != "file") return@withContext null
+        entry.itemId?.let { dao.getById(it) }
+    }
+
     suspend fun setPinned(id: String, pinned: Boolean) = dao.setClipboardPinned(id, pinned)
     suspend fun delete(id: String) = dao.deleteClipboardHistory(id)
     suspend fun clearUnpinned() = dao.clearUnpinnedClipboardHistory()
