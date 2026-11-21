@@ -1,5 +1,5 @@
 # State Ledger
-_Last updated: 2026-11-21 — Clipboard Core integrity increment_
+_Last updated: 2026-11-21 — Clipboard CI verification and emulator boot fix_
 
 ## 1. Product snapshot
 VaultOS is a local-first Android file manager and personal content library for Android 9+. It combines a non-destructive index of existing shared storage with a private archive for incoming and newly detected content, a searchable/organizable Room catalogue, file operations, an optional capture keyboard, a DocumentsProvider, app/APK catalogue, and manual SAF backup/restore. “Complete” means data-safe operation, tested restore/migration compatibility, reliable everyday UX on the target Redmi Note 12 Pro 5G, and a reproducible signed release. Build success alone is not device acceptance.
@@ -24,14 +24,14 @@ VaultOS is a local-first Android file manager and personal content library for A
 - 1.0.0 acceptance — Vercel build/test/lint/release verification is green; GitHub hosted-runner provisioning and Redmi physical-device matrix/data migration/restore evidence remain open.
 - GOV-001 signing migration — blocked on replacement keystore/secrets and an update-continuity decision; preserve the existing key until migration is proven.
 - Keyboard V2 — KBD-1/KBD-2 source is committed; Vercel JVM tests and the 500-word host benchmark pass; Android-backed tests compile but await emulator execution; candidate UX and Redmi acceptance remain; see docs/KEYBOARD-V2.md.
-- Clipboard Core + Gallery — event-level SHA-256, UTF-8 byte-count and Unicode code-point validation now runs before text readback; five pure JVM regression tests are added. Gradle execution and Room/repository integration tests remain pending.
+- Clipboard Core + Gallery — event-level SHA-256, UTF-8 byte-count and Unicode code-point validation now runs before text readback; five pure JVM regression tests now pass in GitHub Actions. The full clean unit-test/lint/debug+release APK job passed on PR #7 merge candidate 101f1a60e5dde175744ff0f90b25f3ee53eb8ce8. Four Room DAO instrumentation tests are committed but have not executed: the API 35 emulator failed before boot because its software CPU acceleration requires ANDROID_I_WANT_MY_TCG=yes; that environment fix is now in both workflow YAML copies and awaits a fresh run.
 - Test-coverage uplift — backup/restore, Room migrations, scan worker, clipboard repository, and DocumentsProvider still lack identified automated integration tests.
 
 ## 4. Known gaps & stubs
 - VaultBackupManager.kt:22,136 — backup/restore exists, but no automated v1/v2 round-trip, corrupt-manifest, checksum-failure, or path-safety tests were found.
 - VaultDatabase.kt:403 — Room database/migrations have no identified migration regression suite.
 - StorageScanWorker.kt:18 and VaultRepository.kt:135,243 — indexing/scanning behavior has no identified worker/repository test suite.
-- ClipboardHistoryRepository.kt — capture/persistence still lacks Room-backed repository tests. Event-level readback validation is implemented in ClipboardPayloadIntegrity.kt and has five added JVM regression cases; Gradle execution remains pending.
+- ClipboardHistoryRepository.kt — capture/persistence still lacks Room-backed repository tests. Event-level readback validation is implemented in ClipboardPayloadIntegrity.kt; all five pure JVM regression tests passed in the hosted clean Gradle job. Four DAO instrumentation tests are pending execution after correcting the emulator's software-acceleration environment.
 - VaultDocumentsProvider.kt:26 — system provider behavior has no identified automated interoperability tests.
 - Device acceptance steps in docs/DEVICE-TEST-PLAN.md remain unrecorded; CI is not a substitute.
 - Backups are not encrypted by VaultOS; the destination is user-selected.
@@ -46,9 +46,9 @@ VaultOS is a local-first Android file manager and personal content library for A
 - No checked-in Gradle wrapper was found. The local runtime used for this session has no mounted /testbed checkout; repository inspection/writes are through the connected GitHub repository.
 
 ## 6. Next three increments
-1. Verify the full Android build, lint, JVM suite and API 35 instrumentation suite; execute the 500-word correction benchmark and record p50/p95.
-2. Obtain hosted Android build/test/lint/instrumentation evidence and execute the 500-word benchmark; fix any emulator or device-specific failures.
-3. KBD-3 candidate UX and KBD-4 EN/PL/TR Redmi Note 12 Pro 5G acceptance. Resume backup/restore integrity tests after the keyboard predictor has a verified baseline.
+1. Re-run the API 35 instrumentation job with ANDROID_I_WANT_MY_TCG=yes; confirm the four new ClipboardHistoryDaoInstrumentedTest cases and existing keyboard instrumentation tests actually execute and pass.
+2. Run the 500-word correction benchmark on the hosted runner and record p50/p95; then complete KBD-3 candidate UX.
+3. KBD-4 EN/PL/TR Redmi Note 12 Pro 5G acceptance, followed by backup/restore integrity tests.
 
 ## 7. Open questions for the human
 - [ ] When will replacement signing material and GitHub Actions secrets be available for GOV-001? Default: do not rotate or delete the existing identity; keep the remediation blocked.
@@ -77,9 +77,9 @@ VaultOS is a local-first Android file manager and personal content library for A
 **Verified**
 - Changed source/docs re-fetched from GitHub; the IME service uses the shared typing-memory instance and does not instantiate LocalTypingMemory during render.
 - Four standalone Kotlin checks for ContextualPredictionRanker and four checks for the cursor-context regex (including comma/semicolon preservation and sentence-stop reset) compiled and passed locally with kotlinc 1.9.0. These are narrow helper checks, not the Android/JUnit suite.
-- The test source currently contains 21 @Test methods; none of the Android/JVM project tests have been executed in this session.
+- The test source currently contains 21 @Test methods; the hosted clean Gradle job passed `testDebugUnitTest`, `lintDebug`, `assembleDebug` and `assembleRelease` on PR #7 merge candidate 101f1a60e5dde175744ff0f90b25f3ee53eb8ce8. The separate API 35 instrumentation job failed before tests began: emulator 37.3.10 rejected `-accel off` without `ANDROID_I_WANT_MY_TCG=yes`; this was runner setup, not a test assertion failure.
 - The benchmark harness is committed but has not been executed; no p50/p95 performance result is claimed.
-- The combined status visible for the latest app-source commit exposes only a failing Vercel check pointing to Vercel's build-rate limit. The available workflow-run query returns no PR-triggered runs; it does not expose the push-triggered Android run. No Android build, lint or APK success is claimed.
+- The Vercel check remains subject to the account build-rate limit. GitHub Actions PR run 44882973823 checked out merge commit 101f1a60e5dde175744ff0f90b25f3ee53eb8ce8 (PR head e37d0b65e9243940f5025a5701c4d281264c28ae): the Android build job passed all unit tests, lint, debug/release APK assembly, apksigner verification and draft release publication. The instrumentation job failed before test execution because the emulator did not boot; the explicit TCG environment workaround is now committed to both workflow YAML copies. No physical Redmi acceptance is claimed.
 - No Redmi Note 12 Pro 5G device measurement was possible.
 
 **Not done / next**
