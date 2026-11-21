@@ -273,6 +273,7 @@ VaultOS is a local-first Android file manager and personal content library for A
 - Updated ClipboardHistoryRepository.readText to fail closed for non-text entries, missing archived records, archive-level integrity failures, or event-level metadata mismatches. Both the app gallery's full-text copy and the keyboard's paste path use this repository method.
 - Added five JVM regression tests for multilingual UTF-8 and supplementary characters, same-character-count payload mutation, byte-count mismatch, Unicode code-point mismatch, and missing/malformed hashes.
 - Added four Room in-memory instrumentation tests for distinct duplicate events, timestamp/pin ordering, delete/clear behavior and clipboard-history search.
+- Added four repository-level Android instrumentation tests for long multilingual capture/readback, duplicate event-to-item reuse, event metadata tampering, archive tampering and search beyond the preview. These tests use unique payload markers and remove only the test-created archive records/files.
 - Added a gallery action to open captured files through the existing non-exported FileProvider with a read grant. Before URI creation, the canonical file must be a real file strictly inside the app-private `filesDir/vault` archive; external/original content URIs are no longer used as a fallback.
 - Added selectable, scrollable full-text inspection with a Copy all action; both full-text paths use the integrity-checked repository readback.
 - Updated requirement traceability and task/state ledgers. No database schema or existing archive format changed.
@@ -283,6 +284,7 @@ VaultOS is a local-first Android file manager and personal content library for A
 - app/src/main/java/com/vaultos/app/ClipboardHistoryActivity.kt
 - app/src/test/java/com/vaultos/app/storage/ClipboardPayloadIntegrityTest.kt
 - app/src/androidTest/java/com/vaultos/app/data/ClipboardHistoryDaoInstrumentedTest.kt
+- app/src/androidTest/java/com/vaultos/app/storage/ClipboardHistoryRepositoryInstrumentedTest.kt
 - docs/SPEC.md, docs/TASKS.md, docs/STATE.md
 
 **Verified**
@@ -292,7 +294,7 @@ VaultOS is a local-first Android file manager and personal content library for A
 
 **Next**
 1. Run the branch through the Android Gradle test/lint/build pipeline.
-2. Finish API 35 instrumentation and add repository-level capture/readback tests for event persistence, shared payload identity and event-level readback rejection.
+2. Finish API 35 instrumentation, including the four new repository-level capture/readback tests. The new tests are committed but have not yet executed.
 3. Verify the archive-only file-opening guard and clipboard capture on the physical Redmi Note 12 Pro 5G.
 
 **Risks / boundaries**
