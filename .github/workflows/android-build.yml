@@ -344,6 +344,8 @@ jobs:
     name: Android API 35 instrumentation
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    env:
+      ANDROID_I_WANT_MY_TCG: "yes"
     permissions:
       contents: read
     steps:
