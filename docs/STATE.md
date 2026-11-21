@@ -272,11 +272,14 @@ VaultOS is a local-first Android file manager and personal content library for A
 - Added ClipboardPayloadIntegrity, which validates a returned text payload against the clipboard event's SHA-256, UTF-8 byte count and Unicode code-point count.
 - Updated ClipboardHistoryRepository.readText to fail closed for non-text entries, missing archived records, archive-level integrity failures, or event-level metadata mismatches. Both the app gallery's full-text copy and the keyboard's paste path use this repository method.
 - Added five JVM regression tests for multilingual UTF-8 and supplementary characters, same-character-count payload mutation, byte-count mismatch, Unicode code-point mismatch, and missing/malformed hashes.
+- Added a gallery action to open archived clipboard file/URI entries through the existing non-exported FileProvider with a read grant.
+- Added selectable, scrollable full-text inspection with a Copy all action; both full-text paths use the integrity-checked repository readback.
 - Updated requirement traceability and task/state ledgers. No database schema or existing archive format changed.
 
 **Files changed**
 - app/src/main/java/com/vaultos/app/storage/ClipboardPayloadIntegrity.kt
 - app/src/main/java/com/vaultos/app/storage/ClipboardHistoryRepository.kt
+- app/src/main/java/com/vaultos/app/ClipboardHistoryActivity.kt
 - app/src/test/java/com/vaultos/app/storage/ClipboardPayloadIntegrityTest.kt
 - docs/SPEC.md, docs/TASKS.md, docs/STATE.md
 
@@ -288,7 +291,7 @@ VaultOS is a local-first Android file manager and personal content library for A
 **Next**
 1. Run the branch through the Android Gradle test/lint/build pipeline.
 2. Add Room-backed repository tests for event persistence, duplicate events sharing one payload, pin/delete/clear behavior and event-level readback rejection.
-3. Improve clipboard gallery file actions and full-content inspection; then complete physical Redmi clipboard acceptance.
+3. Add Room-backed repository tests, then verify gallery file opening and clipboard capture on the physical Redmi Note 12 Pro 5G.
 
 **Risks / boundaries**
 - Existing Android selected-IME requirement and sensitive/password exclusions remain unchanged.
