@@ -387,9 +387,9 @@ jobs:
             mkdir -p app/build/ci-diagnostics
             capture_diagnostics() {
               status=$?
-              adb logcat -d -t 3000 > app/build/ci-diagnostics/logcat.txt 2>&1 || true
-              adb shell dumpsys activity processes > app/build/ci-diagnostics/activity-processes.txt 2>&1 || true
-              adb shell dumpsys package > app/build/ci-diagnostics/packages.txt 2>&1 || true
+              timeout 20s adb logcat -d -t 3000 > app/build/ci-diagnostics/logcat.txt 2>&1 || true
+              timeout 20s adb shell dumpsys activity processes > app/build/ci-diagnostics/activity-processes.txt 2>&1 || true
+              timeout 20s adb shell dumpsys package > app/build/ci-diagnostics/packages.txt 2>&1 || true
               exit "$status"
             }
             trap capture_diagnostics EXIT
@@ -409,17 +409,17 @@ jobs:
               adb shell getprop sys.boot_completed || true
               exit 1
             fi
-            gradle --no-daemon connectedDebugAndroidTest
+            timeout 35m gradle --no-daemon connectedDebugAndroidTest
 
       - name: Capture emulator diagnostics after instrumentation
         if: always()
         shell: bash
         run: |
           mkdir -p app/build/ci-diagnostics
-          adb devices -l > app/build/ci-diagnostics/devices.txt 2>&1 || true
-          adb logcat -d -t 3000 > app/build/ci-diagnostics/final-logcat.txt 2>&1 || true
-          adb shell dumpsys activity processes > app/build/ci-diagnostics/final-activity-processes.txt 2>&1 || true
-          adb shell dumpsys package > app/build/ci-diagnostics/final-packages.txt 2>&1 || true
+          timeout 20s adb devices -l > app/build/ci-diagnostics/devices.txt 2>&1 || true
+          timeout 20s adb logcat -d -t 3000 > app/build/ci-diagnostics/final-logcat.txt 2>&1 || true
+          timeout 20s adb shell dumpsys activity processes > app/build/ci-diagnostics/final-activity-processes.txt 2>&1 || true
+          timeout 20s adb shell dumpsys package > app/build/ci-diagnostics/final-packages.txt 2>&1 || true
 
       - name: Upload Android instrumentation diagnostics
         if: always()
