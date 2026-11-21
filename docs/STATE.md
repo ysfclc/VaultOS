@@ -1,3 +1,14 @@
+## Session 13 — inline clipboard expansion and 0.13.1 milestone (2026-11-21)
+
+- Clipboard history text now expands inline within its own card. The expanded payload is loaded on demand through integrity-checked, private-archive-only repository readback; the card animates its size, provides a bounded scroll region and allows text selection. Collapse returns to the short preview. Copy full text remains available.
+- The separate full-text dialog was removed from this history flow; this directly addresses the requested expand-in-history interaction.
+- Documented canonical persisted-entity boundaries: ClipboardHistoryEntry remains the history-event entity, VaultItem remains the archived payload entity, stable IDs connect them, and expansion/loading state remains transient UI state.
+- Prepared the next installable milestone as VaultOS 0.13.1 / versionCode 15 so it can update an existing 0.13.0 / versionCode 14 installation without uninstalling.
+- Fixed the emulator workflow script: the shell function/trap inside the emulator-runner script was being split by the action and failed with "/usr/bin/sh: Syntax error: end of file unexpected". The separate always-run diagnostics step remains responsible for diagnostics. Both workflow copies are kept identical.
+- Previous runs 44952386448 and 44952398169 show the emulator did boot, but instrumentation never started: the malformed shell function stopped the runner script before Gradle. The build/lint/signed APK jobs passed for those earlier commits; they do not include the new inline expansion or 0.13.1 version bump.
+- Fresh CI for the final 0.13.1 source and workflow fix is required. No test/build pass is claimed for the newest commit until its run completes.
+- PR #7 remains draft; GOV-001 security/signing hold remains in force. The 0.13.1 APK is intended as a private milestone build, not a public release.
+
 ## Session 12 — clipboard readback archive boundary (2026-11-21)
 
 - Hardened ClipboardHistoryRepository.readText: it now resolves the item's archivedPath through the canonical private-vault resolver before reading.
