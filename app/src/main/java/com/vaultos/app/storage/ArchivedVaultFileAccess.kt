@@ -12,6 +12,6 @@ internal fun resolveArchivedVaultFile(vaultRoot: File, candidatePath: String?): 
     return runCatching {
         val root = vaultRoot.canonicalFile
         val candidate = File(candidatePath).canonicalFile
-        if (candidate.isFile && candidate.toPath().startsWith(root.toPath())) candidate else null
+        if (root.isDirectory && candidate != root && candidate.isFile && candidate.toPath().startsWith(root.toPath())) candidate else null
     }.getOrNull()
 }
