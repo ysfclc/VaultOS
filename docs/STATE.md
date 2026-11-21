@@ -1,5 +1,5 @@
 # State Ledger
-_Last updated: 2026-11-12 by Continuity Engineer — Vercel build fallback_
+_Last updated: 2026-11-21 — Clipboard Core integrity increment_
 
 ## 1. Product snapshot
 VaultOS is a local-first Android file manager and personal content library for Android 9+. It combines a non-destructive index of existing shared storage with a private archive for incoming and newly detected content, a searchable/organizable Room catalogue, file operations, an optional capture keyboard, a DocumentsProvider, app/APK catalogue, and manual SAF backup/restore. “Complete” means data-safe operation, tested restore/migration compatibility, reliable everyday UX on the target Redmi Note 12 Pro 5G, and a reproducible signed release. Build success alone is not device acceptance.
@@ -24,13 +24,14 @@ VaultOS is a local-first Android file manager and personal content library for A
 - 1.0.0 acceptance — Vercel build/test/lint/release verification is green; GitHub hosted-runner provisioning and Redmi physical-device matrix/data migration/restore evidence remain open.
 - GOV-001 signing migration — blocked on replacement keystore/secrets and an update-continuity decision; preserve the existing key until migration is proven.
 - Keyboard V2 — KBD-1/KBD-2 source is committed; Vercel JVM tests and the 500-word host benchmark pass; Android-backed tests compile but await emulator execution; candidate UX and Redmi acceptance remain; see docs/KEYBOARD-V2.md.
-- Test-coverage uplift — backup/restore, Room migrations, scan worker, clipboard repository, and DocumentsProvider currently lack identified automated integration tests.
+- Clipboard Core + Gallery — event-level SHA-256, UTF-8 byte-count and Unicode code-point validation now runs before text readback; five pure JVM regression tests are added. Gradle execution and Room/repository integration tests remain pending.
+- Test-coverage uplift — backup/restore, Room migrations, scan worker, clipboard repository, and DocumentsProvider still lack identified automated integration tests.
 
 ## 4. Known gaps & stubs
 - VaultBackupManager.kt:22,136 — backup/restore exists, but no automated v1/v2 round-trip, corrupt-manifest, checksum-failure, or path-safety tests were found.
 - VaultDatabase.kt:403 — Room database/migrations have no identified migration regression suite.
 - StorageScanWorker.kt:18 and VaultRepository.kt:135,243 — indexing/scanning behavior has no identified worker/repository test suite.
-- ClipboardHistoryRepository.kt:25,52,76 — clipboard event capture/readback has no identified repository-level tests.
+- ClipboardHistoryRepository.kt — capture/persistence still lacks Room-backed repository tests. Event-level readback validation is implemented in ClipboardPayloadIntegrity.kt and has five added JVM regression cases; Gradle execution remains pending.
 - VaultDocumentsProvider.kt:26 — system provider behavior has no identified automated interoperability tests.
 - Device acceptance steps in docs/DEVICE-TEST-PLAN.md remain unrecorded; CI is not a substitute.
 - Backups are not encrypted by VaultOS; the destination is user-selected.
@@ -263,3 +264,33 @@ VaultOS is a local-first Android file manager and personal content library for A
 - Shell syntax and the target SDK parser were checked in a Vercel Sandbox.
 - The first deployment was not created: Vercel returned HTTP 402 `api-deployments-free-per-day` because the team exceeded 100 API deployments for the day; the response specified a 24-hour retry window. A second Git push did not produce an automatic deployment. No Vercel CLI authentication was available in the sandbox for the suggested CLI fallback.
 - Therefore the pipeline is configured in the connected project but is **not yet production-verified**. Re-trigger the Vercel production deployment after the API limit resets, then verify the deployment logs and both static download files.
+
+
+## Session 10 — Clipboard Core integrity increment (2026-11-21)
+
+**Done**
+- Added ClipboardPayloadIntegrity, which validates a returned text payload against the clipboard event's SHA-256, UTF-8 byte count and Unicode code-point count.
+- Updated ClipboardHistoryRepository.readText to fail closed for non-text entries, missing archived records, archive-level integrity failures, or event-level metadata mismatches. Both the app gallery's full-text copy and the keyboard's paste path use this repository method.
+- Added five JVM regression tests for multilingual UTF-8 and supplementary characters, same-character-count payload mutation, byte-count mismatch, Unicode code-point mismatch, and missing/malformed hashes.
+- Updated requirement traceability and task/state ledgers. No database schema or existing archive format changed.
+
+**Files changed**
+- app/src/main/java/com/vaultos/app/storage/ClipboardPayloadIntegrity.kt
+- app/src/main/java/com/vaultos/app/storage/ClipboardHistoryRepository.kt
+- app/src/test/java/com/vaultos/app/storage/ClipboardPayloadIntegrityTest.kt
+- docs/SPEC.md, docs/TASKS.md, docs/STATE.md
+
+**Verified**
+- Re-fetched the changed source and test from the feature branch.
+- Compiled the integrity helper with the available Kotlin compiler and ran a standalone smoke check. Exact UTF-8 content passed; changed content, incorrect byte count, incorrect Unicode code-point count and missing hash were rejected.
+- The new JUnit tests have not yet run through Gradle. No Android build, lint, APK, Room integration test or physical-device acceptance is claimed.
+
+**Next**
+1. Run the branch through the Android Gradle test/lint/build pipeline.
+2. Add Room-backed repository tests for event persistence, duplicate events sharing one payload, pin/delete/clear behavior and event-level readback rejection.
+3. Improve clipboard gallery file actions and full-content inspection; then complete physical Redmi clipboard acceptance.
+
+**Risks / boundaries**
+- Existing Android selected-IME requirement and sensitive/password exclusions remain unchanged.
+- Clipboard event deletion/clearing removes history rows only; archived payloads remain in the VaultOS library as already promised by the UI.
+- No Room schema migration, signing identity change, cloud service or network permission was introduced.
