@@ -1,3 +1,12 @@
+## Session 11 — instrumentation workflow timeout containment (2026-11-21)
+
+- Latest PR run 44888241547: signed build/unit tests/lint/APK job passed. API 35 instrumentation ended cancelled while the test step failed and diagnostics were still running; job logs were unavailable through the connector (BlobNotFound).
+- Rerunning the instrumentation job produced the same failure/cancellation pattern, so repeated retry alone is not considered useful.
+- Hardened both mirrored Android workflows on feature/clipboard-core-integrity: instrumentation Gradle command has a 35-minute timeout; ADB diagnostic commands each have a 20-second timeout so diagnostics cannot indefinitely block job cleanup.
+- Workflow mirror files were re-fetched after update. The workflow commit and ledger update require a fresh PR-triggered run; that new run has not yet been verified.
+- Instrumentation result is still unknown. Do not report Android-backed DAO/repository or keyboard tests as passing. If a new run fails, retrieve artifacts/job logs and determine whether runner/emulator/test failure before further code changes.
+- PR #7 remains draft under the separate GOV-001 signing/security hold.
+
 # State Ledger
 _Last updated: 2026-11-21 — Clipboard CI verification and emulator boot fix_
 
