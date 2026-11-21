@@ -19,7 +19,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: vaultos-android-${{ github.ref }}
+  group: vaultos-android-${{ github.ref }}-${{ github.sha }}
   cancel-in-progress: true
 
 jobs:
@@ -344,6 +344,8 @@ jobs:
     name: Android API 35 instrumentation
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    env:
+      ANDROID_I_WANT_MY_TCG: "yes"
     permissions:
       contents: read
     steps:
@@ -370,12 +372,62 @@ jobs:
         with:
           gradle-version: "8.9"
 
-      - name: Run Android-backed typing memory tests
+      - name: Run Android-backed persistence tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
           target: google_apis
           arch: x86_64
           profile: pixel_2
+          emulator-boot-timeout: 900
+          emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader -no-snapshot -wipe-data
           disable-animations: true
-          script: gradle --no-daemon connectedDebugAndroidTest
+          script: |
+            set -eu
+            mkdir -p app/build/ci-diagnostics
+            capture_diagnostics() {
+              status=$?
+              adb logcat -d -t 3000 > app/build/ci-diagnostics/logcat.txt 2>&1 || true
+              adb shell dumpsys activity processes > app/build/ci-diagnostics/activity-processes.txt 2>&1 || true
+              adb shell dumpsys package > app/build/ci-diagnostics/packages.txt 2>&1 || true
+              exit "$status"
+            }
+            trap capture_diagnostics EXIT
+
+            adb wait-for-device
+            ready=false
+            for attempt in $(seq 1 60); do
+              boot_completed="$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)"
+              if [ "$boot_completed" = "1" ] && adb shell cmd package list packages >/dev/null 2>&1; then
+                ready=true
+                break
+              fi
+              sleep 5
+            done
+            if [ "$ready" != "true" ]; then
+              echo "Android emulator did not finish booting or package manager did not become available." >&2
+              adb shell getprop sys.boot_completed || true
+              exit 1
+            fi
+            gradle --no-daemon connectedDebugAndroidTest
+
+      - name: Capture emulator diagnostics after instrumentation
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p app/build/ci-diagnostics
+          adb devices -l > app/build/ci-diagnostics/devices.txt 2>&1 || true
+          adb logcat -d -t 3000 > app/build/ci-diagnostics/final-logcat.txt 2>&1 || true
+          adb shell dumpsys activity processes > app/build/ci-diagnostics/final-activity-processes.txt 2>&1 || true
+          adb shell dumpsys package > app/build/ci-diagnostics/final-packages.txt 2>&1 || true
+
+      - name: Upload Android instrumentation diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: VaultOS-android-instrumentation-diagnostics
+          path: |
+            app/build/ci-diagnostics/
+            app/build/reports/androidTests/connected/debug/
+          if-no-files-found: warn
+          retention-days: 7

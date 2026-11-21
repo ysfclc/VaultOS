@@ -74,8 +74,22 @@ class ClipboardHistoryRepository(private val context: Context) {
     }
 
     suspend fun readText(entry: ClipboardHistoryEntry): String? = withContext(Dispatchers.IO) {
+        if (entry.contentType != "text") return@withContext null
         val item = entry.itemId?.let { dao.getById(it) } ?: return@withContext null
-        vault.readFullText(item)
+        val text = vault.readFullText(item) ?: return@withContext null
+        if (!ClipboardPayloadIntegrity.matches(
+                text = text,
+                expectedHash = entry.contentHash,
+                expectedByteCount = entry.byteCount,
+                expectedCharacterCount = entry.characterCount
+            )
+        ) return@withContext null
+        text
+    }
+
+    suspend fun capturedItem(entry: ClipboardHistoryEntry) = withContext(Dispatchers.IO) {
+        if (entry.contentType != "file") return@withContext null
+        entry.itemId?.let { dao.getById(it) }
     }
 
     suspend fun setPinned(id: String, pinned: Boolean) = dao.setClipboardPinned(id, pinned)

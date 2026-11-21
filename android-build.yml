@@ -19,7 +19,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: vaultos-android-${{ github.ref }}
+  group: vaultos-android-${{ github.ref }}-${{ github.sha }}
   cancel-in-progress: true
 
 jobs:
@@ -267,6 +267,11 @@ jobs:
           "$APKSIGNER" verify --verbose --print-certs dist/VaultOS-release.apk
           cd dist
           sha256sum VaultOS-debug.apk VaultOS-release.apk > SHA256SUMS.txt
+          # A plain ZIP is friendlier to Android download managers than the
+          # previous temporary sandbox streaming endpoint.
+          zip -9 -j VaultOS-0.13.0.zip VaultOS-release.apk
+          unzip -t VaultOS-0.13.0.zip
+          sha256sum VaultOS-0.13.0.zip >> SHA256SUMS.txt
           {
             echo "VaultOS 0.13.0"
             echo "Build: ${GITHUB_RUN_NUMBER}"
@@ -275,6 +280,15 @@ jobs:
             echo "Target SDK: 35"
             echo "Minimum SDK: 28"
           } > BUILD-INFO.txt
+
+      - name: Upload ZIP for native ChatGPT handoff
+        uses: actions/upload-artifact@v4
+        with:
+          name: VaultOS-0.13.0
+          path: dist/VaultOS-release.apk
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
 
       - name: Publish signed APKs as a private draft release
         env:
@@ -288,6 +302,7 @@ jobs:
           ASSETS=(
             dist/VaultOS-release.apk
             dist/VaultOS-debug.apk
+            dist/VaultOS-0.13.0.zip
             dist/SHA256SUMS.txt
             dist/BUILD-INFO.txt
           )
@@ -325,3 +340,94 @@ jobs:
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
+  android-instrumentation:
+    name: Android API 35 instrumentation
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      ANDROID_I_WANT_MY_TCG: "yes"
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+
+      - name: Install Android SDK packages
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Set up Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      - name: Run Android-backed persistence tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          emulator-boot-timeout: 900
+          emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader -no-snapshot -wipe-data
+          disable-animations: true
+          script: |
+            set -eu
+            mkdir -p app/build/ci-diagnostics
+            capture_diagnostics() {
+              status=$?
+              adb logcat -d -t 3000 > app/build/ci-diagnostics/logcat.txt 2>&1 || true
+              adb shell dumpsys activity processes > app/build/ci-diagnostics/activity-processes.txt 2>&1 || true
+              adb shell dumpsys package > app/build/ci-diagnostics/packages.txt 2>&1 || true
+              exit "$status"
+            }
+            trap capture_diagnostics EXIT
+
+            adb wait-for-device
+            ready=false
+            for attempt in $(seq 1 60); do
+              boot_completed="$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)"
+              if [ "$boot_completed" = "1" ] && adb shell cmd package list packages >/dev/null 2>&1; then
+                ready=true
+                break
+              fi
+              sleep 5
+            done
+            if [ "$ready" != "true" ]; then
+              echo "Android emulator did not finish booting or package manager did not become available." >&2
+              adb shell getprop sys.boot_completed || true
+              exit 1
+            fi
+            gradle --no-daemon connectedDebugAndroidTest
+
+      - name: Capture emulator diagnostics after instrumentation
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p app/build/ci-diagnostics
+          adb devices -l > app/build/ci-diagnostics/devices.txt 2>&1 || true
+          adb logcat -d -t 3000 > app/build/ci-diagnostics/final-logcat.txt 2>&1 || true
+          adb shell dumpsys activity processes > app/build/ci-diagnostics/final-activity-processes.txt 2>&1 || true
+          adb shell dumpsys package > app/build/ci-diagnostics/final-packages.txt 2>&1 || true
+
+      - name: Upload Android instrumentation diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: VaultOS-android-instrumentation-diagnostics
+          path: |
+            app/build/ci-diagnostics/
+            app/build/reports/androidTests/connected/debug/
+          if-no-files-found: warn
+          retention-days: 7
