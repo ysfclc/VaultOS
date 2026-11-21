@@ -338,6 +338,8 @@ Do not mark this phase complete from unit tests alone; device acceptance is mand
 - [x] Add four Room in-memory instrumentation tests for separate timestamped duplicate events, pin/delete behavior, clear-unpinned preservation and search metadata.
 - [x] Add an explicit ANDROID_I_WANT_MY_TCG=yes environment setting to both Android workflow YAML copies so API 35 emulator 37.3.10 can boot without hardware acceleration.
 - [x] Add four repository-level instrumentation tests for long multilingual capture/readback, separate history events sharing one archived item, event hash/byte/code-point mismatch rejection, and same-length archive tampering plus search beyond the preview.
+- [x] Require clipboard text readback to resolve a canonical archive file strictly inside filesDir/vault; add a repository instrumentation case rejecting an external archive path.
+- [ ] Execute the expanded clipboard repository instrumentation suite on API 35 and confirm the external-path rejection case passes.
 - [ ] Complete DAO and repository API 35 instrumentation after the TCG emulator boot fix. Latest run 44887048363 passed the separate build/lint/APK job; its instrumentation job remains in progress.
 - [x] Add an Open captured file action for archived clipboard entries using the private FileProvider; resolve and require a real file strictly inside `filesDir/vault`, with no fallback to the original external content URI.
 - [x] Extract the canonical private-archive path resolver and add four JVM tests for valid files, outside/traversal paths, missing/directories and symlink escapes; run a standalone Kotlin smoke check covering the same path boundaries successfully.
