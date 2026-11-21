@@ -128,7 +128,6 @@ Phase 2 implementation is in release line 0.2.0. The Room 1→2 migration adds r
 - [ ] Verify the GitHub-hosted workflow after updating both protected YAML copies.
 - [ ] Run the Redmi Note 12 Pro 5G device test plan, including Chrome, ChatGPT, WhatsApp, Notes, password fields, Android permissions and Xiaomi background restrictions.
 
-
 ## Phase 6 — filesystem safety hardening (0.6.0)
 
 - [x] Refuse symbolic links in selected copy, move, archive and delete trees.
@@ -257,8 +256,7 @@ The 0.13.0 keyboard is a functional baseline, not a complete predictive experien
 - [x] KBD-1: Run local correction ranking on one reusable worker thread using immutable vocabulary snapshots; keep IME/editor/UI operations on the main thread.
 - [x] KBD-1: Reject stale worker results with per-render generation tokens plus input-session, typed-word, language, editor-safety and candidate-row checks; clear queued work and shut down the executor with the service.
 - [x] KBD-1: Add and execute pure-engine correction limit, transposition and low-noise regression tests on Vercel (included in the 43 passing JVM tests).
-- [x] KBD-1: Add a repeatable pure-engine microbenchmark for 500 personal words (p50/p95 output; no flaky timing threshold).
-- [x] KBD-1: Execute the 500-word correction benchmark on Vercel; p50=105 μs / p95=160 μs on the build host (not a Redmi-device measurement).
+- [x] KBD-1: Add a repeatable pure-engine microbenchmark for 500 personal words (p50/p95 output; no flaky timing threshold).- [x] KBD-1: Execute the 500-word correction benchmark on Vercel; p50=105 μs / p95=160 μs on the build host (not a Redmi-device measurement).
 - [x] KBD-2: Add opt-in bounded trigram/context learning without changing existing word/bigram preference keys.
 - [x] KBD-2: Rank next-word candidates from a short transient two-word context, with EN/PL/TR isolation and one-word fallback.
 - [x] KBD-2: Add pure tests for EN/PL/TR context priors, unknown-context fallback, trigram precedence and candidate limits.
@@ -355,19 +353,3 @@ Do not mark this phase complete from unit tests alone; device acceptance is mand
 - [x] Raise API 35 emulator boot timeout to 900 seconds, explicitly select SwiftShader/no-snapshot/wipe-data options, wait for Android and Package Manager readiness before Gradle, and upload logcat/package/process diagnostics even on failure.
 
 **Boundary:** automatic monitoring still requires VaultOS to be the selected Android input method. This increment does not claim universal background clipboard interception.
-
-## Proposed future direction — community presence and spontaneous meetups
-
-See [COMMUNITY-ROADMAP.md](COMMUNITY-ROADMAP.md). This is a product-roadmap proposal, not implemented functionality and not a commitment to add background tracking.
-
-- [ ] Validate trusted-circle proximity alerts as a real user need (friends mutually share live location and are notified when they are close enough for a spontaneous coffee, cigarette break, walk or catch-up).
-- [ ] Define mutual-consent sharing, time limits, pause/revoke/block controls, approximate-location defaults, retention and anti-stalking threat model.
-- [ ] Decide whether connected community presence belongs in an optional module/service, preserving the existing local-first vault contract.
-- [ ] Prototype trusted circles, availability windows, nearby state and one-tap meet-now invitations with simulated locations only.
-- [ ] Run Android background-location, battery, freshness, notification-deduplication and revocation technical spike before requesting real location permissions.
-- [ ] Private alpha: mutual opt-in, temporary sessions, approximate proximity alerts and one-to-one invitations.
-- [ ] Safety/reliability gate before any broader rollout.
-- [ ] Consider later extensions: group convergence, temporary event circles, short-lived "free now" statuses, coworking/lunch/walk/study/commute overlap, and opt-in handoff reminders for borrowed items.
-- [ ] Evaluate success by mutually accepted real-world meetups, alert usefulness, false positives, battery impact and safety—not screen time or alert volume.
-
-**Non-negotiable boundary:** no public nearby map, stranger discovery, automatic exact-location exposure, permanent location history, inferred home/work routines, or hidden sharing. No INTERNET/location permissions or backend dependency are added to the current build as part of this roadmap entry.
