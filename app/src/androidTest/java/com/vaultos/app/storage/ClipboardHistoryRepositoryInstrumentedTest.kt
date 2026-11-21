@@ -117,6 +117,24 @@ class ClipboardHistoryRepositoryInstrumentedTest {
         assertNull(repository.readText(entry))
     }
 
+    @Test
+    fun readbackRejectsArchivePathOutsidePrivateVault() = runBlocking {
+        val content = "VAULTOS-CLIPBOARD-PATH-BOUNDARY-${UUID.randomUUID()}"
+        val entry = capture(content)
+        val item = dao.getById(requireNotNull(entry.itemId)) ?: error("Captured archive item missing")
+        val originalPath = item.archivedPath
+        val externalFile = File.createTempFile("vaultos-clipboard-outside-", ".txt", vault.root.parentFile)
+        try {
+            externalFile.writeText(content, Charsets.UTF_8)
+            dao.upsert(item.copy(archivedPath = externalFile.absolutePath))
+            assertNull(repository.readText(entry))
+        } finally {
+            dao.upsert(item.copy(archivedPath = originalPath))
+            externalFile.delete()
+        }
+        assertEquals(content, repository.readText(entry))
+    }
+
     private suspend fun capture(content: String) =
         requireNotNull(
             repository.captureText(
