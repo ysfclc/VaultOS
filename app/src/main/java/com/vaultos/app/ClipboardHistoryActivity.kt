@@ -189,10 +189,21 @@ private fun ClipboardEntryCard(
                             status = "Captured file is unavailable"
                         } else {
                             val uri = item.archivedPath?.let { path ->
-                                runCatching { FileProvider.getUriForFile(activity, "${activity.packageName}.files", File(path)) }.getOrNull()
-                            } ?: item.originalUri?.takeIf { it.startsWith("content:") }?.let(Uri::parse)
+                                runCatching {
+                                    val vaultRoot = File(activity.filesDir, "vault").canonicalFile
+                                    val archivedFile = File(path).canonicalFile
+                                    require(archivedFile.isFile && archivedFile.toPath().startsWith(vaultRoot.toPath())) {
+                                        "Captured path is outside the private VaultOS archive"
+                                    }
+                                    FileProvider.getUriForFile(
+                                        activity,
+                                        "${activity.packageName}.files",
+                                        archivedFile
+                                    )
+                                }.getOrNull()
+                            }
                             if (uri == null) {
-                                status = "Captured file is unavailable"
+                                status = "Archived file is unavailable or outside the VaultOS archive"
                             } else {
                                 val intent = Intent(Intent.ACTION_VIEW)
                                     .setDataAndType(uri, item.mimeType)
