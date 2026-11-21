@@ -55,6 +55,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.vaultos.app.data.ClipboardHistoryEntry
 import com.vaultos.app.storage.ClipboardHistoryRepository
+import com.vaultos.app.storage.resolveArchivedVaultFile
 import androidx.core.content.FileProvider
 import java.io.File
 import kotlinx.coroutines.flow.flowOf
@@ -189,11 +190,10 @@ private fun ClipboardEntryCard(
                         } else {
                             val uri = item.archivedPath?.let { path ->
                                 runCatching {
-                                    val vaultRoot = File(activity.filesDir, "vault").canonicalFile
-                                    val archivedFile = File(path).canonicalFile
-                                    require(archivedFile.isFile && archivedFile.toPath().startsWith(vaultRoot.toPath())) {
-                                        "Captured path is outside the private VaultOS archive"
-                                    }
+                                    val archivedFile = resolveArchivedVaultFile(
+                                        File(activity.filesDir, "vault"),
+                                        path
+                                    ) ?: error("Captured path is outside the private VaultOS archive")
                                     FileProvider.getUriForFile(
                                         activity,
                                         "${activity.packageName}.files",
