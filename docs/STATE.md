@@ -1,3 +1,12 @@
+## Session 12 — clipboard readback archive boundary (2026-11-21)
+
+- Hardened ClipboardHistoryRepository.readText: it now resolves the item's archivedPath through the canonical private-vault resolver before reading.
+- Clipboard history readback fails closed for missing paths, directories, traversal, symlink escapes and any path outside filesDir/vault. It no longer falls back to an original content URI.
+- Added a Room-backed repository instrumentation case that temporarily points a captured event at a file outside the vault, expects null, restores the original record and verifies normal readback still succeeds.
+- The new Android instrumentation case is committed but not yet executed. No emulator result is claimed.
+- The five pure JVM payload-integrity tests and four canonical-path JVM tests remain the previously reported green checks; this new repository boundary is awaiting Android-backed execution.
+- PR #7 remains draft under GOV-001. No APK release or merge authorized.
+
 ## Session 11 — instrumentation workflow timeout containment (2026-11-21)
 
 - Latest PR run 44888241547: signed build/unit tests/lint/APK job passed. API 35 instrumentation ended cancelled while the test step failed and diagnostics were still running; job logs were unavailable through the connector (BlobNotFound).
