@@ -326,3 +326,17 @@ Do not mark this phase complete from unit tests alone; device acceptance is mand
 
 
 **Current blocker (2026-11-13):** Vercel refused the initial deployment with HTTP 402 `api-deployments-free-per-day` (more than 100 API deployments today; retry after 24 hours). The connected project settings and source pipeline are in place, but production build/download verification remains unchecked until Vercel accepts a deployment.
+
+
+## Clipboard Core + Gallery — integrity increment (2026-11-21)
+
+- [x] Validate the clipboard history event's own SHA-256, UTF-8 byte count and Unicode code-point count before returning saved text for copy or keyboard paste.
+- [x] Fail closed when a text event has a missing/malformed hash or mismatched payload metadata.
+- [x] Add five pure JVM regression cases covering exact multilingual UTF-8 payloads, same-length payload mutation, byte-count mismatch, Unicode code-point mismatch and missing/malformed hashes.
+- [x] Compile and run a standalone Kotlin smoke check for the integrity helper; exact payload accepted and all four mismatch classes rejected.
+- [ ] Run the new JVM tests through Gradle with the full test, lint and Android build pipeline.
+- [ ] Add Room-backed repository tests for capture persistence, duplicate payloads as distinct events, pin/delete/clear behavior and readback mismatch rejection.
+- [ ] Improve the gallery's file-entry actions and full-content inspection without changing the non-destructive archive semantics.
+- [ ] Complete Redmi Note 12 Pro 5G clipboard acceptance across Chrome, ChatGPT, WhatsApp, Notes and password fields.
+
+**Boundary:** automatic monitoring still requires VaultOS to be the selected Android input method. This increment does not claim universal background clipboard interception.
