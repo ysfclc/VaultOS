@@ -411,6 +411,16 @@ jobs:
             fi
             gradle --no-daemon connectedDebugAndroidTest
 
+      - name: Capture emulator diagnostics after instrumentation
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p app/build/ci-diagnostics
+          adb devices -l > app/build/ci-diagnostics/devices.txt 2>&1 || true
+          adb logcat -d -t 3000 > app/build/ci-diagnostics/final-logcat.txt 2>&1 || true
+          adb shell dumpsys activity processes > app/build/ci-diagnostics/final-activity-processes.txt 2>&1 || true
+          adb shell dumpsys package > app/build/ci-diagnostics/final-packages.txt 2>&1 || true
+
       - name: Upload Android instrumentation diagnostics
         if: always()
         uses: actions/upload-artifact@v4
