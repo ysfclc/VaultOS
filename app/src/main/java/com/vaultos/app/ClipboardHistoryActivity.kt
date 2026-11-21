@@ -7,6 +7,7 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -141,9 +142,9 @@ private fun ClipboardEntryCard(
     val scope = rememberCoroutineScope()
     var status by remember(entry.id) { mutableStateOf<String?>(null) }
     var fullText by remember(entry.id) { mutableStateOf<String?>(null) }
-    var showFullText by remember(entry.id) { mutableStateOf(false) }
+    var isExpanded by remember(entry.id) { mutableStateOf(false) }
     Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF151B22))) {
-        Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(Modifier.fillMaxWidth().padding(12.dp).animateContentSize(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(if (entry.contentType == "text") "TEXT" else "FILE", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.width(8.dp))
@@ -151,7 +152,17 @@ private fun ClipboardEntryCard(
                 IconButton(onClick = onPin) { Icon(Icons.Default.PushPin, contentDescription = if (entry.isPinned) "Unpin" else "Pin", tint = if (entry.isPinned) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant) }
                 IconButton(onClick = onDelete) { Icon(Icons.Default.Delete, contentDescription = "Remove from history") }
             }
-            Text(entry.preview.ifBlank { "(Empty clipboard item)" }, maxLines = 5, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
+            if (isExpanded && fullText != null) {
+                Column(
+                    Modifier.fillMaxWidth().heightIn(max = 360.dp).verticalScroll(rememberScrollState())
+                ) {
+                    SelectionContainer {
+                        Text(fullText.orEmpty(), style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+            } else {
+                Text(entry.preview.ifBlank { "(Empty clipboard item)" }, maxLines = 5, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
+            }
             Text("${DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(entry.capturedAt))}  ·  ${if (entry.contentType == "text") "${entry.characterCount} chars · ${entry.byteCount} bytes" else "${entry.byteCount} bytes"}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (entry.contentType == "text") {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -171,15 +182,23 @@ private fun ClipboardEntryCard(
                         Text("Copy full text")
                     }
                     TextButton(onClick = {
-                        scope.launch {
-                            val captured = runCatching { repository.readText(entry) }.getOrNull()
-                            if (captured.isNullOrEmpty()) status = "Original text is unavailable or failed its integrity check"
-                            else {
-                                fullText = captured
-                                showFullText = true
+                        if (isExpanded) {
+                            isExpanded = false
+                        } else if (fullText != null) {
+                            isExpanded = true
+                        } else {
+                            scope.launch {
+                                status = "Loading full text…"
+                                val captured = runCatching { repository.readText(entry) }.getOrNull()
+                                if (captured.isNullOrEmpty()) status = "Original text is unavailable or failed its integrity check"
+                                else {
+                                    fullText = captured
+                                    isExpanded = true
+                                    status = null
+                                }
                             }
                         }
-                    }) { Text("View full text") }
+                    }) { Text(if (isExpanded) "Collapse text" else "Expand full text") }
                 }
             } else {
                 Button(onClick = {
@@ -217,28 +236,5 @@ private fun ClipboardEntryCard(
             }
             status?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary) }
         }
-    }
-    if (showFullText && fullText != null) {
-        AlertDialog(
-            onDismissRequest = { showFullText = false },
-            title = { Text("Captured text · ${fullText!!.codePointCount(0, fullText!!.length)} characters") },
-            text = {
-                Column(Modifier.fillMaxWidth().heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
-                    SelectionContainer { Text(fullText.orEmpty(), style = MaterialTheme.typography.bodyMedium) }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    val value = fullText.orEmpty()
-                    runCatching {
-                        val manager = activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        manager.setPrimaryClip(ClipData.newPlainText("VaultOS history", value))
-                    }.onSuccess { status = "Full text copied (${value.length} characters)" }
-                        .onFailure { status = "Copy failed" }
-                    showFullText = false
-                }) { Text("Copy all") }
-            },
-            dismissButton = { TextButton(onClick = { showFullText = false }) { Text("Close") } }
-        )
     }
 }
