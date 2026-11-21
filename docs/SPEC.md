@@ -17,6 +17,14 @@ The primary device acceptance target is the Xiaomi Redmi Note 12 Pro 5G. The sup
 5. Private archive content is app-private and is lost on uninstall unless separately backed up. User-selected SAF backups are not encrypted by VaultOS.
 6. Build success is necessary but not sufficient for release acceptance. Device, accessibility, migration, backup/restore and update continuity must be verified independently.
 
+## Entity and data-boundary rules
+
+- Persisted concepts have one canonical Room entity each; screens and composables render those entities rather than inventing competing persisted models.
+- Relationships use stable entity IDs, not copied mutable snapshots. Repository methods own integrity checks and storage boundaries.
+- Clipboard history is an event entity (ClipboardHistoryEntry) linked to a canonical archived VaultItem. Repeated captures remain distinct events while identical payloads may share one archive item.
+- Full clipboard payloads are loaded on demand from the private archive. Preview text is only a list summary and must never be treated as the complete payload.
+- UI-only state such as expanded/collapsed cards, loading indicators and selection is transient and must not be persisted as domain data.
+
 ## Explicit non-goals / platform boundaries
 
 - Read another application's private app data, sessions, or databases.
