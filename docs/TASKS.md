@@ -344,5 +344,6 @@ Do not mark this phase complete from unit tests alone; device acceptance is mand
 - [ ] Add Room-backed gallery/repository tests and verify file opening on the target phone without changing non-destructive archive semantics.
 - [ ] Complete Redmi Note 12 Pro 5G clipboard acceptance across Chrome, ChatGPT, WhatsApp, Notes and password fields.
 - [x] Set both mirrored workflow concurrency groups to `cancel-in-progress: false` so PR updates cannot cancel an active Android instrumentation run.
+- [x] Raise API 35 emulator boot timeout to 900 seconds, explicitly select SwiftShader/no-snapshot/wipe-data options, wait for Android and Package Manager readiness before Gradle, and upload logcat/package/process diagnostics even on failure.
 
 **Boundary:** automatic monitoring still requires VaultOS to be the selected Android input method. This increment does not claim universal background clipboard interception.
