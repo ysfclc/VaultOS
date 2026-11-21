@@ -264,7 +264,7 @@ The 0.13.0 keyboard is a functional baseline, not a complete predictive experien
 - [x] KBD-2: Add pure tests for EN/PL/TR context priors, unknown-context fallback, trigram precedence and candidate limits.
 - [x] KBD-2: Add Android-backed tests for opt-in, word/bigram/trigram persistence, opt-out, clear/reset, EN/PL/TR isolation and v1 bigram compatibility.
 - [x] KBD-2: Compile the six Android-backed SharedPreferences tests with :app:assembleDebugAndroidTest on Vercel.
-- [ ] KBD-2: Execute connectedDebugAndroidTest on an API 35 emulator; Vercel had no /dev/kvm and GitHub runner allocation remains unresolved.
+- [ ] KBD-2: Execute connectedDebugAndroidTest on an API 35 emulator. GitHub's API 35 emulator launch failed before boot because emulator 37.3.10 requires ANDROID_I_WANT_MY_TCG=yes when hardware acceleration is disabled; the environment fix is committed to both workflow copies and awaits rerun.
 - [x] KBD-1: Add pure generation-gate tests for newest-request precedence and lifecycle invalidation.
 - [ ] KBD-3: Redesign candidate strip hierarchy and interactions after latency and prediction quality are stable.
 - [ ] KBD-4: Measure real typing latency and prediction usefulness on Redmi Note 12 Pro 5G across safe apps and languages.
@@ -334,9 +334,10 @@ Do not mark this phase complete from unit tests alone; device acceptance is mand
 - [x] Fail closed when a text event has a missing/malformed hash or mismatched payload metadata.
 - [x] Add five pure JVM regression cases covering exact multilingual UTF-8 payloads, same-length payload mutation, byte-count mismatch, Unicode code-point mismatch and missing/malformed hashes.
 - [x] Compile and run a standalone Kotlin smoke check for the integrity helper; exact payload accepted and all four mismatch classes rejected.
-- [ ] Run the new JVM tests through Gradle with the full test, lint and Android build pipeline.
+- [x] Run the five new JVM integrity regression tests through Gradle; GitHub Actions PR run 44882973823 passed the clean testDebugUnitTest, lintDebug, assembleDebug and assembleRelease job.
 - [x] Add four Room in-memory instrumentation tests for separate timestamped duplicate events, pin/delete behavior, clear-unpinned preservation and search metadata.
-- [ ] Execute the new DAO instrumentation tests on an API 35 emulator and add repository-level capture/readback tests.
+- [x] Add an explicit ANDROID_I_WANT_MY_TCG=yes environment setting to both Android workflow YAML copies so API 35 emulator 37.3.10 can boot without hardware acceleration.
+- [ ] Execute the new DAO instrumentation tests on an API 35 emulator after the emulator boot fix; add repository-level capture/readback tests.
 - [x] Add an Open captured file action for archived clipboard URI/file entries using the existing private FileProvider boundary.
 - [x] Add a selectable, scrollable full-text inspection dialog alongside full-text copy; both paths use integrity-checked readback.
 - [ ] Add Room-backed gallery/repository tests and verify file opening on the target phone without changing non-destructive archive semantics.
