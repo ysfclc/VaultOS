@@ -301,4 +301,4 @@ VaultOS is a local-first Android file manager and personal content library for A
 - Existing Android selected-IME requirement and sensitive/password exclusions remain unchanged.
 - Clipboard event deletion/clearing removes history rows only; archived payloads remain in the VaultOS library as already promised by the UI.
 - No Room schema migration, signing identity change, cloud service or network permission was introduced.
-- Both mirrored Android workflows now set `cancel-in-progress: false`; a later PR update must not cancel a still-running instrumentation verification.
+- Both mirrored Android workflows now set `cancel-in-progress: false`; a later PR update must not cancel a still-running instrumentation verification. The API 35 emulator job also has a 900-second boot timeout, explicit SwiftShader/no-snapshot/wipe-data options, Package Manager readiness checks, and always-uploaded logcat/process/package diagnostics.
