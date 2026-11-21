@@ -339,6 +339,11 @@ Do not mark this phase complete from unit tests alone; device acceptance is mand
 - [x] Add an explicit ANDROID_I_WANT_MY_TCG=yes environment setting to both Android workflow YAML copies so API 35 emulator 37.3.10 can boot without hardware acceleration.
 - [x] Add four repository-level instrumentation tests for long multilingual capture/readback, separate history events sharing one archived item, event hash/byte/code-point mismatch rejection, and same-length archive tampering plus search beyond the preview.
 - [x] Require clipboard text readback to resolve a canonical archive file strictly inside filesDir/vault; add a repository instrumentation case rejecting an external archive path.
+- [x] Expand full copied text inline in its clipboard history card with bounded scrolling, selectable text and animated expand/collapse; keep Copy full text available.
+- [x] Keep ClipboardHistoryEntry and VaultItem as the canonical persisted event/payload entities; keep expansion state transient and document the global entity boundary.
+- [x] Fix emulator-runner script parsing by removing the multiline shell function/trap that was executed as a truncated command; retain separate always-run diagnostics.
+- [ ] Verify API 35 clipboard DAO/repository instrumentation after the emulator-runner script fix.
+- [ ] Build and verify signed VaultOS 0.13.1 / versionCode 15 APKs; deliver as a private milestone build for in-place update testing.
 - [ ] Execute the expanded clipboard repository instrumentation suite on API 35 and confirm the external-path rejection case passes.
 - [ ] Complete DAO and repository API 35 instrumentation after the TCG emulator boot fix. Latest run 44887048363 passed the separate build/lint/APK job; its instrumentation job remains in progress.
 - [x] Add an Open captured file action for archived clipboard entries using the private FileProvider; resolve and require a real file strictly inside `filesDir/vault`, with no fallback to the original external content URI.
