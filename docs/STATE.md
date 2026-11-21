@@ -272,6 +272,7 @@ VaultOS is a local-first Android file manager and personal content library for A
 - Added ClipboardPayloadIntegrity, which validates a returned text payload against the clipboard event's SHA-256, UTF-8 byte count and Unicode code-point count.
 - Updated ClipboardHistoryRepository.readText to fail closed for non-text entries, missing archived records, archive-level integrity failures, or event-level metadata mismatches. Both the app gallery's full-text copy and the keyboard's paste path use this repository method.
 - Added five JVM regression tests for multilingual UTF-8 and supplementary characters, same-character-count payload mutation, byte-count mismatch, Unicode code-point mismatch, and missing/malformed hashes.
+- Added four Room in-memory instrumentation tests for distinct duplicate events, timestamp/pin ordering, delete/clear behavior and clipboard-history search.
 - Added a gallery action to open archived clipboard file/URI entries through the existing non-exported FileProvider with a read grant.
 - Added selectable, scrollable full-text inspection with a Copy all action; both full-text paths use the integrity-checked repository readback.
 - Updated requirement traceability and task/state ledgers. No database schema or existing archive format changed.
@@ -281,16 +282,17 @@ VaultOS is a local-first Android file manager and personal content library for A
 - app/src/main/java/com/vaultos/app/storage/ClipboardHistoryRepository.kt
 - app/src/main/java/com/vaultos/app/ClipboardHistoryActivity.kt
 - app/src/test/java/com/vaultos/app/storage/ClipboardPayloadIntegrityTest.kt
+- app/src/androidTest/java/com/vaultos/app/data/ClipboardHistoryDaoInstrumentedTest.kt
 - docs/SPEC.md, docs/TASKS.md, docs/STATE.md
 
 **Verified**
 - Re-fetched the changed source and test from the feature branch.
 - Compiled the integrity helper with the available Kotlin compiler and ran a standalone smoke check. Exact UTF-8 content passed; changed content, incorrect byte count, incorrect Unicode code-point count and missing hash were rejected.
-- The new JUnit tests have not yet run through Gradle. No Android build, lint, APK, Room integration test or physical-device acceptance is claimed.
+- The five new JVM tests and four Room instrumentation tests have not yet run through Gradle/emulator. No Android build, lint, APK, repository integration test or physical-device acceptance is claimed.
 
 **Next**
 1. Run the branch through the Android Gradle test/lint/build pipeline.
-2. Add Room-backed repository tests for event persistence, duplicate events sharing one payload, pin/delete/clear behavior and event-level readback rejection.
+2. Execute the four Room DAO instrumentation tests and add repository-level capture/readback tests for event persistence, shared payload identity and event-level readback rejection.
 3. Add Room-backed repository tests, then verify gallery file opening and clipboard capture on the physical Redmi Note 12 Pro 5G.
 
 **Risks / boundaries**
