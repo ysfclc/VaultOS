@@ -336,7 +336,9 @@ Do not mark this phase complete from unit tests alone; device acceptance is mand
 - [x] Compile and run a standalone Kotlin smoke check for the integrity helper; exact payload accepted and all four mismatch classes rejected.
 - [ ] Run the new JVM tests through Gradle with the full test, lint and Android build pipeline.
 - [ ] Add Room-backed repository tests for capture persistence, duplicate payloads as distinct events, pin/delete/clear behavior and readback mismatch rejection.
-- [ ] Improve the gallery's file-entry actions and full-content inspection without changing the non-destructive archive semantics.
+- [x] Add an Open captured file action for archived clipboard URI/file entries using the existing private FileProvider boundary.
+- [x] Add a selectable, scrollable full-text inspection dialog alongside full-text copy; both paths use integrity-checked readback.
+- [ ] Add Room-backed gallery/repository tests and verify file opening on the target phone without changing non-destructive archive semantics.
 - [ ] Complete Redmi Note 12 Pro 5G clipboard acceptance across Chrome, ChatGPT, WhatsApp, Notes and password fields.
 
 **Boundary:** automatic monitoring still requires VaultOS to be the selected Android input method. This increment does not claim universal background clipboard interception.
