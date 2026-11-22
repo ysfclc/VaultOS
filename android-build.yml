@@ -383,23 +383,6 @@ jobs:
           emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader -no-snapshot -wipe-data
           disable-animations: true
           script: |
-            set -eu
-            mkdir -p app/build/ci-diagnostics
-            adb wait-for-device
-            ready=false
-            for attempt in $(seq 1 60); do
-              boot_completed="$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)"
-              if [ "$boot_completed" = "1" ] && adb shell cmd package list packages >/dev/null 2>&1; then
-                ready=true
-                break
-              fi
-              sleep 5
-            done
-            if [ "$ready" != "true" ]; then
-              echo "Android emulator did not finish booting or package manager did not become available." >&2
-              adb shell getprop sys.boot_completed || true
-              exit 1
-            fi
             timeout 35m gradle --no-daemon connectedDebugAndroidTest
 
       - name: Capture emulator diagnostics after instrumentation
