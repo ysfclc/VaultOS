@@ -270,8 +270,8 @@ jobs:
           # A plain ZIP is friendlier to Android download managers than the
           # previous temporary sandbox streaming endpoint.
           zip -9 -j VaultOS-0.13.1.zip VaultOS-release.apk
-          unzip -t VaultOS-0.13.0.zip
-          sha256sum VaultOS-0.13.0.zip >> SHA256SUMS.txt
+          unzip -t VaultOS-0.13.1.zip
+          sha256sum VaultOS-0.13.1.zip >> SHA256SUMS.txt
           {
             echo "VaultOS 0.13.1"
             echo "Build: ${GITHUB_RUN_NUMBER}"
@@ -302,7 +302,7 @@ jobs:
           ASSETS=(
             dist/VaultOS-release.apk
             dist/VaultOS-debug.apk
-            dist/VaultOS-0.13.0.zip
+            dist/VaultOS-0.13.1.zip
             dist/SHA256SUMS.txt
             dist/BUILD-INFO.txt
           )
