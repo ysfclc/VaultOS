@@ -19,7 +19,8 @@ permissions:
   contents: write
 
 concurrency:
-  group: vaultos-android-${{ github.ref }}-${{ github.sha }}
+  # A newer commit on the same branch supersedes an older in-flight build.
+  group: vaultos-android-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
