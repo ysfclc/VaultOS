@@ -19,6 +19,7 @@ class LocalTypingMemory(context: Context) {
     private val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
     private val snapshotCache = mutableMapOf<String, Map<String, Int>>()
     private val wordListCache = mutableMapOf<String, List<String>>()
+    private val rankedWordCache = mutableMapOf<String, List<Map.Entry<String, Int>>>()
 
     private val preferenceListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         if (key != null) invalidate(key)
@@ -67,9 +68,15 @@ class LocalTypingMemory(context: Context) {
         val code = languageCode(language)
         val normalized = prefix.trim().lowercase(locale(code))
         if (normalized.length < 2 || limit <= 0) return emptyList()
-        return read(wordKey(code)).entries.asSequence()
+        // Build the score-ranked personal lexicon once per language snapshot.
+        // Prefix filtering then scans the cached order without sorting up to 500
+        // learned words again on every keystroke.
+        val rankedWords = rankedWordCache.getOrPut(code) {
+            read(wordKey(code)).entries
+                .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key })
+        }
+        return rankedWords.asSequence()
             .filter { it.key.startsWith(normalized) && it.key != normalized }
-            .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key })
             .take(limit)
             .map { preserveCase(prefix, it.key, code) }
             .toList()
@@ -127,6 +134,7 @@ class LocalTypingMemory(context: Context) {
         prefs.edit().clear().putBoolean(KEY_ENABLED, learningEnabled).apply()
         snapshotCache.clear()
         wordListCache.clear()
+        rankedWordCache.clear()
     }
 
     private fun increment(key: String, item: String, amount: Int) {
@@ -167,13 +175,19 @@ class LocalTypingMemory(context: Context) {
         if (key.startsWith("words_")) {
             val code = key.removePrefix("words_")
             wordListCache[code] = values.keys.toList()
+            rankedWordCache[code] = values.entries
+                .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key })
         }
     }
 
     private fun invalidate(key: String) {
         if (key.startsWith("words_") || key.startsWith("pairs_") || key.startsWith("trigrams_")) {
             snapshotCache.remove(key)
-            if (key.startsWith("words_")) wordListCache.remove(key.removePrefix("words_"))
+            if (key.startsWith("words_")) {
+                val code = key.removePrefix("words_")
+                wordListCache.remove(code)
+                rankedWordCache.remove(code)
+            }
         }
     }
 

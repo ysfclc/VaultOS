@@ -19,11 +19,13 @@ permissions:
   contents: write
 
 concurrency:
-  group: vaultos-android-${{ github.ref }}-${{ github.sha }}
+  # A newer commit on the same branch supersedes an older in-flight build.
+  group: vaultos-android-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   android:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
     name: Test, lint and build APK
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -226,6 +228,18 @@ jobs:
         with:
           packages: platform-tools
 
+      - name: Enable hardware acceleration for Android emulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -e /dev/kvm ]; then
+            echo "GitHub runner does not expose /dev/kvm; refusing to silently fall back to unusably slow TCG emulation." >&2
+            exit 1
+          fi
+          sudo chmod 666 /dev/kvm
+          test -r /dev/kvm && test -w /dev/kvm
+          ls -l /dev/kvm
+
       - name: Install Android SDK packages
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
@@ -269,11 +283,11 @@ jobs:
           sha256sum VaultOS-debug.apk VaultOS-release.apk > SHA256SUMS.txt
           # A plain ZIP is friendlier to Android download managers than the
           # previous temporary sandbox streaming endpoint.
-          zip -9 -j VaultOS-0.13.2.zip VaultOS-release.apk
-          unzip -t VaultOS-0.13.2.zip
-          sha256sum VaultOS-0.13.2.zip >> SHA256SUMS.txt
+          zip -9 -j VaultOS-0.13.4.zip VaultOS-release.apk
+          unzip -t VaultOS-0.13.4.zip
+          sha256sum VaultOS-0.13.4.zip >> SHA256SUMS.txt
           {
-            echo "VaultOS 0.13.2"
+            echo "VaultOS 0.13.4"
             echo "Build: ${GITHUB_RUN_NUMBER}"
             echo "Commit: $(git rev-parse HEAD)"
             echo "Variants: debug and release (same persistent local sideload signing certificate)"
@@ -284,7 +298,7 @@ jobs:
       - name: Upload ZIP for native ChatGPT handoff
         uses: actions/upload-artifact@v4
         with:
-          name: VaultOS-0.13.2
+          name: VaultOS-0.13.4
           path: dist/VaultOS-release.apk
           if-no-files-found: error
           compression-level: 0
@@ -296,13 +310,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          TAG="vaultos-0.13.2-build-${GITHUB_RUN_NUMBER}"
-          TITLE="VaultOS 0.13.2 · build ${GITHUB_RUN_NUMBER}"
-          NOTES="Signed VaultOS 0.13.2 APKs from commit ${GITHUB_SHA}. This is a private draft/pre-release build for in-place device testing. Install over the existing VaultOS app; do not uninstall first."
+          TAG="vaultos-0.13.4-build-${GITHUB_RUN_NUMBER}"
+          TITLE="VaultOS 0.13.4 · build ${GITHUB_RUN_NUMBER}"
+          NOTES="Signed VaultOS 0.13.4 APKs from commit ${GITHUB_SHA}. This is a private draft/pre-release build for in-place device testing. Install over the existing VaultOS app; do not uninstall first."
           ASSETS=(
             dist/VaultOS-release.apk
             dist/VaultOS-debug.apk
-            dist/VaultOS-0.13.2.zip
+            dist/VaultOS-0.13.4.zip
             dist/SHA256SUMS.txt
             dist/BUILD-INFO.txt
           )
@@ -330,7 +344,7 @@ jobs:
           {
             echo "## VaultOS Android build"
             echo "- Device target: Redmi Note 12 Pro 5G / Android 13+"
-            echo "- Release: 0.13.2 (versionCode 16)"
+            echo "- Release: 0.13.4 (versionCode 18)"
             echo "- Signed debug and release APKs use the persistent certificate carried forward from 0.2.0"
             echo "- Compile SDK: 35"
             echo "- Java: 17"
@@ -341,11 +355,10 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   android-instrumentation:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
     name: Android API 35 instrumentation
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    env:
-      ANDROID_I_WANT_MY_TCG: "yes"
     permissions:
       contents: read
     steps:
@@ -363,6 +376,18 @@ jobs:
         uses: android-actions/setup-android@v3
         with:
           packages: platform-tools
+
+      - name: Enable hardware acceleration for Android emulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -e /dev/kvm ]; then
+            echo "GitHub runner does not expose /dev/kvm; refusing to silently fall back to unusably slow TCG emulation." >&2
+            exit 1
+          fi
+          sudo chmod 666 /dev/kvm
+          test -r /dev/kvm && test -w /dev/kvm
+          ls -l /dev/kvm
 
       - name: Install Android SDK packages
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
