@@ -84,6 +84,8 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     private var emojiMode = false
     private var keyPreviewPopup: PopupWindow? = null
     private var keyPreviewsEnabledForView = false
+    private var hapticsEnabledForView = true
+    private var keySoundsEnabledForView = false
     private var typedWord = StringBuilder()
     private var lastCommittedWord = ""
     private var previousWordForPrediction = ""
@@ -244,6 +246,8 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         // Keyboard settings are stable until refreshKeyboard() rebuilds this view.
         // Snapshot preview preference once instead of reading SharedPreferences for every touch.
         keyPreviewsEnabledForView = keyPreviewEnabled()
+        hapticsEnabledForView = hapticsEnabled()
+        keySoundsEnabledForView = keySoundsEnabled()
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(4), dp(4), dp(4), dp(6))
@@ -561,9 +565,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     }
 
     private fun playKeySound(view: View) {
-        if (getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_SOUND, false)) {
-            view.playSoundEffect(SoundEffectConstants.CLICK)
-        }
+        if (keySoundsEnabledForView) view.playSoundEffect(SoundEffectConstants.CLICK)
     }
 
     private fun showKeyboardTools(itAnchor: View) {
@@ -1327,7 +1329,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     }
 
     private fun tapFeedback(view: View) {
-        if (hapticsEnabled()) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+        if (hapticsEnabledForView) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
     }
 
     private fun refreshKeyboard() {
