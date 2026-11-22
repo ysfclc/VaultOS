@@ -12,8 +12,8 @@ android {
         applicationId = "com.vaultos.app"
         minSdk = 28
         targetSdk = 35
-        versionCode = 15
-        versionName = "0.13.1"
+        versionCode = 16
+        versionName = "0.13.2"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     signingConfigs {
