@@ -1497,6 +1497,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
     companion object {
+        private const val CORRECTION_DEBOUNCE_MS = 180L
         const val PREFS = "vaultos_preferences"
         const val KEY_AUTO_CAPTURE = "auto_capture_clipboard"
         const val KEY_LANGUAGE = "keyboard_language"
