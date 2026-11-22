@@ -667,7 +667,9 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         }
         val popupWidth = minOf(dp(320), (resources.displayMetrics.widthPixels - dp(24)).coerceAtLeast(dp(220)))
         val popupHeight = minOf(dp(460), (resources.displayMetrics.heightPixels - dp(120)).coerceAtLeast(dp(280)))
-        popup = PopupWindow(scroll, popupWidth, popupHeight, true).apply {
+        popup = PopupWindow(scroll, popupWidth, popupHeight, false).apply {
+            // A keyboard-owned popup must not take focus away from the editor/IME window.
+            isTouchable = true
             isOutsideTouchable = true
             setBackgroundDrawable(android.graphics.drawable.ColorDrawable(Color.TRANSPARENT))
             elevation = dp(14).toFloat()
@@ -782,7 +784,9 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
             }
             content.addView(option, LinearLayout.LayoutParams(-2, dp(52)).apply { setMargins(dp(2), 0, dp(2), 0) })
         }
-        popup = PopupWindow(content, -2, -2, true).apply {
+        popup = PopupWindow(content, -2, -2, false).apply {
+            // Keep long-press alternatives interactive without stealing input focus.
+            isTouchable = true
             isOutsideTouchable = true
             elevation = dp(12).toFloat()
             setBackgroundDrawable(android.graphics.drawable.ColorDrawable(Color.TRANSPARENT))
