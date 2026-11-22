@@ -1070,7 +1070,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         val localCorrections = if (typed.isNotBlank() && currentSuggestions.isEmpty() && localCorrectionWord == typed) {
             localCorrectionSuggestions
         } else emptyList()
-        if (typed.length >= 2 && currentSuggestions.isEmpty() && localCorrectionWord != typed) {
+        if (typed.length >= 3 && currentSuggestions.isEmpty() && localCorrectionWord != typed) {
             requestLocalCorrections(typed, language, learnedVocabulary, row)
         }
         val correcting = currentSuggestions.isNotEmpty() || localCorrections.isNotEmpty()
@@ -1160,7 +1160,8 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         // and discarding a ranking job for every intermediate prefix while typing quickly.
         correctionRequestRunnable?.let(mainHandler::removeCallbacks)
         val session = inputGeneration
-        val immutableVocabulary = vocabulary.toList()
+        // dictionaryWords() returns a cached immutable snapshot; avoid cloning up to 500 entries per keypress.
+        val immutableVocabulary = vocabulary
         val runnable = Runnable {
             correctionRequestRunnable = null
             if (inputGeneration != session ||
