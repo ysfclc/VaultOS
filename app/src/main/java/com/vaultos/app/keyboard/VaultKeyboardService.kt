@@ -62,6 +62,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     private val mainHandler = Handler(Looper.getMainLooper())
     private val suggestionRequestGate = SuggestionRequestGate()
     private var correctionExecutor: ThreadPoolExecutor? = null
+    private var correctionRequestRunnable: Runnable? = null
     private var localCorrectionWord = ""
     private var localCorrectionSuggestions: List<String> = emptyList()
     private var clipboard: ClipboardManager? = null
@@ -680,7 +681,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         private fun oneHandedSide(): Int = getSharedPreferences(PREFS, MODE_PRIVATE).getInt(KEY_ONE_HANDED, 0).coerceIn(0, 2)
     private fun oneHandedLabel(): String = when (oneHandedSide()) { 1 -> "Left"; 2 -> "Right"; else -> "Off" }
     private fun numberRowEnabled(): Boolean = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_NUMBER_ROW, false)
-    private fun keyPreviewEnabled(): Boolean = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_KEY_PREVIEW, true)
+    private fun keyPreviewEnabled(): Boolean = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_KEY_PREVIEW, false)
     private fun keySoundsEnabled(): Boolean = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_SOUND, false)
     private fun keyboardThemeDark(): Boolean = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_THEME_DARK, true)
 
@@ -855,7 +856,8 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                 else connection.deleteSurroundingText(1, 0)
                 if (typedWord.isNotEmpty()) typedWord.deleteCharAt(typedWord.length - 1)
                 lastCommittedWord = ""
-                requestWordSuggestions(typedWord.toString())
+                activeSpellCheckWord = ""
+                spellCheckGeneration++
                 renderSuggestions()
             }
             "←" -> sendCursorKey(KeyEvent.KEYCODE_DPAD_LEFT)
@@ -884,7 +886,8 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                 if (value.length == 1 && value[0].isLetter()) {
                     typedWord.append(value)
                     lastCommittedWord = ""
-                    requestWordSuggestions(typedWord.toString())
+                    activeSpellCheckWord = ""
+                    spellCheckGeneration++
                 } else {
                     if (typedWord.isNotBlank()) {
                         val committedWord = typedWord.toString()
