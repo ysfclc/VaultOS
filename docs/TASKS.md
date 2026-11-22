@@ -128,7 +128,6 @@ Phase 2 implementation is in release line 0.2.0. The Room 1→2 migration adds r
 - [ ] Verify the GitHub-hosted workflow after updating both protected YAML copies.
 - [ ] Run the Redmi Note 12 Pro 5G device test plan, including Chrome, ChatGPT, WhatsApp, Notes, password fields, Android permissions and Xiaomi background restrictions.
 
-
 ## Phase 6 — filesystem safety hardening (0.6.0)
 
 - [x] Refuse symbolic links in selected copy, move, archive and delete trees.
@@ -257,14 +256,13 @@ The 0.13.0 keyboard is a functional baseline, not a complete predictive experien
 - [x] KBD-1: Run local correction ranking on one reusable worker thread using immutable vocabulary snapshots; keep IME/editor/UI operations on the main thread.
 - [x] KBD-1: Reject stale worker results with per-render generation tokens plus input-session, typed-word, language, editor-safety and candidate-row checks; clear queued work and shut down the executor with the service.
 - [x] KBD-1: Add and execute pure-engine correction limit, transposition and low-noise regression tests on Vercel (included in the 43 passing JVM tests).
-- [x] KBD-1: Add a repeatable pure-engine microbenchmark for 500 personal words (p50/p95 output; no flaky timing threshold).
-- [x] KBD-1: Execute the 500-word correction benchmark on Vercel; p50=105 μs / p95=160 μs on the build host (not a Redmi-device measurement).
+- [x] KBD-1: Add a repeatable pure-engine microbenchmark for 500 personal words (p50/p95 output; no flaky timing threshold).- [x] KBD-1: Execute the 500-word correction benchmark on Vercel; p50=105 μs / p95=160 μs on the build host (not a Redmi-device measurement).
 - [x] KBD-2: Add opt-in bounded trigram/context learning without changing existing word/bigram preference keys.
 - [x] KBD-2: Rank next-word candidates from a short transient two-word context, with EN/PL/TR isolation and one-word fallback.
 - [x] KBD-2: Add pure tests for EN/PL/TR context priors, unknown-context fallback, trigram precedence and candidate limits.
 - [x] KBD-2: Add Android-backed tests for opt-in, word/bigram/trigram persistence, opt-out, clear/reset, EN/PL/TR isolation and v1 bigram compatibility.
 - [x] KBD-2: Compile the six Android-backed SharedPreferences tests with :app:assembleDebugAndroidTest on Vercel.
-- [ ] KBD-2: Execute connectedDebugAndroidTest on an API 35 emulator; Vercel had no /dev/kvm and GitHub runner allocation remains unresolved.
+- [ ] KBD-2: Execute connectedDebugAndroidTest on an API 35 emulator. GitHub's API 35 emulator launch failed before boot because emulator 37.3.10 requires ANDROID_I_WANT_MY_TCG=yes when hardware acceleration is disabled; the environment fix is committed to both workflow copies and awaits rerun.
 - [x] KBD-1: Add pure generation-gate tests for newest-request precedence and lifecycle invalidation.
 - [ ] KBD-3: Redesign candidate strip hierarchy and interactions after latency and prediction quality are stable.
 - [ ] KBD-4: Measure real typing latency and prediction usefulness on Redmi Note 12 Pro 5G across safe apps and languages.
@@ -326,3 +324,32 @@ Do not mark this phase complete from unit tests alone; device acceptance is mand
 
 
 **Current blocker (2026-11-13):** Vercel refused the initial deployment with HTTP 402 `api-deployments-free-per-day` (more than 100 API deployments today; retry after 24 hours). The connected project settings and source pipeline are in place, but production build/download verification remains unchecked until Vercel accepts a deployment.
+
+
+## Clipboard Core + Gallery — integrity increment (2026-11-21)
+
+- [x] Validate the clipboard history event's own SHA-256, UTF-8 byte count and Unicode code-point count before returning saved text for copy or keyboard paste.
+- [x] Fail closed when a text event has a missing/malformed hash or mismatched payload metadata.
+- [x] Add five pure JVM regression cases covering exact multilingual UTF-8 payloads, same-length payload mutation, byte-count mismatch, Unicode code-point mismatch and missing/malformed hashes.
+- [x] Compile and run a standalone Kotlin smoke check for the integrity helper; exact payload accepted and all four mismatch classes rejected.
+- [x] Run the five new JVM integrity regression tests through Gradle; GitHub Actions PR run 44882973823 passed the clean testDebugUnitTest, lintDebug, assembleDebug and assembleRelease job.
+- [x] Add four Room in-memory instrumentation tests for separate timestamped duplicate events, pin/delete behavior, clear-unpinned preservation and search metadata.
+- [x] Add an explicit ANDROID_I_WANT_MY_TCG=yes environment setting to both Android workflow YAML copies so API 35 emulator 37.3.10 can boot without hardware acceleration.
+- [x] Add four repository-level instrumentation tests for long multilingual capture/readback, separate history events sharing one archived item, event hash/byte/code-point mismatch rejection, and same-length archive tampering plus search beyond the preview.
+- [x] Require clipboard text readback to resolve a canonical archive file strictly inside filesDir/vault; add a repository instrumentation case rejecting an external archive path.
+- [x] Expand full copied text inline in its clipboard history card with bounded scrolling, selectable text and animated expand/collapse; keep Copy full text available.
+- [x] Keep ClipboardHistoryEntry and VaultItem as the canonical persisted event/payload entities; keep expansion state transient and document the global entity boundary.
+- [x] Fix emulator-runner script parsing by removing the multiline shell function/trap that was executed as a truncated command; retain separate always-run diagnostics.
+- [ ] Verify API 35 clipboard DAO/repository instrumentation after the emulator-runner script fix.
+- [ ] Build and verify signed VaultOS 0.13.1 / versionCode 15 APKs; deliver as a private milestone build for in-place update testing.
+- [ ] Execute the expanded clipboard repository instrumentation suite on API 35 and confirm the external-path rejection case passes.
+- [ ] Complete DAO and repository API 35 instrumentation after the TCG emulator boot fix. Latest run 44887048363 passed the separate build/lint/APK job; its instrumentation job remains in progress.
+- [x] Add an Open captured file action for archived clipboard entries using the private FileProvider; resolve and require a real file strictly inside `filesDir/vault`, with no fallback to the original external content URI.
+- [x] Extract the canonical private-archive path resolver and add four JVM tests for valid files, outside/traversal paths, missing/directories and symlink escapes; run a standalone Kotlin smoke check covering the same path boundaries successfully.
+- [x] Add a selectable, scrollable full-text inspection dialog alongside full-text copy; both paths use integrity-checked readback.
+- [ ] Add Room-backed gallery/repository tests and verify file opening on the target phone without changing non-destructive archive semantics.
+- [ ] Complete Redmi Note 12 Pro 5G clipboard acceptance across Chrome, ChatGPT, WhatsApp, Notes and password fields.
+- [x] Scope both mirrored workflow concurrency groups by commit SHA, so verification of a newer PR head can run independently without cancelling or waiting behind an older commit.
+- [x] Raise API 35 emulator boot timeout to 900 seconds, explicitly select SwiftShader/no-snapshot/wipe-data options, wait for Android and Package Manager readiness before Gradle, and upload logcat/package/process diagnostics even on failure.
+
+**Boundary:** automatic monitoring still requires VaultOS to be the selected Android input method. This increment does not claim universal background clipboard interception.

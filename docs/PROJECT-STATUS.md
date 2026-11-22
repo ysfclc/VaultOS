@@ -316,3 +316,29 @@ Verification status: test source and Gradle dependencies were committed and re-f
 - Temporary download page: https://sb-4y1nz0v7zv7e.vercel.run/ ; direct APK: https://sb-4y1nz0v7zv7e.vercel.run/VaultOS-0.13.0.apk . The route was externally fetched and verified. It is tied to the non-persistent sandbox and expires when that session stops (45-minute maximum); download and keep a local copy.
 - This avoids snapshot storage, but is not a permanent Vercel deployment or release asset. Do not describe it as durable hosting.
 - No `/dev/kvm` emulator or physical Redmi test was available. Keep Android instrumentation execution and Redmi Note 12 Pro 5G acceptance open.
+
+
+## Session 10 — clipboard integrity follow-through (2026-11-22)
+
+**Current source branch:** `feature/clipboard-core-integrity`. This is a draft verification branch; it is not a device-accepted release.
+
+**Latest changes**
+- Clipboard history readback validates each event's SHA-256, UTF-8 byte count and Unicode code-point count before returning full text.
+- Clipboard text resolves to a canonical archive file inside the app-private vault; external paths and symlink escapes are rejected.
+- History cards support bounded full-text expansion, selectable text, integrity-checked copy, and an inspection dialog.
+- Added JVM regression coverage for malformed/missing hashes, content mutation, metadata mismatches and archive path boundaries.
+- Added Room-backed and repository instrumentation tests for duplicate events, pin/delete/clear behavior, long multilingual payloads, tampering and search beyond preview.
+
+**CI corrections from the observed failure**
+- Release ZIP creation, validation and asset references now consistently use `VaultOS-0.13.1.zip` (both mirrored workflow files).
+- API 35 instrumentation workflow now runs the emulator runner's script as a single Gradle command; the previous multiline readiness loop was split by the runner and failed at the shell parser before tests started.
+- Both mirrored workflow files were re-fetched and verified identical after the corrections.
+
+**Verification boundary**
+- The previous instrumentation run booted the API 35 emulator but failed before Gradle tests due to runner script parsing. This is a harness failure, not evidence that the tests passed or failed.
+- The workflow corrections are committed; a new hosted run must verify that the emulator executes the tests.
+- Signed 0.13.1 APK assembly and signature continuity remain pending hosted verification on the corrected workflow.
+- Redmi Note 12 Pro 5G physical clipboard/keyboard acceptance remains mandatory and unclaimed.
+
+**Scope guard**
+- VaultOS remains a local-first file manager, content archive and clipboard/keyboard utility. Driver community/meetup capabilities are BusyBee-only and are not part of VaultOS.

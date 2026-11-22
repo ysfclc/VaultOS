@@ -19,7 +19,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: vaultos-android-${{ github.ref }}
+  group: vaultos-android-${{ github.ref }}-${{ github.sha }}
   cancel-in-progress: true
 
 jobs:
@@ -269,11 +269,11 @@ jobs:
           sha256sum VaultOS-debug.apk VaultOS-release.apk > SHA256SUMS.txt
           # A plain ZIP is friendlier to Android download managers than the
           # previous temporary sandbox streaming endpoint.
-          zip -9 -j VaultOS-0.13.0.zip VaultOS-release.apk
-          unzip -t VaultOS-0.13.0.zip
-          sha256sum VaultOS-0.13.0.zip >> SHA256SUMS.txt
+          zip -9 -j VaultOS-0.13.1.zip VaultOS-release.apk
+          unzip -t VaultOS-0.13.1.zip
+          sha256sum VaultOS-0.13.1.zip >> SHA256SUMS.txt
           {
-            echo "VaultOS 0.13.0"
+            echo "VaultOS 0.13.1"
             echo "Build: ${GITHUB_RUN_NUMBER}"
             echo "Commit: $(git rev-parse HEAD)"
             echo "Variants: debug and release (same persistent local sideload signing certificate)"
@@ -284,7 +284,7 @@ jobs:
       - name: Upload ZIP for native ChatGPT handoff
         uses: actions/upload-artifact@v4
         with:
-          name: VaultOS-0.13.0
+          name: VaultOS-0.13.1
           path: dist/VaultOS-release.apk
           if-no-files-found: error
           compression-level: 0
@@ -296,13 +296,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          TAG="vaultos-0.13.0-build-${GITHUB_RUN_NUMBER}"
-          TITLE="VaultOS 0.13.0 · build ${GITHUB_RUN_NUMBER}"
-          NOTES="Signed VaultOS 0.13.0 APKs from commit ${GITHUB_SHA}. This is a private draft/pre-release build for in-place device testing. Install over the existing VaultOS app; do not uninstall first."
+          TAG="vaultos-0.13.1-build-${GITHUB_RUN_NUMBER}"
+          TITLE="VaultOS 0.13.1 · build ${GITHUB_RUN_NUMBER}"
+          NOTES="Signed VaultOS 0.13.1 APKs from commit ${GITHUB_SHA}. This is a private draft/pre-release build for in-place device testing. Install over the existing VaultOS app; do not uninstall first."
           ASSETS=(
             dist/VaultOS-release.apk
             dist/VaultOS-debug.apk
-            dist/VaultOS-0.13.0.zip
+            dist/VaultOS-0.13.1.zip
             dist/SHA256SUMS.txt
             dist/BUILD-INFO.txt
           )
@@ -330,7 +330,7 @@ jobs:
           {
             echo "## VaultOS Android build"
             echo "- Device target: Redmi Note 12 Pro 5G / Android 13+"
-            echo "- Release: 0.13.0 (versionCode 14)"
+            echo "- Release: 0.13.1 (versionCode 15)"
             echo "- Signed debug and release APKs use the persistent certificate carried forward from 0.2.0"
             echo "- Compile SDK: 35"
             echo "- Java: 17"
@@ -344,6 +344,8 @@ jobs:
     name: Android API 35 instrumentation
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    env:
+      ANDROID_I_WANT_MY_TCG: "yes"
     permissions:
       contents: read
     steps:
@@ -370,12 +372,36 @@ jobs:
         with:
           gradle-version: "8.9"
 
-      - name: Run Android-backed typing memory tests
+      - name: Run Android-backed persistence tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
           target: google_apis
           arch: x86_64
           profile: pixel_2
+          emulator-boot-timeout: 900
+          emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader -no-snapshot -wipe-data
           disable-animations: true
-          script: gradle --no-daemon connectedDebugAndroidTest
+          script: |
+            timeout 35m gradle --no-daemon connectedDebugAndroidTest
+
+      - name: Capture emulator diagnostics after instrumentation
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p app/build/ci-diagnostics
+          timeout 20s adb devices -l > app/build/ci-diagnostics/devices.txt 2>&1 || true
+          timeout 20s adb logcat -d -t 3000 > app/build/ci-diagnostics/final-logcat.txt 2>&1 || true
+          timeout 20s adb shell dumpsys activity processes > app/build/ci-diagnostics/final-activity-processes.txt 2>&1 || true
+          timeout 20s adb shell dumpsys package > app/build/ci-diagnostics/final-packages.txt 2>&1 || true
+
+      - name: Upload Android instrumentation diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: VaultOS-android-instrumentation-diagnostics
+          path: |
+            app/build/ci-diagnostics/
+            app/build/reports/androidTests/connected/debug/
+          if-no-files-found: warn
+          retention-days: 7

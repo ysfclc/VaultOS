@@ -74,8 +74,28 @@ class ClipboardHistoryRepository(private val context: Context) {
     }
 
     suspend fun readText(entry: ClipboardHistoryEntry): String? = withContext(Dispatchers.IO) {
+        if (entry.contentType != "text") return@withContext null
         val item = entry.itemId?.let { dao.getById(it) } ?: return@withContext null
-        vault.readFullText(item)
+        // Clipboard history must only read the private archived payload. Do not let a
+        // stale or corrupted database path redirect readback to an arbitrary device file
+        // or fall back to an original content URI.
+        val archivedFile = resolveArchivedVaultFile(vault.root, item.archivedPath)
+            ?: return@withContext null
+        val text = vault.readFullText(item.copy(archivedPath = archivedFile.absolutePath, originalUri = null))
+            ?: return@withContext null
+        if (!ClipboardPayloadIntegrity.matches(
+                text = text,
+                expectedHash = entry.contentHash,
+                expectedByteCount = entry.byteCount,
+                expectedCharacterCount = entry.characterCount
+            )
+        ) return@withContext null
+        text
+    }
+
+    suspend fun capturedItem(entry: ClipboardHistoryEntry) = withContext(Dispatchers.IO) {
+        if (entry.contentType != "file") return@withContext null
+        entry.itemId?.let { dao.getById(it) }
     }
 
     suspend fun setPinned(id: String, pinned: Boolean) = dao.setClipboardPinned(id, pinned)
