@@ -282,11 +282,11 @@ jobs:
           sha256sum VaultOS-debug.apk VaultOS-release.apk > SHA256SUMS.txt
           # A plain ZIP is friendlier to Android download managers than the
           # previous temporary sandbox streaming endpoint.
-          zip -9 -j VaultOS-0.13.3.zip VaultOS-release.apk
-          unzip -t VaultOS-0.13.3.zip
-          sha256sum VaultOS-0.13.3.zip >> SHA256SUMS.txt
+          zip -9 -j VaultOS-0.13.4.zip VaultOS-release.apk
+          unzip -t VaultOS-0.13.4.zip
+          sha256sum VaultOS-0.13.4.zip >> SHA256SUMS.txt
           {
-            echo "VaultOS 0.13.3"
+            echo "VaultOS 0.13.4"
             echo "Build: ${GITHUB_RUN_NUMBER}"
             echo "Commit: $(git rev-parse HEAD)"
             echo "Variants: debug and release (same persistent local sideload signing certificate)"
@@ -297,7 +297,7 @@ jobs:
       - name: Upload ZIP for native ChatGPT handoff
         uses: actions/upload-artifact@v4
         with:
-          name: VaultOS-0.13.3
+          name: VaultOS-0.13.4
           path: dist/VaultOS-release.apk
           if-no-files-found: error
           compression-level: 0
@@ -309,13 +309,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          TAG="vaultos-0.13.3-build-${GITHUB_RUN_NUMBER}"
-          TITLE="VaultOS 0.13.3 · build ${GITHUB_RUN_NUMBER}"
-          NOTES="Signed VaultOS 0.13.3 APKs from commit ${GITHUB_SHA}. This is a private draft/pre-release build for in-place device testing. Install over the existing VaultOS app; do not uninstall first."
+          TAG="vaultos-0.13.4-build-${GITHUB_RUN_NUMBER}"
+          TITLE="VaultOS 0.13.4 · build ${GITHUB_RUN_NUMBER}"
+          NOTES="Signed VaultOS 0.13.4 APKs from commit ${GITHUB_SHA}. This is a private draft/pre-release build for in-place device testing. Install over the existing VaultOS app; do not uninstall first."
           ASSETS=(
             dist/VaultOS-release.apk
             dist/VaultOS-debug.apk
-            dist/VaultOS-0.13.3.zip
+            dist/VaultOS-0.13.4.zip
             dist/SHA256SUMS.txt
             dist/BUILD-INFO.txt
           )
@@ -343,7 +343,7 @@ jobs:
           {
             echo "## VaultOS Android build"
             echo "- Device target: Redmi Note 12 Pro 5G / Android 13+"
-            echo "- Release: 0.13.3 (versionCode 17)"
+            echo "- Release: 0.13.4 (versionCode 18)"
             echo "- Signed debug and release APKs use the persistent certificate carried forward from 0.2.0"
             echo "- Compile SDK: 35"
             echo "- Java: 17"
