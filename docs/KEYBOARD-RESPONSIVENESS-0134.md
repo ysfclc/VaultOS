@@ -9,6 +9,7 @@
 - Reuse the cached immutable personal-vocabulary snapshot instead of cloning up to 500 entries on each keypress.
 - Do not schedule fuzzy correction for two-character prefixes when the correction engine requires at least three characters.
 - Cache the personal dictionary in score-ranked order, so prefix completions filter the cached ranking instead of sorting up to 500 learned words on every keystroke.
+- Snapshot haptic and sound preferences when building the keyboard view, removing two SharedPreferences reads from every key tap while preserving immediate setting changes through the existing view refresh.
 - Add an Android SharedPreferences regression test proving that the ranking cache invalidates immediately when a word is explicitly added to the personal dictionary.
 
 ## Acceptance still required
