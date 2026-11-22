@@ -377,6 +377,18 @@ jobs:
         with:
           packages: platform-tools
 
+      - name: Enable hardware acceleration for Android emulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -e /dev/kvm ]; then
+            echo "GitHub runner does not expose /dev/kvm; refusing to silently fall back to unusably slow TCG emulation." >&2
+            exit 1
+          fi
+          sudo chmod 666 /dev/kvm
+          test -r /dev/kvm && test -w /dev/kvm
+          ls -l /dev/kvm
+
       - name: Install Android SDK packages
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
