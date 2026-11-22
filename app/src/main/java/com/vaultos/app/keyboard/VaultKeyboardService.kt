@@ -83,6 +83,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     private var commandSearchRevision = 0
     private var emojiMode = false
     private var keyPreviewPopup: PopupWindow? = null
+    private var keyPreviewsEnabledForView = false
     private var typedWord = StringBuilder()
     private var lastCommittedWord = ""
     private var previousWordForPrediction = ""
@@ -242,7 +243,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     private fun buildKeyboard(): View {
         // Keyboard settings are stable until refreshKeyboard() rebuilds this view.
         // Snapshot preview preference once instead of reading SharedPreferences for every touch.
-        val previewsEnabled = keyPreviewEnabled()
+        keyPreviewsEnabledForView = keyPreviewEnabled()
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(4), dp(4), dp(4), dp(6))
@@ -422,7 +423,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                             view.scaleX = 0.92f
                             view.scaleY = 0.92f
                             view.translationZ = dp(7).toFloat()
-                            if (previewsEnabled && key.length == 1 && key != " ") {
+                            if (keyPreviewsEnabledForView && key.length == 1 && key != " ") {
                                 showKeyPreview(view, text.toString())
                             }
                         }
@@ -430,7 +431,7 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                             view.scaleX = 1f
                             view.scaleY = 1f
                             view.translationZ = 0f
-                            if (previewsEnabled) {
+                            if (keyPreviewsEnabledForView) {
                                 mainHandler.postDelayed({ if (!view.isPressed) hideKeyPreview() }, 90)
                             }
                         }
