@@ -240,6 +240,9 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     }
 
     private fun buildKeyboard(): View {
+        // Keyboard settings are stable until refreshKeyboard() rebuilds this view.
+        // Snapshot preview preference once instead of reading SharedPreferences for every touch.
+        val previewsEnabled = keyPreviewEnabled()
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(4), dp(4), dp(4), dp(6))
@@ -419,13 +422,17 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
                             view.scaleX = 0.92f
                             view.scaleY = 0.92f
                             view.translationZ = dp(7).toFloat()
-                            if (key.length == 1 && key != " ") showKeyPreview(view, text.toString())
+                            if (previewsEnabled && key.length == 1 && key != " ") {
+                                showKeyPreview(view, text.toString())
+                            }
                         }
                         MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                             view.scaleX = 1f
                             view.scaleY = 1f
                             view.translationZ = 0f
-                            mainHandler.postDelayed({ if (!view.isPressed) hideKeyPreview() }, 90)
+                            if (previewsEnabled) {
+                                mainHandler.postDelayed({ if (!view.isPressed) hideKeyPreview() }, 90)
+                            }
                         }
                     }
                     false
@@ -524,7 +531,6 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
     )
 
     private fun showKeyPreview(anchor: View, label: String) {
-        if (!keyPreviewEnabled()) return
         hideKeyPreview()
         val bubble = TextView(this).apply {
             text = label
