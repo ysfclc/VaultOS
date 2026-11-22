@@ -108,6 +108,8 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
 
     override fun onDestroy() {
         suggestionRequestGate.invalidate()
+        correctionRequestRunnable?.let(mainHandler::removeCallbacks)
+        correctionRequestRunnable = null
         correctionExecutor?.shutdownNow()
         correctionExecutor = null
         clipboard?.removePrimaryClipChangedListener(clipboardListener)
@@ -1148,35 +1150,48 @@ class VaultKeyboardService : InputMethodService(), SpellCheckerSession.SpellChec
         vocabulary: List<String>,
         targetRow: LinearLayout
     ) {
-        val token = suggestionRequestGate.issue()
+        // Fuzzy ranking is useful only after the user pauses. Debouncing avoids starting
+        // and discarding a ranking job for every intermediate prefix while typing quickly.
+        correctionRequestRunnable?.let(mainHandler::removeCallbacks)
         val session = inputGeneration
         val immutableVocabulary = vocabulary.toList()
-        val executor = correctionExecutor ?: return
-        // Keep at most one pending ranking request. An already-running request may finish,
-        // but its generation token prevents it from touching a newer editor state.
-        executor.queue.clear()
-        runCatching {
-            executor.execute {
-                val result = KeyboardSuggestionEngine.nearbyCorrections(
-                    language = language,
-                    input = word,
-                    additionalWords = immutableVocabulary
-                )
-                mainHandler.post {
-                    if (!suggestionRequestGate.isCurrent(token) ||
-                        inputGeneration != session ||
-                        typedWord.toString() != word ||
-                        selectedLanguageCode() != language ||
-                        suggestionRow !== targetRow ||
-                        currentSuggestions.isNotEmpty() ||
-                        !isSafeForSuggestions(currentInputEditorInfo)
-                    ) return@post
-                    localCorrectionWord = word
-                    localCorrectionSuggestions = result
-                    renderSuggestions()
+        val runnable = Runnable {
+            correctionRequestRunnable = null
+            if (inputGeneration != session ||
+                typedWord.toString() != word ||
+                selectedLanguageCode() != language ||
+                suggestionRow !== targetRow ||
+                currentSuggestions.isNotEmpty() ||
+                !isSafeForSuggestions(currentInputEditorInfo)
+            ) return@Runnable
+            val token = suggestionRequestGate.issue()
+            val executor = correctionExecutor ?: return@Runnable
+            executor.queue.clear()
+            runCatching {
+                executor.execute {
+                    val result = KeyboardSuggestionEngine.nearbyCorrections(
+                        language = language,
+                        input = word,
+                        additionalWords = immutableVocabulary
+                    )
+                    mainHandler.post {
+                        if (!suggestionRequestGate.isCurrent(token) ||
+                            inputGeneration != session ||
+                            typedWord.toString() != word ||
+                            selectedLanguageCode() != language ||
+                            suggestionRow !== targetRow ||
+                            currentSuggestions.isNotEmpty() ||
+                            !isSafeForSuggestions(currentInputEditorInfo)
+                        ) return@post
+                        localCorrectionWord = word
+                        localCorrectionSuggestions = result
+                        renderSuggestions()
+                    }
                 }
             }
         }
+        correctionRequestRunnable = runnable
+        mainHandler.postDelayed(runnable, CORRECTION_DEBOUNCE_MS)
     }
 
     private fun suggestionPillBackground(): android.graphics.drawable.Drawable {
