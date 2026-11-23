@@ -28,6 +28,10 @@ data class UsbOtgDevice(
 )
 
 object UsbOtgDiagnostics {
+    /** Reports the Android package-manager USB Host feature independently from device enumeration. */
+    fun hostSupported(context: Context): Boolean =
+        context.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_USB_HOST)
+
     fun attachedDevices(context: Context): List<UsbOtgDevice> {
         val manager = context.getSystemService(Context.USB_SERVICE) as? UsbManager ?: return emptyList()
         return manager.deviceList.values
