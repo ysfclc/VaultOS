@@ -69,6 +69,7 @@ import com.vaultos.app.storage.VaultBackupManager
 import com.vaultos.app.storage.FileOperationProgress
 import com.vaultos.app.storage.FileOperations
 import com.vaultos.app.storage.VaultRepository
+import com.vaultos.app.storage.UsbOtgDiagnostics
 import com.vaultos.app.storage.ClipboardHistoryRepository
 import com.vaultos.app.storage.MetadataExtractor
 import kotlinx.coroutines.CancellationException
@@ -1443,6 +1444,43 @@ private fun loadAppCatalogue(activity: MainActivity, archivedItems: List<VaultIt
                         }
                     }) { Text("Restore backup") }
                 }
+            }
+        }
+        var usbRefresh by remember { mutableIntStateOf(0) }
+        val usbDevices = remember(resumeRevision, usbRefresh) { UsbOtgDiagnostics.attachedDevices(activity) }
+        Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF151A20))) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("USB / OTG diagnostics", fontWeight = FontWeight.SemiBold)
+                Text(
+                    if (usbDevices.isEmpty()) "No USB host device is currently visible to Android. Connect the flash drive through a compatible USB-C OTG adapter, then refresh."
+                    else "Android currently exposes ${usbDevices.size} USB device(s). This is detection only; VaultOS has not opened or modified the drive.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                usbDevices.forEach { device ->
+                    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text(device.productName ?: device.manufacturerName ?: device.deviceName, fontWeight = FontWeight.Medium)
+                        Text(
+                            "VID:PID %04X:%04X · %d interface(s) · permission %s".format(
+                                device.vendorId, device.productId, device.interfaceCount,
+                                if (device.hasPermission) "granted" else "not requested"
+                            ),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            "Class ${device.deviceClass} / subclass ${device.deviceSubclass} · ${device.deviceName}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                OutlinedButton(onClick = { usbRefresh++ }) { Text("Refresh USB detection") }
+                Text(
+                    "The first step only reads Android's device list. It does not request USB permission, mount, write to, or format the drive.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
         Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF151A20))) {
