@@ -364,3 +364,17 @@ Do not mark this phase complete from unit tests alone; device acceptance is mand
 - [ ] Prove malformed-manifest and checksum failures do not leave partially restored catalogue state or orphaned payloads.
 - [ ] Add Room migration regression tests for every supported schema version.
 - [ ] Run the complete API 35 instrumentation suite and retain the Redmi physical acceptance gate.
+
+
+## Phase 16 — USB-OTG detection and read-only import
+
+- [x] Add passive Android USB Host device enumeration and expose VID/PID, product/manufacturer, interface count and permission state in Settings.
+- [x] Declare USB Host as an optional device feature so VaultOS remains installable on devices without USB Host support.
+- [x] Add API 35 instrumentation coverage proving diagnostics mirror Android's current device list without requesting USB permissions.
+- [ ] Reproduce the user's USB-C flash drive on Redmi Note 12 Pro 5G; record whether Android exposes a UsbDevice, its descriptors, and any system mount/notification behavior.
+- [ ] Add explicit USB permission request and interface inspection only after a detected device is confirmed; keep all initial diagnostics read-only.
+- [ ] Browse/import files through Android's supported storage access path while preserving the source drive unchanged.
+- [ ] Investigate a Rust read-only filesystem fallback only if the device is detected but Android does not expose a usable mounted/document-tree path.
+- [ ] Complete physical verification on Redmi Note 12 Pro 5G with the user's actual USB-C drive and adapter.
+
+**Boundary:** CI/emulator enumeration is not evidence that the user's physical flash drive is detected. No USB writes, formatting or destructive filesystem experiments are permitted.
