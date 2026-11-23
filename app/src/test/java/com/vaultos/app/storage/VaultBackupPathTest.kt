@@ -59,6 +59,32 @@ class VaultBackupPathTest {
     }
 
     @Test
+    fun rollbackRemovesOnlyCreatedFilesAndEmptyDirectories() {
+        val parent = Files.createTempDirectory("vault-restore-rollback").toFile()
+        try {
+            val vault = File(parent, "vault").apply { mkdirs() }
+            val createdDirectory = File(vault, "created/nested").apply { mkdirs() }
+            val createdFile = File(createdDirectory, "new.bin").apply { writeText("new") }
+            val preservedDirectory = File(vault, "pre-existing").apply { mkdirs() }
+            val preservedFile = File(preservedDirectory, "keep.txt").apply { writeText("keep") }
+
+            rollbackRestoreArtifacts(
+                createdFiles = listOf(createdFile),
+                createdDirectories = listOf(File(vault, "created"), createdDirectory, preservedDirectory)
+            )
+
+            org.junit.Assert.assertFalse(createdFile.exists())
+            org.junit.Assert.assertFalse(createdDirectory.exists())
+            org.junit.Assert.assertFalse(File(vault, "created").exists())
+            org.junit.Assert.assertTrue(preservedFile.isFile)
+            org.junit.Assert.assertEquals("keep", preservedFile.readText())
+            org.junit.Assert.assertTrue(preservedDirectory.isDirectory)
+        } finally {
+            parent.deleteRecursively()
+        }
+    }
+
+    @Test
     fun rejectsVaultRootItself() {
         val parent = Files.createTempDirectory("vault-backup-path").toFile()
         try {

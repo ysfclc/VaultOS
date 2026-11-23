@@ -359,6 +359,8 @@ Do not mark this phase complete from unit tests alone; device acceptance is mand
 
 - [x] Resolve every restored archive manifest path as a canonical path strictly beneath the private vault; reject absolute, drive-prefixed, traversal, empty-segment and symlink-escape paths.
 - [x] Reject an unsafe `trashOriginalRelativePath` instead of persisting an arbitrary filesystem destination into the Recycle Bin metadata.
+- [x] Preflight manifest-listed payload paths, reject unsafe paths and malformed hashes, require referenced files to exist, and verify payload SHA-256 before restore writes begin.
+- [x] Reject malformed manifest records, missing record IDs, duplicate IDs, unsafe paths and malformed digests before restore copying.
 - [x] Add JVM regression tests for nested restore paths, missing-but-valid restore destinations, absolute/traversal/drive-prefixed paths, symlink-parent escapes and vault-root aliases.
 - [ ] Add fixture-based v1/v2 backup and restore round-trip tests for payload hashes, missing payloads, collision handling, trashed items, tags, collections, saved searches and metadata.
 - [ ] Prove malformed-manifest and checksum failures do not leave partially restored catalogue state or orphaned payloads.

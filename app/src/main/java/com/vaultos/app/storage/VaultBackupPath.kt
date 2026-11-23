@@ -32,3 +32,14 @@ internal fun resolveVaultRelativePath(vaultRoot: File, relativePath: String?): F
         }
     }.getOrNull()
 }
+
+/**
+ * Best-effort filesystem half of restore rollback. The caller supplies only artifacts
+ * created by the current restore attempt; non-empty directories are preserved.
+ */
+internal fun rollbackRestoreArtifacts(createdFiles: List<File>, createdDirectories: List<File>) {
+    createdFiles.asReversed().forEach { artifact -> runCatching { artifact.delete() } }
+    createdDirectories.asReversed().forEach { directory ->
+        runCatching { if (directory.isDirectory && directory.list()?.isEmpty() == true) directory.delete() }
+    }
+}
