@@ -144,6 +144,19 @@ object VaultBackupManager {
         var bytes = 0L
         val restoredPaths = mutableMapOf<String, String>()
 
+        // Parse and reject an unsupported/corrupt manifest before copying any payload
+        // into the private vault. This prevents malformed backups leaving copied files.
+        val manifestFile = backupFolder.findFile("backup-index.json")
+        val manifestJson = manifestFile?.let { file ->
+            context.contentResolver.openInputStream(file.uri)?.bufferedReader()?.use { it.readText() }
+                ?: throw IllegalStateException("Could not read backup manifest")
+        }
+        val manifestRoot = manifestJson?.takeIf { it.isNotBlank() }?.let { JSONObject(it) }
+        val manifestFormat = manifestRoot?.optString("format").orEmpty()
+        if (manifestRoot != null) {
+            require(isSupportedBackupFormat(manifestFormat)) { "Unsupported VaultOS backup format" }
+        }
+
         fun safeName(name: String) = name.replace(Regex("[/\\\\\\u0000-\\u001f]"), "_").take(180).ifBlank { "restored-file" }
 
         fun uniqueRestoredTarget(parent: File, originalName: String): File {
@@ -233,14 +246,10 @@ object VaultBackupManager {
         }
         restoreDirectory(backupFolder, vault)
 
-        val manifestFile = backupFolder.findFile("backup-index.json")
         var records = 0
-        if (manifestFile != null) {
-            val json = context.contentResolver.openInputStream(manifestFile.uri)?.bufferedReader()?.use { it.readText() }
-            if (!json.isNullOrBlank()) {
-                val rootObject = JSONObject(json)
-                val format = rootObject.optString("format")
-                require(format == "vaultos-backup-v1" || format == "vaultos-backup-v2") { "Unsupported VaultOS backup format" }
+        if (manifestRoot != null) {
+                val rootObject = manifestRoot
+                val format = manifestFormat
                 val recordArray = rootObject.optJSONArray("records") ?: JSONArray()
                 val dao = VaultDatabase.get(context).dao()
                 val repository = VaultRepository(context)
@@ -360,7 +369,6 @@ object VaultBackupManager {
                         ))
                     }
                 }
-            }
         }
         return ResultSummary(count, bytes, records)
     }
