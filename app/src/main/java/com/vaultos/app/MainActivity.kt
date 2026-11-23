@@ -1447,7 +1447,7 @@ private fun loadAppCatalogue(activity: MainActivity, archivedItems: List<VaultIt
             }
         }
         var usbRefresh by remember { mutableIntStateOf(0) }
-        val usbDevices = remember(resumeRevision, usbRefresh) { UsbOtgDiagnostics.attachedDevices(activity) }
+        val usbDevices = remember(usbRefresh) { UsbOtgDiagnostics.attachedDevices(activity) }
         Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF151A20))) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("USB / OTG diagnostics", fontWeight = FontWeight.SemiBold)
