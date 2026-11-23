@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import android.webkit.MimeTypeMap
 import androidx.documentfile.provider.DocumentFile
+import androidx.room.withTransaction
 import com.vaultos.app.data.VaultDatabase
 import com.vaultos.app.data.VaultItem
 import com.vaultos.app.data.UserTag
@@ -143,6 +144,9 @@ object VaultBackupManager {
         var count = 0
         var bytes = 0L
         val restoredPaths = mutableMapOf<String, String>()
+        // Only artifacts created by this restore are eligible for rollback.
+        val createdFiles = mutableListOf<File>()
+        val createdDirectories = mutableListOf<File>()
 
         // Parse and reject an unsupported/corrupt manifest before copying any payload
         // into the private vault. This prevents malformed backups leaving copied files.
@@ -207,7 +211,10 @@ object VaultBackupManager {
         }
 
         fun restoreDirectory(source: DocumentFile, destination: File, sourcePrefix: String = "") {
-            destination.mkdirs()
+            if (!destination.exists()) {
+                if (!destination.mkdirs() && !destination.isDirectory) throw IllegalStateException("Could not create restore directory ${destination.name}")
+                createdDirectories += destination
+            }
             source.listFiles().forEach { child ->
                 if (sourcePrefix.isEmpty() && child.name == "backup-index.json") return@forEach
                 val name = safeName(child.name ?: "restored-file")
@@ -221,6 +228,7 @@ object VaultBackupManager {
                     restoreDirectory(child, target, sourceRelative)
                 } else {
                     val temp = File(destination, ".${java.util.UUID.randomUUID()}.restore")
+                    createdFiles += temp
                     val digest = java.security.MessageDigest.getInstance("SHA-256")
                     var copiedForItem = 0L
                     context.contentResolver.openInputStream(child.uri)?.use { input ->
@@ -246,6 +254,7 @@ object VaultBackupManager {
                             temp.delete()
                         } else {
                             target = uniqueRestoredTarget(destination, name).canonicalFile
+                            createdFiles += target
                             if (!temp.renameTo(target)) {
                                 temp.copyTo(target, overwrite = false)
                                 temp.delete()
@@ -254,6 +263,7 @@ object VaultBackupManager {
                             count++
                         }
                     } else {
+                        createdFiles += target
                         if (!temp.renameTo(target)) {
                             temp.copyTo(target, overwrite = false)
                             temp.delete()
@@ -292,10 +302,13 @@ object VaultBackupManager {
             }
         }
 
-        restoreDirectory(backupFolder, vault)
+        try {
+            restoreDirectory(backupFolder, vault)
 
-        var records = 0
-        if (manifestRoot != null) {
+            var records = 0
+            if (manifestRoot != null) {
+                // All catalogue and organization writes now commit or roll back together.
+                VaultDatabase.get(context).withTransaction {
                 val rootObject = manifestRoot
                 val format = manifestFormat
                 val recordArray = rootObject.optJSONArray("records") ?: JSONArray()
@@ -417,7 +430,16 @@ object VaultBackupManager {
                         ))
                     }
                 }
+                }
+            }
+            return ResultSummary(count, bytes, records)
+        } catch (failure: Throwable) {
+            // Room cannot transact filesystem changes. Remove only artifacts created here.
+            createdFiles.asReversed().forEach { artifact -> runCatching { artifact.delete() } }
+            createdDirectories.asReversed().forEach { directory ->
+                runCatching { if (directory.isDirectory && directory.list()?.isEmpty() == true) directory.delete() }
+            }
+            throw failure
         }
-        return ResultSummary(count, bytes, records)
     }
 }
