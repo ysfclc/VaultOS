@@ -36,4 +36,28 @@ class VaultBackupManifestTest {
         assertFalse(isSafeBackupRelativePath("folder/./file"))
     }
 
+    @Test
+    fun validatesManifestRecordsAndRejectsDuplicateOrMissingIds() {
+        val valid = org.json.JSONArray()
+            .put(org.json.JSONObject().put("id", "item-1").put("relativePath", "documents/a.pdf").put("sha256", "a".repeat(64)))
+            .put(org.json.JSONObject().put("id", "item-2"))
+        validateBackupManifestRecords(valid)
+
+        val duplicate = org.json.JSONArray()
+            .put(org.json.JSONObject().put("id", "same"))
+            .put(org.json.JSONObject().put("id", "same"))
+        assertFailsWith<IllegalArgumentException> { validateBackupManifestRecords(duplicate) }
+
+        val missingId = org.json.JSONArray().put(org.json.JSONObject().put("name", "missing-id"))
+        assertFailsWith<IllegalArgumentException> { validateBackupManifestRecords(missingId) }
+
+        val unsafePath = org.json.JSONArray().put(org.json.JSONObject().put("id", "bad-path").put("relativePath", "../escape"))
+        assertFailsWith<IllegalArgumentException> { validateBackupManifestRecords(unsafePath) }
+
+        val malformedHash = org.json.JSONArray().put(org.json.JSONObject().put("id", "bad-hash").put("sha256", "xyz"))
+        assertFailsWith<IllegalArgumentException> { validateBackupManifestRecords(malformedHash) }
+
+        val malformedRow = org.json.JSONArray().put("not an object")
+        assertFailsWith<IllegalArgumentException> { validateBackupManifestRecords(malformedRow) }
+    }
 }
