@@ -1,5 +1,10 @@
 package com.vaultos.app
 
+import android.app.PendingIntent
+import android.content.BroadcastReceiver
+import android.content.IntentFilter
+import android.hardware.usb.UsbManager
+import android.widget.Toast
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -86,6 +91,17 @@ import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
+    private val usbPermissionAction = "com.vaultos.app.USB_PERMISSION"
+    private val usbPermissionReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action != usbPermissionAction) return
+            val granted = intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)
+            resumeRevision++
+            Toast.makeText(this@MainActivity, if (granted) "USB access granted. Interface details are now available." else "USB access was not granted.", Toast.LENGTH_SHORT).show()
+        }
+    }
+    private var usbReceiverRegistered = false
+
     lateinit var repository: VaultRepository
         private set
     var resumeRevision by mutableIntStateOf(0)
@@ -94,6 +110,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         repository = VaultRepository(this)
+        val usbFilter = IntentFilter(usbPermissionAction)
+        if (Build.VERSION.SDK_INT >= 33) registerReceiver(usbPermissionReceiver, usbFilter, Context.RECEIVER_NOT_EXPORTED)
+        else @Suppress("DEPRECATION") registerReceiver(usbPermissionReceiver, usbFilter)
+        usbReceiverRegistered = true
         handleIncoming(intent)
         scheduleScanner()
         setContent { VaultApp(this, repository, resumeRevision) }
@@ -112,6 +132,33 @@ class MainActivity : ComponentActivity() {
                 WorkManager.getInstance(this).enqueueUniqueWork("vaultos-storage-scan-now", ExistingWorkPolicy.KEEP, request)
             }
         }
+    }
+
+    fun requestUsbPermission(deviceName: String) {
+        val manager = getSystemService(Context.USB_SERVICE) as? UsbManager
+        val device = manager?.deviceList?.get(deviceName)
+        if (manager == null || device == null) {
+            Toast.makeText(this, "USB device is no longer connected. Refresh detection.", Toast.LENGTH_SHORT).show()
+            resumeRevision++
+            return
+        }
+        if (manager.hasPermission(device)) {
+            resumeRevision++
+            return
+        }
+        val permissionIntent = PendingIntent.getBroadcast(
+            this, deviceName.hashCode(), Intent(usbPermissionAction).setPackage(packageName),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        manager.requestPermission(device, permissionIntent)
+    }
+
+    override fun onDestroy() {
+        if (usbReceiverRegistered) {
+            unregisterReceiver(usbPermissionReceiver)
+            usbReceiverRegistered = false
+        }
+        super.onDestroy()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -1447,7 +1494,7 @@ private fun loadAppCatalogue(activity: MainActivity, archivedItems: List<VaultIt
             }
         }
         var usbRefresh by remember { mutableIntStateOf(0) }
-        val usbDevices = remember(usbRefresh) { UsbOtgDiagnostics.attachedDevices(activity) }
+        val usbDevices = remember(usbRefresh, activity.resumeRevision) { UsbOtgDiagnostics.attachedDevices(activity) }
         Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF151A20))) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("USB / OTG diagnostics", fontWeight = FontWeight.SemiBold)
@@ -1473,6 +1520,19 @@ private fun loadAppCatalogue(activity: MainActivity, archivedItems: List<VaultIt
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        if (device.hasPermission) {
+                            device.interfaces.forEach { usbInterface ->
+                                Text(
+                                    "Interface ${usbInterface.id}: class ${usbInterface.interfaceClass}, subclass ${usbInterface.interfaceSubclass}, protocol ${usbInterface.interfaceProtocol}, ${usbInterface.endpointCount} endpoint(s)",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        } else {
+                            OutlinedButton(onClick = { activity.requestUsbPermission(device.deviceName) }) {
+                                Text("Grant access to inspect interfaces")
+                            }
+                        }
                     }
                 }
                 OutlinedButton(onClick = { usbRefresh++ }) { Text("Refresh USB detection") }
