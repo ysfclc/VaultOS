@@ -372,7 +372,8 @@ Do not mark this phase complete from unit tests alone; device acceptance is mand
 - [x] Declare USB Host as an optional device feature so VaultOS remains installable on devices without USB Host support.
 - [x] Add API 35 instrumentation coverage proving diagnostics mirror Android's current device list without requesting USB permissions.
 - [ ] Reproduce the user's USB-C flash drive on Redmi Note 12 Pro 5G; record whether Android exposes a UsbDevice, its descriptors, and any system mount/notification behavior.
-- [ ] Add explicit USB permission request and interface inspection only after a detected device is confirmed; keep all initial diagnostics read-only.
+- [x] Add a user-initiated Android USB permission prompt for a currently detected device; enumerate interface class/subclass/protocol/endpoints only after permission is granted. No device handle is opened and no endpoint is read or written.
+- [ ] Verify permission grant/denial and interface descriptor display on the Redmi with the actual USB-C drive.
 - [ ] Browse/import files through Android's supported storage access path while preserving the source drive unchanged.
 - [ ] Investigate a Rust read-only filesystem fallback only if the device is detected but Android does not expose a usable mounted/document-tree path.
 - [ ] Complete physical verification on Redmi Note 12 Pro 5G with the user's actual USB-C drive and adapter.
