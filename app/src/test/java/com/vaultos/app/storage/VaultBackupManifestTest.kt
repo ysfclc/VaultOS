@@ -46,18 +46,27 @@ class VaultBackupManifestTest {
         val duplicate = org.json.JSONArray()
             .put(org.json.JSONObject().put("id", "same"))
             .put(org.json.JSONObject().put("id", "same"))
-        assertFailsWith<IllegalArgumentException> { validateBackupManifestRecords(duplicate) }
+        expectIllegalArgument { validateBackupManifestRecords(duplicate) }
 
         val missingId = org.json.JSONArray().put(org.json.JSONObject().put("name", "missing-id"))
-        assertFailsWith<IllegalArgumentException> { validateBackupManifestRecords(missingId) }
+        expectIllegalArgument { validateBackupManifestRecords(missingId) }
 
         val unsafePath = org.json.JSONArray().put(org.json.JSONObject().put("id", "bad-path").put("relativePath", "../escape"))
-        assertFailsWith<IllegalArgumentException> { validateBackupManifestRecords(unsafePath) }
+        expectIllegalArgument { validateBackupManifestRecords(unsafePath) }
 
         val malformedHash = org.json.JSONArray().put(org.json.JSONObject().put("id", "bad-hash").put("sha256", "xyz"))
-        assertFailsWith<IllegalArgumentException> { validateBackupManifestRecords(malformedHash) }
+        expectIllegalArgument { validateBackupManifestRecords(malformedHash) }
 
         val malformedRow = org.json.JSONArray().put("not an object")
-        assertFailsWith<IllegalArgumentException> { validateBackupManifestRecords(malformedRow) }
+        expectIllegalArgument { validateBackupManifestRecords(malformedRow) }
+    }
+    private fun expectIllegalArgument(block: () -> Unit) {
+        var caught = false
+        try {
+            block()
+        } catch (_: IllegalArgumentException) {
+            caught = true
+        }
+        assertTrue("Expected IllegalArgumentException", caught)
     }
 }
