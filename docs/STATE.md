@@ -1,3 +1,12 @@
+## Session 14 — backup restore path containment (2026-11-23)
+
+- Started the next data-safety increment after the keyboard responsiveness build. The next engineering priority is backup/restore integrity, not more keyboard tuning while physical latency feedback is pending.
+- Added `resolveVaultRelativePath`, a canonical private-vault path resolver for untrusted backup-manifest relative paths. It rejects absolute and drive-prefixed paths, traversal/empty segments, vault-root aliases and symlink escapes; valid not-yet-existing restore destinations remain supported for Recycle Bin metadata.
+- Updated restore to resolve archived payload paths through the new guard and to fail closed when `trashOriginalRelativePath` is unsafe, rather than persisting an arbitrary absolute filesystem path.
+- Added four JVM regression tests covering valid nested targets, traversal/absolute/drive paths, symlink-parent escapes and vault-root aliases.
+- This is a focused hardening slice only. Full v1/v2 round-trip, checksum/corrupt-manifest, collision, catalogue relationship and rollback tests remain open. No restore integration acceptance is claimed until CI executes the tests.
+- 0.13.4 keyboard build and API 35 instrumentation workflow passed in run 45063313026; physical Redmi typing latency remains unverified.
+
 ## Session 13 — inline clipboard expansion and 0.13.1 milestone (2026-11-21)
 
 - Clipboard history text now expands inline within its own card. The expanded payload is loaded on demand through integrity-checked, private-archive-only repository readback; the card animates its size, provides a bounded scroll region and allows text selection. Collapse returns to the short preview. Copy full text remains available.
