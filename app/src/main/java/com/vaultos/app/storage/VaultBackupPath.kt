@@ -12,10 +12,10 @@ import java.io.File
  */
 internal fun resolveVaultRelativePath(vaultRoot: File, relativePath: String?): File? {
     if (relativePath.isNullOrBlank()) return null
-    val normalized = relativePath.replace('\\\\', '/')
+    val normalized = relativePath.replace('\\', '/')
     if (normalized.startsWith('/') ||
         normalized.matches(Regex("^[A-Za-z]:.*")) ||
-        normalized.any { it == '\\u0000' }
+        normalized.contains("\u0000")
     ) return null
 
     val segments = normalized.split('/')
