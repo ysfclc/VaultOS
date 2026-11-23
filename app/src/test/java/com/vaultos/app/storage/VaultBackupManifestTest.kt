@@ -25,6 +25,7 @@ class VaultBackupManifestTest {
     fun validatesBackupRelativePathsWithoutTraversalOrAmbiguousSegments() {
         assertTrue(isSafeBackupRelativePath("documents/report.pdf"))
         assertTrue(isSafeBackupRelativePath("folder with spaces/note.txt"))
+        assertTrue(isSafeBackupRelativePath("folder:name/note.txt"))
         assertFalse(isSafeBackupRelativePath(""))
         assertFalse(isSafeBackupRelativePath("/absolute/file"))
         assertFalse(isSafeBackupRelativePath("../escape"))
