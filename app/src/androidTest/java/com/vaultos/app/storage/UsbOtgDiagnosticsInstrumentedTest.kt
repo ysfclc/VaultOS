@@ -2,6 +2,7 @@ package com.vaultos.app.storage
 
 import android.content.Context
 import android.hardware.usb.UsbManager
+import android.content.pm.PackageManager
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertEquals
@@ -17,6 +18,10 @@ class UsbOtgDiagnosticsInstrumentedTest {
         val manager = context.getSystemService(Context.USB_SERVICE) as UsbManager
         val devices = UsbOtgDiagnostics.attachedDevices(context)
 
+        assertEquals(
+            context.packageManager.hasSystemFeature(PackageManager.FEATURE_USB_HOST),
+            UsbOtgDiagnostics.hostSupported(context)
+        )
         assertEquals(manager.deviceList.size, devices.size)
         assertEquals(devices.size, devices.map { it.deviceName }.distinct().size)
         assertTrue(devices.zipWithNext().all { (left, right) ->
