@@ -1386,6 +1386,21 @@ private fun loadAppCatalogue(activity: MainActivity, archivedItems: List<VaultIt
     var keyboardLanguage by remember { mutableStateOf(prefs.getString(VaultKeyboardService.KEY_LANGUAGE, "en") ?: "en") }
     var busy by remember { mutableStateOf(false) }
     val backupTree = prefs.getString("backup_tree", null)
+    val usbTreeLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { treeUri ->
+        if (treeUri != null) {
+            busy = true
+            activity.lifecycleScope.launch {
+                val result = runCatching {
+                    com.vaultos.app.storage.UsbOtgImporter.importTree(activity, repository, treeUri)
+                }
+                busy = false
+                result.onSuccess {
+                    val suffix = if (it.truncated) " · stopped at the 2,000-file safety limit" else ""
+                    onMessage("USB import complete · ${it.imported} imported · ${it.failed} failed$suffix")
+                }.onFailure { onMessage(it.message ?: "USB import failed") }
+            }
+        }
+    }
     Column(
         Modifier.fillMaxSize()
             .verticalScroll(rememberScrollState())
@@ -1535,9 +1550,14 @@ private fun loadAppCatalogue(activity: MainActivity, archivedItems: List<VaultIt
                         }
                     }
                 }
-                OutlinedButton(onClick = { usbRefresh++ }) { Text("Refresh USB detection") }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = { usbRefresh++ }) { Text("Refresh USB detection") }
+                    Button(enabled = !busy, onClick = { usbTreeLauncher.launch(null) }) {
+                        if (busy) CircularProgressIndicator(Modifier.size(16.dp)) else Text("Browse / import USB folder")
+                    }
+                }
                 Text(
-                    "The first step only reads Android's device list. It does not request USB permission, mount, write to, or format the drive.",
+                    "The file picker uses Android's Storage Access Framework. VaultOS copies selected files into its private library and never deletes, renames or writes to the source drive.",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
