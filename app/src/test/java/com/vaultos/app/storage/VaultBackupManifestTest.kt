@@ -21,8 +21,6 @@ class VaultBackupManifestTest {
         assertFalse(isValidBackupSha256("a".repeat(63)))
         assertFalse(isValidBackupSha256("g".repeat(64)))
     }
-}
-
     @Test
     fun validatesBackupRelativePathsWithoutTraversalOrAmbiguousSegments() {
         assertTrue(isSafeBackupRelativePath("documents/report.pdf"))
@@ -36,4 +34,5 @@ class VaultBackupManifestTest {
         assertFalse(isSafeBackupRelativePath("C:/drive/file"))
         assertFalse(isSafeBackupRelativePath("folder/./file"))
     }
+
 }
