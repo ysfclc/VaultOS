@@ -435,10 +435,7 @@ object VaultBackupManager {
             return ResultSummary(count, bytes, records)
         } catch (failure: Throwable) {
             // Room cannot transact filesystem changes. Remove only artifacts created here.
-            createdFiles.asReversed().forEach { artifact -> runCatching { artifact.delete() } }
-            createdDirectories.asReversed().forEach { directory ->
-                runCatching { if (directory.isDirectory && directory.list()?.isEmpty() == true) directory.delete() }
-            }
+            rollbackRestoreArtifacts(createdFiles, createdDirectories)
             throw failure
         }
     }
