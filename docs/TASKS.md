@@ -374,7 +374,8 @@ Do not mark this phase complete from unit tests alone; device acceptance is mand
 - [ ] Reproduce the user's USB-C flash drive on Redmi Note 12 Pro 5G; record whether Android exposes a UsbDevice, its descriptors, and any system mount/notification behavior.
 - [x] Add a user-initiated Android USB permission prompt for a currently detected device; enumerate interface class/subclass/protocol/endpoints only after permission is granted. No device handle is opened and no endpoint is read or written.
 - [ ] Verify permission grant/denial and interface descriptor display on the Redmi with the actual USB-C drive.
-- [ ] Browse/import files through Android's supported storage access path while preserving the source drive unchanged.
+- [x] Add a user-selected Android Storage Access Framework folder picker and bounded recursive importer (2,000-file / 16-directory-depth safety limits); copy files into the private VaultOS library without modifying source files.
+- [ ] Verify the SAF picker exposes the actual USB volume on Redmi and test representative files, nested folders, permission denial and source-file hashes before/after import.
 - [ ] Investigate a Rust read-only filesystem fallback only if the device is detected but Android does not expose a usable mounted/document-tree path.
 - [ ] Complete physical verification on Redmi Note 12 Pro 5G with the user's actual USB-C drive and adapter.
 
