@@ -370,6 +370,7 @@ Do not mark this phase complete from unit tests alone; device acceptance is mand
 
 On-device procedure: [USB-OTG testing guide](USB-OTG-TESTING.md).
 
+- [x] Distinguish device USB Host capability from live USB device enumeration in diagnostics; clearly report when Android exposes no device instead of presenting this as a filesystem/import failure.
 - [x] Add passive Android USB Host device enumeration and expose VID/PID, product/manufacturer, interface count and permission state in Settings.
 - [x] Declare USB Host as an optional device feature so VaultOS remains installable on devices without USB Host support.
 - [x] Add API 35 instrumentation coverage proving diagnostics mirror Android's current device list without requesting USB permissions.
