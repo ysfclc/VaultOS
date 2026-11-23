@@ -24,5 +24,9 @@ class UsbOtgDiagnosticsInstrumentedTest {
         })
         // The diagnostic is deliberately passive: it never calls requestPermission().
         assertTrue(devices.all { it.interfaceCount >= 0 })
+        assertTrue(devices.all { device ->
+            if (device.hasPermission) device.interfaces.size == device.interfaceCount
+            else device.interfaces.isEmpty()
+        })
     }
 }
