@@ -32,3 +32,39 @@ internal fun validateBackupManifestRecords(records: org.json.JSONArray) {
         }
     }
 }
+
+/**
+ * V2 organization data is consumed after payload files have been copied. Validate its
+ * complete shape before restore starts so malformed rows cannot cause a late,
+ * partially-applied restore.
+ */
+internal fun validateBackupManifestV2Sections(root: org.json.JSONObject) {
+    fun rows(section: String, requiredFields: List<String>, uniqueField: String? = null) {
+        val array = root.optJSONArray(section)
+            ?: throw IllegalArgumentException("V2 backup manifest is missing $section")
+        val seen = mutableSetOf<String>()
+        for (index in 0 until array.length()) {
+            val row = array.optJSONObject(index)
+                ?: throw IllegalArgumentException("V2 backup manifest contains an invalid $section record")
+            for (field in requiredFields) {
+                val value = row.optString(field)
+                require(value.isNotBlank() && value != "null") {
+                    "V2 backup manifest $section record is missing $field"
+                }
+            }
+            if (uniqueField != null) {
+                val value = row.optString(uniqueField)
+                require(seen.add(value)) {
+                    "V2 backup manifest contains duplicate $section $uniqueField values"
+                }
+            }
+        }
+    }
+
+    rows("userTags", listOf("id", "name", "normalizedName"), "id")
+    rows("itemTags", listOf("itemId", "tagId"))
+    rows("userCollections", listOf("id", "name", "normalizedName"), "id")
+    rows("collectionItems", listOf("collectionId", "itemId"))
+    rows("savedSearches", listOf("id", "name", "normalizedName", "query"), "id")
+    rows("itemMetadata", listOf("itemId"), "itemId")
+}
