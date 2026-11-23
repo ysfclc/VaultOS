@@ -5,3 +5,11 @@ internal fun isSupportedBackupFormat(format: String): Boolean =
 
 internal fun isValidBackupSha256(value: String?): Boolean =
     value != null && value.matches(Regex("^[a-fA-F0-9]{64}$"))
+
+internal fun isSafeBackupRelativePath(path: String): Boolean {
+    if (path.isBlank() || path.startsWith('/') || path.startsWith('\\') || path.contains('\\')) return false
+    if (path.any { it.code < 0x20 || it.code == 0x7f }) return false
+    val segments = path.split('/')
+    if (segments.any { it.isEmpty() || it == "." || it == ".." || it.contains(':') }) return false
+    return true
+}
