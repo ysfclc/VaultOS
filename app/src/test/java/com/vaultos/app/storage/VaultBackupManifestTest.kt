@@ -20,6 +20,7 @@ class VaultBackupManifestTest {
         assertFalse(isValidBackupSha256(null))
         assertFalse(isValidBackupSha256("a".repeat(63)))
         assertFalse(isValidBackupSha256("g".repeat(64)))
+        assertTrue(isValidBackupSha256("A".repeat(64)))
     }
     @Test
     fun validatesBackupRelativePathsWithoutTraversalOrAmbiguousSegments() {
