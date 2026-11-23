@@ -353,3 +353,14 @@ Do not mark this phase complete from unit tests alone; device acceptance is mand
 - [x] Raise API 35 emulator boot timeout to 900 seconds, explicitly select SwiftShader/no-snapshot/wipe-data options, wait for Android and Package Manager readiness before Gradle, and upload logcat/package/process diagnostics even on failure.
 
 **Boundary:** automatic monitoring still requires VaultOS to be the selected Android input method. This increment does not claim universal background clipboard interception.
+
+
+## Phase 15 — backup and restore integrity
+
+- [x] Resolve every restored archive manifest path as a canonical path strictly beneath the private vault; reject absolute, drive-prefixed, traversal, empty-segment and symlink-escape paths.
+- [x] Reject an unsafe `trashOriginalRelativePath` instead of persisting an arbitrary filesystem destination into the Recycle Bin metadata.
+- [x] Add JVM regression tests for nested restore paths, missing-but-valid restore destinations, absolute/traversal/drive-prefixed paths, symlink-parent escapes and vault-root aliases.
+- [ ] Add fixture-based v1/v2 backup and restore round-trip tests for payload hashes, missing payloads, collision handling, trashed items, tags, collections, saved searches and metadata.
+- [ ] Prove malformed-manifest and checksum failures do not leave partially restored catalogue state or orphaned payloads.
+- [ ] Add Room migration regression tests for every supported schema version.
+- [ ] Run the complete API 35 instrumentation suite and retain the Redmi physical acceptance gate.
