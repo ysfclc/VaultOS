@@ -61,6 +61,43 @@ class VaultBackupManifestTest {
         val malformedRow = org.json.JSONArray().put("not an object")
         expectIllegalArgument { validateBackupManifestRecords(malformedRow) }
     }
+    @Test
+    fun validatesEveryV2OrganizationSectionBeforeRestore() {
+        val valid = org.json.JSONObject()
+            .put("userTags", org.json.JSONArray().put(org.json.JSONObject()
+                .put("id", "tag-1").put("name", "Work").put("normalizedName", "work")))
+            .put("itemTags", org.json.JSONArray().put(org.json.JSONObject()
+                .put("itemId", "item-1").put("tagId", "tag-1")))
+            .put("userCollections", org.json.JSONArray().put(org.json.JSONObject()
+                .put("id", "collection-1").put("name", "Projects").put("normalizedName", "projects")))
+            .put("collectionItems", org.json.JSONArray().put(org.json.JSONObject()
+                .put("collectionId", "collection-1").put("itemId", "item-1")))
+            .put("savedSearches", org.json.JSONArray().put(org.json.JSONObject()
+                .put("id", "search-1").put("name", "PDFs").put("normalizedName", "pdfs").put("query", "type:pdf")))
+            .put("itemMetadata", org.json.JSONArray().put(org.json.JSONObject().put("itemId", "item-1")))
+        validateBackupManifestV2Sections(valid)
+
+        val missingSection = org.json.JSONObject(valid.toString()).apply { remove("savedSearches") }
+        expectIllegalArgument { validateBackupManifestV2Sections(missingSection) }
+
+        val malformedRow = org.json.JSONObject(valid.toString()).apply {
+            put("itemMetadata", org.json.JSONArray().put(org.json.JSONObject()))
+        }
+        expectIllegalArgument { validateBackupManifestV2Sections(malformedRow) }
+
+        val duplicateId = org.json.JSONObject(valid.toString()).apply {
+            put("userTags", org.json.JSONArray()
+                .put(org.json.JSONObject().put("id", "tag-1").put("name", "A").put("normalizedName", "a"))
+                .put(org.json.JSONObject().put("id", "tag-1").put("name", "B").put("normalizedName", "b")))
+        }
+        expectIllegalArgument { validateBackupManifestV2Sections(duplicateId) }
+
+        val nonObjectRow = org.json.JSONObject(valid.toString()).apply {
+            put("collectionItems", org.json.JSONArray().put("not-an-object"))
+        }
+        expectIllegalArgument { validateBackupManifestV2Sections(nonObjectRow) }
+    }
+
     private fun expectIllegalArgument(block: () -> Unit) {
         var caught = false
         try {
