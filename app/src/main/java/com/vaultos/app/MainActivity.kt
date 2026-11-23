@@ -53,6 +53,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.work.ExistingPeriodicWorkPolicy
@@ -111,8 +112,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         repository = VaultRepository(this)
         val usbFilter = IntentFilter(usbPermissionAction)
-        if (Build.VERSION.SDK_INT >= 33) registerReceiver(usbPermissionReceiver, usbFilter, Context.RECEIVER_NOT_EXPORTED)
-        else @Suppress("DEPRECATION") registerReceiver(usbPermissionReceiver, usbFilter)
+        ContextCompat.registerReceiver(this, usbPermissionReceiver, usbFilter, ContextCompat.RECEIVER_NOT_EXPORTED)
         usbReceiverRegistered = true
         handleIncoming(intent)
         scheduleScanner()
