@@ -1509,12 +1509,14 @@ private fun loadAppCatalogue(activity: MainActivity, archivedItems: List<VaultIt
             }
         }
         var usbRefresh by remember { mutableIntStateOf(0) }
+        val usbHostSupported = remember(activity) { UsbOtgDiagnostics.hostSupported(activity) }
         val usbDevices = remember(usbRefresh, activity.resumeRevision) { UsbOtgDiagnostics.attachedDevices(activity) }
         Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF151A20))) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("USB / OTG diagnostics", fontWeight = FontWeight.SemiBold)
                 Text(
-                    if (usbDevices.isEmpty()) "No USB host device is currently visible to Android. Connect the flash drive through a compatible USB-C OTG adapter, then refresh."
+                    if (!usbHostSupported) "This Android device does not advertise USB Host support. USB flash-drive access through OTG may not be available."
+                    else if (usbDevices.isEmpty()) "USB Host support is advertised, but Android exposes no connected USB device. This is not a filesystem/import failure: the phone has not enumerated the drive. Check the OTG adapter, drive, power and system OTG state."
                     else "Android currently exposes ${usbDevices.size} USB device(s). This is detection only; VaultOS has not opened or modified the drive.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
