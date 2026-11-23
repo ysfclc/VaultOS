@@ -368,6 +368,8 @@ Do not mark this phase complete from unit tests alone; device acceptance is mand
 
 ## Phase 16 — USB-OTG detection and read-only import
 
+On-device procedure: [USB-OTG testing guide](USB-OTG-TESTING.md).
+
 - [x] Add passive Android USB Host device enumeration and expose VID/PID, product/manufacturer, interface count and permission state in Settings.
 - [x] Declare USB Host as an optional device feature so VaultOS remains installable on devices without USB Host support.
 - [x] Add API 35 instrumentation coverage proving diagnostics mirror Android's current device list without requesting USB permissions.
