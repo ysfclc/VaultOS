@@ -155,6 +155,9 @@ object VaultBackupManager {
         val manifestFormat = manifestRoot?.optString("format").orEmpty()
         if (manifestRoot != null) {
             require(isSupportedBackupFormat(manifestFormat)) { "Unsupported VaultOS backup format" }
+            val manifestRecords = manifestRoot.optJSONArray("records")
+                ?: throw IllegalArgumentException("Backup manifest is missing its records array")
+            validateBackupManifestRecords(manifestRecords)
         }
 
         fun safeName(name: String) = name.replace(Regex("[/\\\\\\u0000-\\u001f]"), "_").take(180).ifBlank { "restored-file" }
