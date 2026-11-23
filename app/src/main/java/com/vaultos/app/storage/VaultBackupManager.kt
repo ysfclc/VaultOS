@@ -158,6 +158,9 @@ object VaultBackupManager {
             val manifestRecords = manifestRoot.optJSONArray("records")
                 ?: throw IllegalArgumentException("Backup manifest is missing its records array")
             validateBackupManifestRecords(manifestRecords)
+            if (manifestFormat == "vaultos-backup-v2") {
+                validateBackupManifestV2Sections(manifestRoot)
+            }
         }
 
         fun safeName(name: String) = name.replace(Regex("[/\\\\\\u0000-\\u001f]"), "_").take(180).ifBlank { "restored-file" }
