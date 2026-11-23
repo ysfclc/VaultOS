@@ -188,7 +188,7 @@ object VaultBackupManager {
         fun documentSha256(file: DocumentFile): String {
             val digest = java.security.MessageDigest.getInstance("SHA-256")
             val input = context.contentResolver.openInputStream(file.uri)
-                ?: throw IllegalStateException("Could not read backup payload \${file.name}")
+                ?: throw IllegalStateException("Could not read backup payload ${file.name}")
             input.buffered().use { stream ->
                 val buffer = ByteArray(128 * 1024)
                 while (true) {
@@ -277,11 +277,11 @@ object VaultBackupManager {
                 var sourceFile: DocumentFile = backupFolder
                 for (segment in relative.split('/')) {
                     sourceFile = sourceFile.findFile(segment)
-                        ?: throw IllegalStateException("Backup payload is missing: \${row.optString("name")}")
+                        ?: throw IllegalStateException("Backup payload is missing: ${row.optString("name")}")
                 }
-                require(sourceFile.isFile) { "Backup payload is not a file: \${row.optString("name")}" }
+                require(sourceFile.isFile) { "Backup payload is not a file: ${row.optString("name")}" }
                 if (expectedHash != null && documentSha256(sourceFile) != expectedHash.lowercase()) {
-                    throw IllegalStateException("Backup integrity check failed for \${row.optString("name")}")
+                    throw IllegalStateException("Backup integrity check failed for ${row.optString("name")}")
                 }
             }
         }
