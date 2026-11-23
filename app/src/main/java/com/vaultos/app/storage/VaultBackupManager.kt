@@ -185,6 +185,21 @@ object VaultBackupManager {
             return digest.digest().joinToString("") { "%02x".format(it) }
         }
 
+        fun documentSha256(file: DocumentFile): String {
+            val digest = java.security.MessageDigest.getInstance("SHA-256")
+            val input = context.contentResolver.openInputStream(file.uri)
+                ?: throw IllegalStateException("Could not read backup payload \${file.name}")
+            input.buffered().use { stream ->
+                val buffer = ByteArray(128 * 1024)
+                while (true) {
+                    val read = stream.read(buffer)
+                    if (read < 0) break
+                    digest.update(buffer, 0, read)
+                }
+            }
+            return digest.digest().joinToString("") { "%02x".format(it) }
+        }
+
         fun restoreDirectory(source: DocumentFile, destination: File, sourcePrefix: String = "") {
             destination.mkdirs()
             source.listFiles().forEach { child ->
@@ -244,6 +259,33 @@ object VaultBackupManager {
                 }
             }
         }
+        // Validate every manifest-listed archive payload before the first write into the vault.
+        // Legacy backups without a manifest remain eligible for folder-only restoration.
+        if (manifestRoot != null) {
+            val manifestRecords = manifestRoot.optJSONArray("records")
+                ?: throw IllegalStateException("Backup manifest is missing its records array")
+            for (i in 0 until manifestRecords.length()) {
+                val row = manifestRecords.optJSONObject(i)
+                    ?: throw IllegalStateException("Backup manifest contains an invalid record")
+                val relative = row.optString("relativePath").takeIf { it.isNotBlank() && it != "null" }
+                    ?: continue
+                require(isSafeBackupRelativePath(relative)) { "Backup contains an unsafe payload path" }
+                val expectedHash = row.optString("sha256").takeIf { it.isNotBlank() && it != "null" }
+                if (expectedHash != null) {
+                    require(isValidBackupSha256(expectedHash)) { "Backup contains an invalid SHA-256 value" }
+                }
+                var sourceFile: DocumentFile = backupFolder
+                for (segment in relative.split('/')) {
+                    sourceFile = sourceFile.findFile(segment)
+                        ?: throw IllegalStateException("Backup payload is missing: \${row.optString("name")}")
+                }
+                require(sourceFile.isFile) { "Backup payload is not a file: \${row.optString("name")}" }
+                if (expectedHash != null && documentSha256(sourceFile) != expectedHash.lowercase()) {
+                    throw IllegalStateException("Backup integrity check failed for \${row.optString("name")}")
+                }
+            }
+        }
+
         restoreDirectory(backupFolder, vault)
 
         var records = 0
