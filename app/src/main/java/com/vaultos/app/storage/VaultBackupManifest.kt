@@ -10,6 +10,7 @@ internal fun isSafeBackupRelativePath(path: String): Boolean {
     if (path.isBlank() || path.startsWith('/') || path.startsWith('\\') || path.contains('\\')) return false
     if (path.any { it.code < 0x20 || it.code == 0x7f }) return false
     val segments = path.split('/')
-    if (segments.any { it.isEmpty() || it == "." || it == ".." || it.contains(':') }) return false
+    if (segments.any { it.isEmpty() || it == "." || it == ".." }) return false
+    if (path.matches(Regex("^[A-Za-z]:.*"))) return false
     return true
 }
