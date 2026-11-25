@@ -391,7 +391,7 @@ On-device procedure: [USB-OTG testing guide](USB-OTG-TESTING.md).
 - [x] Remove the exposed historical signer from Gradle build variants: debug/instrumentation use Android's generated default debug signer; release remains unsigned until key rotation is verified.
 - [x] Convert the normal GitHub Actions workflow to validation-only: run JVM unit tests and lint without reading the exposed signing keystore, assembling release APKs, or publishing draft releases; API 35 test APKs use the default debug signer.
 - [x] Pause the Vercel APK publication pipeline; deploy only a release-paused page until the replacement signer lineage and in-place update checks are verified.
-- [x] Reduce default workflow token permissions to read-only; retain write permission only for the Android job that imports an explicitly uploaded source ZIP into its own branch.
+- [x] Set every GitHub Actions job to read-only repository permissions and remove the legacy full-repository ZIP import step.
 - [ ] Contain public repository exposure and review Git history, forks, clones and previously downloaded source archives before declaring the repository safe.
 - [ ] Provision a replacement sideload signing key outside the repository and store it in GitHub Actions secrets; never commit the key or passwords.
 - [ ] Generate a v3 signing lineage from the exposed historical signer to the replacement signer, with API 28 rotation boundary.

@@ -384,7 +384,7 @@ Verification status: test source and Gradle dependencies were committed and re-f
 - Enabled generated `BuildConfig` in `app/build.gradle.kts`, fixing the compile blocker observed in run 45644937420.
 - Changed the canonical `.github/workflows/android-build.yml` to run `clean testDebugUnitTest lintDebug` only.
 - Removed persistent-keystore verification, debug/release APK assembly, apksigner verification, APK artifact upload and draft-release publication from the normal build/lint job. Removed the historical signer from Gradle entirely: debug/instrumentation use Android's generated default debug key and the release variant is unsigned.
-- Default workflow token permission is now `contents: read`; only the Android source-ZIP import job retains `contents: write`. The instrumentation job remains read-only.
+- All workflow jobs now use `contents: read`; the legacy full-repository ZIP import step and its write-token requirement have been removed.
 - Synchronized the root `android-build.yml` mirror with the canonical workflow.
 
 **Verification boundary**
