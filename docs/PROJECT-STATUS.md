@@ -1,5 +1,16 @@
 # VaultOS — project status
 
+## Current security and distribution status — 2026-11-25
+
+**Distribution is paused.** The 0.13.0 release metadata and historical APK evidence below describe prior artifacts only; they are not authorization to distribute or sign a new release.
+
+- PR #14 (security hardening) was squash-merged into `main`: `1819f754dd87de600fbbf70c6d69d212d99a9d77`.
+- The exposed historical signing identity has been removed from Gradle signing configuration. Debug/instrumentation builds use Android's generated debug signer; release signing remains unconfigured.
+- GitHub Actions is validation-only. Its PR run passed unit tests, lint, signer guard and API 35 instrumentation (6/6 tests).
+- The Vercel build script now emits a static downloads-paused page. All three public project aliases were reassigned to the verified pause-page deployment.
+- The historical keystore remains in repository history/current tree as migration input and is compromised. Replacement-key provisioning, v3 signing lineage, in-place update compatibility and app-private data preservation remain unverified.
+- Do not generate or publish a release APK until the replacement signing and update-continuity gates are complete.
+
 **Release line:** 0.13.0 · **Application ID:** `com.vaultos.app` · **Target:** Redmi Note 12 Pro 5G
 
 ## Product contract
