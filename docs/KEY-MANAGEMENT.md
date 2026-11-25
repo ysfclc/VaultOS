@@ -1,50 +1,64 @@
 # VaultOS signing key management
 
-## Current status — remediation blocked on replacement credentials and compatibility decision
+## Current status — release signing and distribution paused
 
-The former signing identity at `signing/vaultos-stable.keystore` was committed while this repository was public. Treat that identity and its credentials as exposed. Making the repository private is useful containment, but it does not remove copies from Git history, detached public forks, prior clones, or downloaded ZIPs.
+The historical VaultOS signing identity at `signing/vaultos-stable.keystore` was committed while this repository was public. Treat its private key and credentials as compromised. The repository is still public; no visibility change or Git-history rewrite has been performed.
 
-**The historical signer has now been removed from Gradle build configuration.** Debug and instrumentation builds use Android's generated default debug signer; the release variant is intentionally unsigned. Do not use the exposed identity for any new APK signing. Do not delete or rotate it blindly: existing VaultOS installations may require the original signer to accept an update.
+**The historical signer has been removed from Gradle build configuration.** Debug and instrumentation builds use Android's generated default debug signer. The release variant is intentionally unsigned. Do not use the exposed identity to sign a new release APK. Retain it only as a temporary migration input until the replacement lineage has been created and verified; it must not remain the long-term release signer.
 
-## Existing installation continuity
-
+Application identity and current build baseline:
 - Application ID: `com.vaultos.app`
-- Minimum Android version: API 28 (approved policy; implementation now committed)
-- Historical builds used the same signing certificate for debug and release. Current debug/instrumentation builds use Android's generated default debug signer; current release builds are unsigned.
-- A different signing certificate normally cannot update an existing installation in place.
-- APK Signature Scheme v3 key rotation is supported from Android 9 (API 28).
-- With `apksigner sign --lineage ... --rotation-min-sdk-version 28`, the rotated signer is used from API 28 onward; the original signer remains necessary for platforms below API 28.
-- Android 13 (API 33) introduced v3.1, whose default behavior targets the rotated signer at API 33+ and retains the original signer in the v3 block for older platforms. Do not rely on that default if the intended rotation boundary is API 28.
+- Current source version: `0.13.0` / versionCode `14`
+- Minimum Android version: API 28
+- Target/compile SDK: 35
+- Historical distributed release certificate SHA-256: `c5b0c6c49ff6ca525558c2fecfa11dff54fba50f9083482cd869af4759e78b23`
+- Release signing: disabled; no replacement signer or lineage has been provisioned.
 
-### API 26–27 support decision
+The candidate versionCode 19 was not published. Any migration build must use a versionCode higher than the last distributed release (14), and must be checked against the exact baseline APK installed by existing users.
 
-Because VaultOS currently supports API 26 and 27, those devices cannot use the v3 proof-of-rotation mechanism. Keeping in-place updates for those installations requires continuing to sign their compatible APKs with the exposed original key. That preserves update continuity but does **not** fully remediate the compromised key for API 26–27 devices.
+## Compatibility finding — API 28 through current Android
 
-**Decision approved:** VaultOS now raises minSdk to API 28. This drops Android 8 and 8.1 from supported updates so the release signer can rotate from API 28 onward without retaining a legacy API 26–27 update path. Existing API 26–27 users cannot install the new build as an in-place update; they should export their VaultOS data and move to a supported Android device.
+Android APK Signature Scheme v3 supports proof-of-rotation beginning with Android 9 (API 28). Android 13 (API 33) introduced v3.1, which can target the rotated signer at API 33+ while retaining the original signer for older platform versions by default.
 
-The rotation itself is still pending. API 28–32 have platform-specific key-rotation caveats; the lineage and signed APK must be validated with the exact Build Tools version and tested on representative Android 9, Android 12L, and Android 13+ devices before the release is declared safe. Android's current guidance warns about rotation-related behavior on Android 12 and earlier. Do not infer successful in-place update from `apksigner verify` alone.
+**Important caveat:** Android's current documentation explicitly warns that key rotation is not recommended on Android 12 (API 31) and earlier. The `apksigner` documentation explains that when a rotated signer has already been used on Android 12L (API 32) or lower, subsequent signing must explicitly use `--rotation-min-sdk-version 28` to continue using that rotated signer from API 28. This is not a reason to assume the migration is safe: platform installation and signature-identity behavior must be tested on the actual supported API range.
 
-## Required remediation sequence
+Because `minSdk=28`, the required compatibility matrix is:
+1. API 28 (Android 9): update from the last old-signed release using the candidate lineage.
+2. API 32 (Android 12L): repeat the in-place update and inspect signer identity/capabilities.
+3. API 33+ (Android 13 or newer): repeat the in-place update through the v3.1 path.
+4. The actual target device (Redmi Note 12 Pro 5G): perform the final update and data-retention test on the exact Android/MIUI build installed there.
 
-1. Keep the repository private while cleanup is underway.
-2. Provision a replacement keystore and keep it outside the repository. Store the required keystore bytes and passwords as GitHub Actions secrets; never commit them.
-3. API 26–27 support has been dropped by raising minSdk to API 28.
-4. Generate and verify a signing-certificate lineage from the exposed certificate to the replacement certificate. For an API 28 rotation boundary, use the documented `apksigner` rotation options and explicitly set `--rotation-min-sdk-version 28`.
-5. [x] Remove the exposed signer from Gradle build configuration. Debug/instrumentation builds now use Android's default debug signer; release signing remains disabled. Add secret-backed release signing only after the replacement key and lineage are provisioned.
-6. Build and verify APK signatures for the supported API range. Test an in-place update from the last distributed APK on representative Android versions and verify app-private data remains intact.
-7. Only after the new pipeline and update path are proven, remove the committed keystore from the current tree and rewrite exposed Git history. Review detached public forks and previously distributed archives separately.
-8. Verify the repository, ZIP import process, and all generated release artifacts contain no private signing material.
+A successful `apksigner verify` only verifies APK signature validity for selected platform versions. It does **not** prove Package Manager will accept the update, that signature permissions behave correctly, or that VaultOS data survives.
 
-## Current build warning
+Official references:
+- https://developer.android.com/tools/apksigner
+- https://source.android.com/docs/security/features/apksigning/v3
+- https://source.android.com/docs/security/features/apksigning/v3-1
 
-Gradle no longer references the historical committed keystore. Routine CI runs JVM tests, lint and API 35 instrumentation only; test APKs use Android's generated default debug signer. The release variant remains unsigned and no GitHub Actions workflow assembles or publishes release APKs. The Vercel build script now publishes a temporary release-paused page and does not provision Android tooling, read signing material, build an APK or publish a download. The historical keystore remains in the current tree and Git history for lineage migration, so public exposure is not remediated. The app's minSdk is API 28. The source-ZIP import step has been removed from CI to avoid giving build/test jobs repository write access; this does not remove the already-committed key.
+## Secure migration procedure
 
-The GitHub connector cannot read or verify GitHub Actions secret values. A successful build alone is not proof of signing-key rotation; inspect the resulting certificate and lineage. Do not claim remediation complete until the lineage and in-place update have been verified on-device.
+1. **Containment:** keep public distribution paused. Repository visibility is currently public; changing it requires a separate explicit decision. Do not rewrite history or delete the old keystore before the migration evidence and secure backups exist.
+2. **Provision replacement material:** generate a new, unique release key in a trusted local/offline environment controlled by the owner. Use a strong unique keystore and key password. Keep the keystore and password manager backup outside Git, build logs, artifacts, chat, and ordinary workspace backups. Record only the new certificate's public SHA-256 fingerprint in project documentation.
+3. **Protect CI access:** only after the owner has securely provisioned the key, transfer it into a narrowly scoped secret-backed release workflow. Never print secret values, decode them into logs, or expose them to pull-request builds from forks. The GitHub connector cannot read back or verify Actions secret values.
+4. **Create lineage:** use the exact Android SDK Build Tools `apksigner` version selected for release. Generate a lineage from the historical certificate to the new certificate using `apksigner rotate`. The historical key is used only to authorize this transition; do not use it as the current release signer.
+5. **Validate signing behavior:** sign a disposable candidate using the lineage and the documented API 28 rotation boundary. Inspect the resulting certificate(s), proof-of-rotation and signing schemes. Verify the APK separately for API 28, API 32, API 33 and the current platform. Do not infer the correct signer ordering or flags from an untested command copied into CI.
+6. **Prove in-place update:** install the exact last distributed old-signed APK on clean test devices/emulators for API 28, 32 and 33+. Populate representative app-private data first: Room catalogue, archive payloads, clipboard history, tags/collections and keyboard settings. Install the candidate directly over it without uninstalling or clearing data. Confirm package update success, expected signing lineage, app launch, readable records and payload hashes. Test the actual Redmi separately. Record API/build/device and evidence.
+7. **Release pipeline:** only after the above succeeds, add release signing to a protected workflow. Require a versionCode greater than 14, signer-fingerprint allowlisting, lineage verification, artifact checksum, clean tests/lint/instrumentation, and a manual production-release approval. Keep PR and fork workflows unable to access signing secrets.
+8. **Cleanup:** after the owner has verified and backed up the replacement key and lineage, remove the historical keystore from the current tree and rewrite exposed Git history under an explicitly approved operation. Review public forks, clones, cached archives and previously distributed APKs separately. Verify no private key material remains in source, history after rewrite, ZIPs, artifacts or deployment outputs.
+
+## Explicit release blockers
+
+- No replacement key has been provisioned or securely handed off.
+- No signing lineage has been generated or inspected.
+- No candidate release APK has been signed with the replacement identity.
+- No API 28 / API 32 / API 33+ in-place update has been executed.
+- No app-private data-preservation test has passed on an actual device.
+- The repository remains public and historical key material remains in the current tree and Git history.
+- The production download page remains paused; no APK is being distributed.
+
+Do not re-enable release signing, remove the historical migration input, rewrite Git history, or publish an APK while any required blocker remains.
 
 ## Local development
 
-Never commit a keystore. Keep local signing material outside the repository and provide it through local Gradle properties or environment variables. Use the Android default debug signing identity for ordinary development; never sign debug APKs with a production or release key.
+Never commit a keystore. Keep local signing material outside the repository and provide it through local Gradle properties or environment variables. Use Android's generated debug signing identity for ordinary development; never sign debug APKs with a production or release key.
 
-## Deferred work status — 2026-11-05
-
-The replacement-key migration and GitHub Actions secret provisioning are active security work under GOV-001. The historical keystore remains tracked only as migration input; it is no longer configured for Gradle signing. Do not remove it or rewrite Git history until the replacement certificate lineage is generated, securely retained and in-place update compatibility is verified.
