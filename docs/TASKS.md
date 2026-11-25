@@ -333,6 +333,7 @@ Do not mark this phase complete from unit tests alone; device acceptance is mand
 - [x] Remove the exposed historical signer from Gradle build variants: debug/instrumentation use Android's generated default debug signer; release remains unsigned until key rotation is verified.
 - [x] Convert routine GitHub Actions to validation-only: run JVM unit tests and lint; API 35 instrumentation uses the default debug signer for test APKs. No release APKs are assembled, signed, uploaded or published.
 - [x] Remove the legacy full-repository ZIP import step from CI so validation jobs require only read-only repository permissions.
+- [x] Pause the Vercel APK publication pipeline; deploy only a release-paused page until the replacement signer lineage and in-place update checks are verified.
 - [ ] Contain public repository exposure and review Git history, forks, clones and previously downloaded source archives before declaring the repository safe.
 - [ ] Provision a replacement sideload signing key outside the repository and store it in GitHub Actions secrets; never commit the key or passwords.
 - [ ] Generate a v3 signing lineage from the exposed historical signer to the replacement signer, with API 28 rotation boundary.

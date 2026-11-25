@@ -37,7 +37,7 @@ The rotation itself is still pending. API 28–32 have platform-specific key-rot
 
 ## Current build warning
 
-Gradle no longer references the historical committed keystore. Routine CI runs JVM tests, lint and API 35 instrumentation only; test APKs use Android's generated default debug signer. The release variant remains unsigned and no CI workflow assembles or publishes release APKs. The historical keystore remains in the current tree and Git history for lineage migration, so public exposure is not remediated. The app's minSdk is API 28. The source-ZIP import step has been removed from CI to avoid giving build/test jobs repository write access; this does not remove the already-committed key.
+Gradle no longer references the historical committed keystore. Routine CI runs JVM tests, lint and API 35 instrumentation only; test APKs use Android's generated default debug signer. The release variant remains unsigned and no GitHub Actions workflow assembles or publishes release APKs. The Vercel build script now publishes a temporary release-paused page and does not provision Android tooling, read signing material, build an APK or publish a download. The historical keystore remains in the current tree and Git history for lineage migration, so public exposure is not remediated. The app's minSdk is API 28. The source-ZIP import step has been removed from CI to avoid giving build/test jobs repository write access; this does not remove the already-committed key.
 
 The GitHub connector cannot read or verify GitHub Actions secret values. A successful build alone is not proof of signing-key rotation; inspect the resulting certificate and lineage. Do not claim remediation complete until the lineage and in-place update have been verified on-device.
 
