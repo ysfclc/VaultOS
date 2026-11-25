@@ -5,7 +5,6 @@ on:
     branches:
       - "**"
     paths:
-      - "incoming/VaultOS-source.zip"
       - "app/**"
       - "*.gradle.kts"
       - "gradle.properties"
@@ -16,7 +15,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: vaultos-android-${{ github.ref }}
@@ -24,195 +23,12 @@ concurrency:
 
 jobs:
   android:
-    name: Test, lint and build APK
+    name: Test and lint (no APK signing)
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
-
-      - name: Import uploaded full-repository ZIP
-        if: github.event_name != 'pull_request'
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          # A ZIP is imported only when this push actually changes the ZIP.
-          # Other pushes and documentation updates must never replay a stale archive.
-          if [ "$GITHUB_EVENT_NAME" = "push" ] && ! jq -e '((.head_commit.added // []) + (.head_commit.modified // [])) | index("incoming/VaultOS-source.zip") != null' "$GITHUB_EVENT_PATH" >/dev/null; then
-            echo "This push did not add or modify incoming/VaultOS-source.zip; skipping ZIP import."
-            exit 0
-          fi
-
-          ZIP_PATH="incoming/VaultOS-source.zip"
-          if [ ! -f "$ZIP_PATH" ]; then
-            echo "No incoming source ZIP found; using the checked-out repository."
-            exit 0
-          fi
-
-          # Always inspect and extract the ZIP. Do not trust the previous SHA marker
-          # as proof that the checked-out source still matches the uploaded archive.
-          ZIP_SHA="$(sha256sum "$ZIP_PATH" | cut -d ' ' -f1)"
-          TEMP_DIR="$(mktemp -d)"
-          trap 'rm -rf "$TEMP_DIR"' EXIT
-          unzip -q "$ZIP_PATH" -d "$TEMP_DIR"
-          SETTINGS_FILE="$(find "$TEMP_DIR" -name settings.gradle.kts -type f -print -quit)"
-          if [ -z "$SETTINGS_FILE" ]; then
-            echo "Source ZIP is invalid: settings.gradle.kts is missing." >&2
-            exit 1
-          fi
-          PROJECT_DIR="$(dirname "$SETTINGS_FILE")"
-          if [ ! -f "$PROJECT_DIR/app/build.gradle.kts" ] || [ ! -f "$PROJECT_DIR/README.md" ]; then
-            echo "Source ZIP is incomplete: app/build.gradle.kts or README.md is missing." >&2
-            exit 1
-          fi
-
-          # Never accept private signing material from a source archive.
-          SIGNING_MATERIAL="$(find "$PROJECT_DIR" -type f -print | grep -Ei '[.](jks|keystore|p12|pfx|pk8|key)$' || true)"
-          if [ -n "$SIGNING_MATERIAL" ] || [ -d "$PROJECT_DIR/signing" ]; then
-            echo "Source ZIP contains signing material. Remove the signing/ directory and private key files before uploading." >&2
-            printf '%s\n' "$SIGNING_MATERIAL" >&2
-            exit 1
-          fi
-
-          # Reject the known stale package before it can reach Gradle lint.
-          KEYBOARD_FILE="$PROJECT_DIR/app/src/main/java/com/vaultos/app/keyboard/VaultKeyboardService.kt"
-          if [ ! -f "$KEYBOARD_FILE" ]; then
-            echo "Source ZIP is missing VaultKeyboardService.kt." >&2
-            exit 1
-          fi
-          if grep -nE 'switchToNextInputMethod[[:space:]]*\(' "$KEYBOARD_FILE"; then
-            echo "STALE SOURCE ZIP: VaultKeyboardService.kt still calls the API-28-only switchToNextInputMethod()." >&2
-            echo "Upload the corrected VaultOS-source.zip; do not only dispatch this workflow." >&2
-            echo "Rejected ZIP SHA-256: $ZIP_SHA" >&2
-            exit 1
-          fi
-
-          # Reject a ZIP whose API-qualified theme loses the base theme parent/items.
-          python3 - "$PROJECT_DIR/app/src/main/res/values/styles.xml" "$PROJECT_DIR/app/src/main/res/values-v27/styles.xml" <<'PYTHEME'
-          import sys
-          import xml.etree.ElementTree as ET
-          base_root, v27_root = (ET.parse(path).getroot() for path in sys.argv[1:])
-          def theme(root):
-              matches = [node for node in root.findall("style") if node.get("name") == "Theme.VaultOS"]
-              if len(matches) != 1:
-                  raise SystemExit("Expected exactly one Theme.VaultOS style.")
-              node = matches[0]
-              return node, {item.get("name"): (item.text or "").strip() for item in node.findall("item")}
-          base, base_items = theme(base_root)
-          qualified, qualified_items = theme(v27_root)
-          if qualified.get("parent") != base.get("parent"):
-              raise SystemExit("values-v27 Theme.VaultOS must declare the same explicit parent as values/styles.xml.")
-          missing = [name for name, value in base_items.items() if qualified_items.get(name) != value]
-          if missing:
-              raise SystemExit("values-v27 Theme.VaultOS is missing base theme items: " + ", ".join(missing))
-          if qualified_items.get("android:windowLightNavigationBar") != "false":
-              raise SystemExit("values-v27 Theme.VaultOS must set android:windowLightNavigationBar=false.")
-          PYTHEME
-          rsync -a --delete \
-            --exclude='.git/' \
-            --exclude='incoming/' \
-            --exclude='.vaultos/' \
-            --exclude='docs/updates/' \
-            --exclude='signing/' \
-            --exclude='.github/workflows/android-build.yml' \
-            --exclude='android-build.yml' \
-            "$PROJECT_DIR/" ./
-
-          mkdir -p .vaultos
-          printf '%s\n' "$ZIP_SHA" > .vaultos/last-source-zip.sha256
-          mkdir -p docs/updates
-          cat > "docs/updates/zip-import-${GITHUB_RUN_NUMBER}.md" <<NOTE
-          # Source ZIP imported
-
-          - Workflow run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
-          - Uploaded file: ${ZIP_PATH}
-          - SHA-256: ${ZIP_SHA}
-          - Imported at: $(date -u +%Y-%m-%dT%H:%M:%SZ)
-
-          The uploaded source archive was validated and extracted over the repository. The original ZIP remains in incoming/ for traceability.
-          NOTE
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          if ! git diff --cached --quiet; then
-            git commit -m "Import VaultOS source ZIP ${GITHUB_RUN_NUMBER}"
-            if [ "${GITHUB_REF_TYPE}" = "branch" ]; then
-              # Rebase the import commit onto the latest remote head before pushing.
-              # Retry non-conflicting races; stop safely if newer edits conflict.
-              pushed=false
-              for attempt in 1 2 3; do
-                git fetch origin "${GITHUB_REF_NAME}"
-                if ! git rebase "origin/${GITHUB_REF_NAME}"; then
-                  git rebase --abort || true
-                  echo "ZIP import conflicts with newer repository changes; no import was pushed." >&2
-                  echo "Refresh the source ZIP from the latest main branch and upload it again." >&2
-                  exit 1
-                fi
-                if git push origin "HEAD:${GITHUB_REF_NAME}"; then
-                  pushed=true
-                  break
-                fi
-                echo "Remote branch moved during push attempt ${attempt}; retrying after fetch/rebase."
-                sleep 2
-              done
-              if [ "$pushed" != "true" ]; then
-                echo "Could not push ZIP import after three safe attempts." >&2
-                exit 1
-              fi
-            fi
-          else
-            echo "Uploaded source already matches the repository; no import commit needed."
-          fi
-
-      - name: Verify lint-critical source fixes
-        shell: bash
-        run: |
-          set -euo pipefail
-          KEYBOARD_FILE="app/src/main/java/com/vaultos/app/keyboard/VaultKeyboardService.kt"
-          MAIN_FILE="app/src/main/java/com/vaultos/app/MainActivity.kt"
-          MANIFEST="app/src/main/AndroidManifest.xml"
-          BASE_STYLES="app/src/main/res/values/styles.xml"
-          V27_STYLES="app/src/main/res/values-v27/styles.xml"
-
-          test -f "$KEYBOARD_FILE"
-          if grep -nE 'switchToNextInputMethod[[:space:]]*\(' "$KEYBOARD_FILE"; then
-            echo "API-28-only switchToNextInputMethod() remains in the checked-out source." >&2
-            exit 1
-          fi
-          if grep -n 'produceState(initialValue = emptyList<File>()' "$MAIN_FILE"; then
-            echo "Stale Compose produceState folder loader remains in MainActivity.kt." >&2
-            exit 1
-          fi
-          if grep -n 'windowLightNavigationBar' "$BASE_STYLES"; then
-            echo "windowLightNavigationBar must be kept in values-v27/styles.xml, not base values/styles.xml." >&2
-            exit 1
-          fi
-          test -f "$V27_STYLES"
-          python3 - "$BASE_STYLES" "$V27_STYLES" <<'PYTHEME'
-          import sys
-          import xml.etree.ElementTree as ET
-          base_root, v27_root = (ET.parse(path).getroot() for path in sys.argv[1:])
-          def theme(root):
-              matches = [node for node in root.findall("style") if node.get("name") == "Theme.VaultOS"]
-              if len(matches) != 1:
-                  raise SystemExit("Expected exactly one Theme.VaultOS style.")
-              node = matches[0]
-              return node, {item.get("name"): (item.text or "").strip() for item in node.findall("item")}
-          base, base_items = theme(base_root)
-          qualified, qualified_items = theme(v27_root)
-          if qualified.get("parent") != base.get("parent"):
-              raise SystemExit("values-v27 Theme.VaultOS must declare the same explicit parent as values/styles.xml.")
-          missing = [name for name, value in base_items.items() if qualified_items.get(name) != value]
-          if missing:
-              raise SystemExit("values-v27 Theme.VaultOS is missing base theme items: " + ", ".join(missing))
-          if qualified_items.get("android:windowLightNavigationBar") != "false":
-              raise SystemExit("values-v27 Theme.VaultOS must set android:windowLightNavigationBar=false.")
-          print("Theme.VaultOS base parent, inherited theme items, and API-27 navigation override verified.")
-          PYTHEME
-          grep -q 'tools:ignore="QueryAllPackagesPermission"' "$MANIFEST"
-          echo "All previously reported lint and resource fixes are present."
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
@@ -234,115 +50,36 @@ jobs:
         with:
           gradle-version: "8.9"
 
-      - name: Verify persistent signing key
-        shell: bash
-        run: test -s signing/vaultos-stable.keystore
-
-      - name: Run unit tests, lint and build signed APKs
-        run: gradle --no-daemon clean testDebugUnitTest lintDebug assembleDebug assembleRelease
-
-      - name: Prepare APK and checksum
+      - name: Verify build variants do not reference exposed signing identity
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p dist
-          cp app/build/outputs/apk/debug/app-debug.apk dist/VaultOS-debug.apk
-          cp app/build/outputs/apk/release/app-release.apk dist/VaultOS-release.apk
-
-          # GitHub-hosted runners install Android Build Tools under ANDROID_HOME,
-          # but do not add the versioned build-tools directory to PATH.
-          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
-          if [ -z "$SDK_ROOT" ]; then
-            echo "ANDROID_HOME and ANDROID_SDK_ROOT are both unset; cannot locate Android SDK Build Tools." >&2
+          if grep -nE 'vaultos-stable\.keystore|vaultosStable|storePassword|keyPassword' app/build.gradle.kts; then
+            echo "CI must not reference the exposed historical signing identity." >&2
             exit 1
           fi
-          APKSIGNER="$SDK_ROOT/build-tools/35.0.0/apksigner"
-          if [ ! -x "$APKSIGNER" ]; then
-            echo "Expected apksigner at $APKSIGNER, but it is missing or not executable." >&2
-            echo "Installed build-tools directories:" >&2
-            find "$SDK_ROOT/build-tools" -maxdepth 2 -type f -name apksigner -print 2>/dev/null || true
-            exit 1
-          fi
-          "$APKSIGNER" verify --verbose --print-certs dist/VaultOS-debug.apk
-          "$APKSIGNER" verify --verbose --print-certs dist/VaultOS-release.apk
-          cd dist
-          sha256sum VaultOS-debug.apk VaultOS-release.apk > SHA256SUMS.txt
-          # A plain ZIP is friendlier to Android download managers than the
-          # previous temporary sandbox streaming endpoint.
-          zip -9 -j VaultOS-0.13.0.zip VaultOS-release.apk
-          unzip -t VaultOS-0.13.0.zip
-          sha256sum VaultOS-0.13.0.zip >> SHA256SUMS.txt
-          {
-            echo "VaultOS 0.13.0"
-            echo "Build: ${GITHUB_RUN_NUMBER}"
-            echo "Commit: $(git rev-parse HEAD)"
-            echo "Variants: debug and release (same persistent local sideload signing certificate)"
-            echo "Target SDK: 35"
-            echo "Minimum SDK: 28"
-          } > BUILD-INFO.txt
 
-      - name: Upload ZIP for native ChatGPT handoff
-        uses: actions/upload-artifact@v4
-        with:
-          name: VaultOS-0.13.0
-          path: dist/VaultOS-release.apk
-          if-no-files-found: error
-          compression-level: 0
-          retention-days: 7
-
-      - name: Publish signed APKs as a private draft release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          TAG="vaultos-0.13.0-build-${GITHUB_RUN_NUMBER}"
-          TITLE="VaultOS 0.13.0 · build ${GITHUB_RUN_NUMBER}"
-          NOTES="Signed VaultOS 0.13.0 APKs from commit ${GITHUB_SHA}. This is a private draft/pre-release build for in-place device testing. Install over the existing VaultOS app; do not uninstall first."
-          ASSETS=(
-            dist/VaultOS-release.apk
-            dist/VaultOS-debug.apk
-            dist/VaultOS-0.13.0.zip
-            dist/SHA256SUMS.txt
-            dist/BUILD-INFO.txt
-          )
-
-          # GitHub Actions artifact storage can be quota-limited. Release assets
-          # are the durable download path for signed APKs and are not Actions artifacts.
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" "${ASSETS[@]}" --clobber
-            gh release edit "$TAG" --draft --prerelease --title "$TITLE"
-          else
-            gh release create "$TAG" "${ASSETS[@]}" \
-              --draft --prerelease \
-              --title "$TITLE" \
-              --notes "$NOTES" \
-              --target "$GITHUB_SHA"
-          fi
-
-          RELEASE_URL="$(gh release view "$TAG" --json url --jq .url)"
-          echo "- Draft release with signed APKs: $RELEASE_URL" >> "$GITHUB_STEP_SUMMARY"
+      - name: Run unit tests and lint without signing
+        run: gradle --no-daemon clean testDebugUnitTest lintDebug
 
       - name: Add build summary
         if: always()
         shell: bash
         run: |
           {
-            echo "## VaultOS Android build"
-            echo "- Device target: Redmi Note 12 Pro 5G / Android 13+"
-            echo "- Release: 0.13.0 (versionCode 14)"
-            echo "- Signed debug and release APKs use the persistent certificate carried forward from 0.2.0"
+            echo "## VaultOS Android validation"
+            echo "- JVM unit tests and Android lint only"
+            echo "- No release APK is assembled, signed, uploaded or published"
+            echo "- API 35 instrumentation builds test-only APKs with the generated default debug signer"
+            echo "- Release signing is disabled pending verified replacement-key lineage"
             echo "- Compile SDK: 35"
             echo "- Java: 17"
             echo "- Gradle: 8.9"
-            if [ -f dist/SHA256SUMS.txt ]; then
-              echo "- APK SHA-256: $(cut -d ' ' -f1 dist/SHA256SUMS.txt)"
-            fi
           } >> "$GITHUB_STEP_SUMMARY"
 
   android-instrumentation:
     name: Android API 35 instrumentation
-    runs-on: ubuntu-latest
+    runs-on: macos-26-intel
     timeout-minutes: 45
     permissions:
       contents: read
@@ -369,6 +106,15 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.9"
+
+      - name: Verify instrumentation does not use exposed signer
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -nE 'vaultos-stable\.keystore|vaultosStable|storePassword|keyPassword' app/build.gradle.kts; then
+            echo "Instrumentation must not use the exposed historical signing identity." >&2
+            exit 1
+          fi
 
       - name: Run Android-backed typing memory tests
         uses: reactivecircus/android-emulator-runner@v2

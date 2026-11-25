@@ -1,3 +1,23 @@
+## Session 16 — production download pause and emulator CI correction (2026-11-25)
+
+- Reassigned all three public VaultOS project aliases to the verified pause-page deployment `dpl_BDH4QumZ5EpUzBiqX7incRygociV` (source commit `aca7054a7a4ed349332775f7c9706f8633b33c6e`). Each alias returned HTTP 200 and showed the signing-migration pause page with no APK/ZIP download links.
+- The previous production deployment `dpl_DVZmVoFDqci15p7YbsUeU4xp1qu6` remains retained; only its aliases were reassigned. No release artifact was published or deleted.
+- Updated PR #14's description to record the production alias changes and CI status. PR #14 remains draft and unmerged.
+- Investigated API 35 instrumentation failure from run 45668107033. The emulator exited immediately with: `Software CPU emulation (-accel off) is not supported`. Added `ANDROID_I_WANT_MY_TCG: "yes"` to the instrumentation job in both workflow YAML copies on the security branch.
+- Workflow run 45687257559 was cancelled when the state-ledger commit triggered a newer PR run. Run 45687511450 passed unit tests/lint but failed API 35 instrumentation: software TCG eventually booted the emulator after 633,724 ms, then ADB commands failed with `Broken pipe` (exit 224). The `ANDROID_I_WANT_MY_TCG` workaround is not retained.
+- Switched the instrumentation job to `macos-26-intel` to use native macOS virtualization instead of the unstable TCG fallback. The root workflow mirror and canonical workflow are kept identical. A fresh run will verify this change.
+- Repository remains public and the historical signing identity remains exposed in Git history/current tree. No key rotation, lineage generation, history rewrite, repository-visibility change or APK publication has occurred.
+
+
+## Session 15 — stop legacy signing in default branch (2026-11-25)
+
+- Opened an isolated security branch from `main` so the default branch can be secured without merging unrelated USB-OTG feature work.
+- Removed the historical sideload signer and hardcoded credentials from Gradle. Debug/instrumentation use Android's generated default debug signer; release remains unsigned.
+- Replaced routine CI APK assembly/signing/publication with JVM tests, lint and API 35 instrumentation only. Added explicit checks that fail if Gradle references the exposed signer.
+- Disabled the Vercel release APK pipeline; it now outputs a temporary download-paused page without provisioning Android tooling or reading signing material.
+- Removed the full-repository ZIP import step from CI and set workflow token permissions to read-only; the root workflow mirror now matches the canonical workflow.
+- The old keystore remains in the repository/history solely as migration input. Repository visibility is still public; key replacement, v3 lineage, GitHub secret provisioning and history cleanup remain blocked.
+- This branch requires CI verification and review before merge. No release APK was generated.
 # State Ledger
 _Last updated: 2026-11-12 by Continuity Engineer — Vercel build fallback_
 
@@ -16,7 +36,7 @@ VaultOS is a local-first Android file manager and personal content library for A
 | Metadata extraction | 🟡 partial | Parser tests exist; end-to-end extraction/provider behavior lacks integration tests |
 | Backup and restore | 🟡 partial | v1/v2 paths implemented; no automated round-trip, corruption, or migration test suite identified |
 | DocumentsProvider | 🟡 partial | Implemented; no provider interoperability test evidence |
-| Signed CI/release | ✅ done | Vercel fallback assembled and verified the signed 0.13.0 release APK; GitHub hosted-runner provisioning remains unresolved |
+| Release distribution | 🔴 paused | GitHub Actions is validation-only; Vercel aliases serve a pause page; release signing and publication remain blocked pending verified replacement-key lineage |
 | Physical-device acceptance | ⚪ not started | 1.0.0 gate remains open for Redmi Note 12 Pro 5G |
 | Signing-material remediation | 🔴 blocked | GOV-001 needs user-provisioned replacement material and verified update-lineage plan |
 

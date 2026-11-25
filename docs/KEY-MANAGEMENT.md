@@ -4,13 +4,13 @@
 
 The former signing identity at `signing/vaultos-stable.keystore` was committed while this repository was public. Treat that identity and its credentials as exposed. Making the repository private is useful containment, but it does not remove copies from Git history, detached public forks, prior clones, or downloaded ZIPs.
 
-**Do not use the exposed identity for new release signing once a replacement/update strategy is ready. Do not delete or rotate it blindly:** existing VaultOS installations may require the original signer to accept an update.
+**The historical signer has now been removed from Gradle build configuration.** Debug and instrumentation builds use Android's generated default debug signer; the release variant is intentionally unsigned. Do not use the exposed identity for any new APK signing. Do not delete or rotate it blindly: existing VaultOS installations may require the original signer to accept an update.
 
 ## Existing installation continuity
 
 - Application ID: `com.vaultos.app`
 - Minimum Android version: API 28 (approved policy; implementation now committed)
-- The historical build used the same signing certificate for debug and release.
+- Historical builds used the same signing certificate for debug and release. Current debug/instrumentation builds use Android's generated default debug signer; current release builds are unsigned.
 - A different signing certificate normally cannot update an existing installation in place.
 - APK Signature Scheme v3 key rotation is supported from Android 9 (API 28).
 - With `apksigner sign --lineage ... --rotation-min-sdk-version 28`, the rotated signer is used from API 28 onward; the original signer remains necessary for platforms below API 28.
@@ -30,14 +30,14 @@ The rotation itself is still pending. API 28–32 have platform-specific key-rot
 2. Provision a replacement keystore and keep it outside the repository. Store the required keystore bytes and passwords as GitHub Actions secrets; never commit them.
 3. API 26–27 support has been dropped by raising minSdk to API 28.
 4. Generate and verify a signing-certificate lineage from the exposed certificate to the replacement certificate. For an API 28 rotation boundary, use the documented `apksigner` rotation options and explicitly set `--rotation-min-sdk-version 28`.
-5. Update Gradle and the canonical GitHub Actions workflow to use the Android default debug signer for debug builds and secret-backed signing for release builds.
+5. [x] Remove the exposed signer from Gradle build configuration. Debug/instrumentation builds now use Android's default debug signer; release signing remains disabled. Add secret-backed release signing only after the replacement key and lineage are provisioned.
 6. Build and verify APK signatures for the supported API range. Test an in-place update from the last distributed APK on representative Android versions and verify app-private data remains intact.
 7. Only after the new pipeline and update path are proven, remove the committed keystore from the current tree and rewrite exposed Git history. Review detached public forks and previously distributed archives separately.
 8. Verify the repository, ZIP import process, and all generated release artifacts contain no private signing material.
 
 ## Current build warning
 
-The current Gradle configuration and workflow still reference the historical committed keystore. This is an unresolved blocker. The app's minSdk is now API 28, as approved. The source-ZIP importer now rejects archives containing signing directories or private-key files and preserves the repository's existing signing/ directory during extraction; this prevents a source ZIP from replacing or reintroducing signing material, but it does not remove the already-committed key.
+Gradle no longer references the historical committed keystore. Routine CI runs JVM tests, lint and API 35 instrumentation only; test APKs use Android's generated default debug signer. The release variant remains unsigned and no GitHub Actions workflow assembles or publishes release APKs. The Vercel build script now publishes a temporary release-paused page and does not provision Android tooling, read signing material, build an APK or publish a download. The historical keystore remains in the current tree and Git history for lineage migration, so public exposure is not remediated. The app's minSdk is API 28. The source-ZIP import step has been removed from CI to avoid giving build/test jobs repository write access; this does not remove the already-committed key.
 
 The GitHub connector cannot read or verify GitHub Actions secret values. A successful build alone is not proof of signing-key rotation; inspect the resulting certificate and lineage. Do not claim remediation complete until the lineage and in-place update have been verified on-device.
 
@@ -47,4 +47,4 @@ Never commit a keystore. Keep local signing material outside the repository and 
 
 ## Deferred work status — 2026-11-05
 
-The owner has explicitly deferred the replacement-key migration and GitHub Actions secret provisioning until a later session. GOV-001 remains open but is not a blocker for the clipboard/keyboard product roadmap. Keep the historical signer and signing configuration unchanged until the replacement certificate lineage is generated and in-place update compatibility is verified. Do not remove the tracked historical keystore or rewrite Git history as part of unrelated product phases.
+The replacement-key migration and GitHub Actions secret provisioning are active security work under GOV-001. The historical keystore remains tracked only as migration input; it is no longer configured for Gradle signing. Do not remove it or rewrite Git history until the replacement certificate lineage is generated, securely retained and in-place update compatibility is verified.
