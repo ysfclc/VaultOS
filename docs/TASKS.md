@@ -400,4 +400,6 @@ On-device procedure: [USB-OTG testing guide](USB-OTG-TESTING.md).
 - [ ] Remove the exposed keystore from the current tree and rewrite Git history only after the lineage is safely retained outside the repository; review detached forks and downloaded archives separately.
 - [ ] Verify no APK, ZIP, workflow artifact or release asset contains private signing material.
 
+- [ ] With explicit owner approval, promote a production-target deployment of the pause page to `vaultos-iota.vercel.app`; verify the live page no longer exposes APK/ZIP download links. Current production still points to the previous 0.13.0 deployment.
+
 **Boundary:** no release APK may be generated until every signing/update-continuity check above is complete. The existing signer must not be discarded before the replacement lineage is proven.
