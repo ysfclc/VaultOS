@@ -388,8 +388,8 @@ Verification status: test source and Gradle dependencies were committed and re-f
 - Synchronized the root `android-build.yml` mirror with the canonical workflow.
 
 **Verification boundary**
-- GitHub Actions run [45664994058](https://github.com/ysfclc/VaultOS/actions/runs/45664994058): `clean testDebugUnitTest lintDebug` completed successfully (BUILD SUCCESSFUL in 3m 12s; job success at 17:31:24Z). API 35 instrumentation was still in progress at the last check; no instrumentation pass is claimed yet.
-- No installable release APK is produced. API 35 instrumentation builds test-only debug APKs using Android's generated default debug signer; no release APK is signed or published.
+- GitHub Actions run [45664994058](https://github.com/ysfclc/VaultOS/actions/runs/45664994058) passed JVM tests, lint and API 35 instrumentation before Gradle signer removal. Run [45666340898](https://github.com/ysfclc/VaultOS/actions/runs/45666340898), attempt 2, passed JVM tests, lint and API 35 instrumentation after signer removal. Attempt 1 failed because the KSP plugin marker could not be resolved; retry passed without dependency changes.
+- No installable release APK is produced. API 35 instrumentation builds test-only debug APKs using Android's generated default debug signer; no release APK is signed or published. The Vercel APK build/publish script now outputs a temporary downloads-paused page.
 - Signing-key replacement, v3 lineage generation, GitHub secret provisioning, history cleanup and physical update testing remain open. The repository remains public at last inspection; repository visibility has not been changed.
 - This is not release authorization and does not remediate copies of the exposed historical key.
 
