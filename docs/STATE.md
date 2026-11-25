@@ -1,3 +1,12 @@
+## Session 16 — production download pause and emulator CI correction (2026-11-25)
+
+- Reassigned all three public VaultOS project aliases to the verified pause-page deployment `dpl_BDH4QumZ5EpUzBiqX7incRygociV` (source commit `aca7054a7a4ed349332775f7c9706f8633b33c6e`). Each alias returned HTTP 200 and showed the signing-migration pause page with no APK/ZIP download links.
+- The previous production deployment `dpl_DVZmVoFDqci15p7YbsUeU4xp1qu6` remains retained; only its aliases were reassigned. No release artifact was published or deleted.
+- Updated PR #14's description to record the production alias changes and CI status. PR #14 remains draft and unmerged.
+- Investigated API 35 instrumentation failure from run 45668107033. The emulator exited immediately with: `Software CPU emulation (-accel off) is not supported`. Added `ANDROID_I_WANT_MY_TCG: "yes"` to the instrumentation job in both workflow YAML copies on the security branch.
+- New workflow run 45687257559: signer guard, unit tests and lint have passed; API 35 instrumentation is still running. Do not claim instrumentation passed until the job completes.
+- Repository remains public and the historical signing identity remains exposed in Git history/current tree. No key rotation, lineage generation, history rewrite, repository-visibility change or APK publication has occurred.
+
 
 ## Session 15 — stop legacy signing in default branch (2026-11-25)
 
@@ -26,7 +35,7 @@ VaultOS is a local-first Android file manager and personal content library for A
 | Metadata extraction | 🟡 partial | Parser tests exist; end-to-end extraction/provider behavior lacks integration tests |
 | Backup and restore | 🟡 partial | v1/v2 paths implemented; no automated round-trip, corruption, or migration test suite identified |
 | DocumentsProvider | 🟡 partial | Implemented; no provider interoperability test evidence |
-| Signed CI/release | ✅ done | Vercel fallback assembled and verified the signed 0.13.0 release APK; GitHub hosted-runner provisioning remains unresolved |
+| Release distribution | 🔴 paused | GitHub Actions is validation-only; Vercel aliases serve a pause page; release signing and publication remain blocked pending verified replacement-key lineage |
 | Physical-device acceptance | ⚪ not started | 1.0.0 gate remains open for Redmi Note 12 Pro 5G |
 | Signing-material remediation | 🔴 blocked | GOV-001 needs user-provisioned replacement material and verified update-lineage plan |
 
