@@ -1,3 +1,12 @@
+
+## Session 15 — stop legacy signing in default branch (2026-11-25)
+
+- Opened an isolated security branch from `main` so the default branch can be secured without merging unrelated USB-OTG feature work.
+- Removed the historical sideload signer and hardcoded credentials from Gradle. Debug/instrumentation use Android's generated default debug signer; release remains unsigned.
+- Replaced routine CI APK assembly/signing/publication with JVM tests, lint and API 35 instrumentation only. Added explicit checks that fail if Gradle references the exposed signer.
+- Removed the full-repository ZIP import step from CI and set workflow token permissions to read-only; the root workflow mirror now matches the canonical workflow.
+- The old keystore remains in the repository/history solely as migration input. Repository visibility is still public; key replacement, v3 lineage, GitHub secret provisioning and history cleanup remain blocked.
+- This branch requires CI verification and review before merge. No release APK was generated.
 # State Ledger
 _Last updated: 2026-11-12 by Continuity Engineer — Vercel build fallback_
 
