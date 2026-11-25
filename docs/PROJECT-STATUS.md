@@ -388,7 +388,7 @@ Verification status: test source and Gradle dependencies were committed and re-f
 - Synchronized the root `android-build.yml` mirror with the canonical workflow.
 
 **Verification boundary**
-- This commit must trigger a fresh GitHub Actions run. Tests, lint and API 35 instrumentation are not yet verified for this commit.
+- GitHub Actions run [45664994058](https://github.com/ysfclc/VaultOS/actions/runs/45664994058): `clean testDebugUnitTest lintDebug` completed successfully (BUILD SUCCESSFUL in 3m 12s; job success at 17:31:24Z). API 35 instrumentation was still in progress at the last check; no instrumentation pass is claimed yet.
 - No APK is intended or produced by this validation workflow.
 - Signing-key replacement, v3 lineage generation, GitHub secret provisioning, history cleanup and physical update testing remain open. The repository remains public at last inspection; repository visibility has not been changed.
 - This is not release authorization and does not remediate copies of the exposed historical key.
