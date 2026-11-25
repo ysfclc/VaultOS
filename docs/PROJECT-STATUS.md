@@ -342,3 +342,29 @@ Verification status: test source and Gradle dependencies were committed and re-f
 
 **Scope guard**
 - VaultOS remains a local-first file manager, content archive and clipboard/keyboard utility. Driver community/meetup capabilities are BusyBee-only and are not part of VaultOS.
+
+
+## Session 11 — USB importer cancellation hardening (2026-11-25)
+
+**Working branch:** `feat/usb-home-entry-0141`.
+
+**Implemented source change**
+- Added a cancellation-preserving result boundary for SAF provider/import operations: ordinary exceptions become per-entry failures, while `CancellationException` is rethrown.
+- Added coroutine activity checks between folder and entry operations.
+- Applied the same cancellation-preserving boundary in the Settings UI.
+- Added three JVM tests for success, ordinary provider failure and cancellation propagation.
+- Code commit: `89b1c835160bce2055783c103852c985dcf4a049`.
+- Follow-up task-ledger wording commit: `6bb28291627e0f0294105ed286f88ae6a5dae16c`.
+
+**Verification boundary**
+- GitHub Actions run [45644937420](https://github.com/ysfclc/VaultOS/actions/runs/45644937420) checked out the code and passed workflow setup, but the build/test/lint job failed before tests because `MainActivity.kt` references `BuildConfig` while this branch's `app/build.gradle.kts` does not enable `buildFeatures.buildConfig`.
+- The separate API 35 instrumentation job was still in progress at the last inspection; no pass is claimed.
+- APK assembly, checksum, upload and draft-release steps were skipped after the compile failure. No new APK was produced by this run.
+- The corresponding PR #13 branch (`feat/usb-otg-diagnostics-0140`) already contains `buildConfig = true`; it is a separate, diverged branch and does not contain the cancellation commit.
+- Cancellation is checked between SAF operations, not inside the blocking stream-copy loop of `VaultRepository.importUri`; cancellation during one large file copy may therefore be delayed until that file operation returns.
+
+**Release and product holds**
+- Repository visibility is currently public and `signing/vaultos-stable.keystore` plus hardcoded signing credentials remain tracked. Treat the signing identity as compromised; no distribution or trusted release is authorized.
+- README and CHANGELOG still describe 0.13.0 while the development candidate declares 0.13.5 / versionCode 19.
+- Physical Redmi Note 12 Pro 5G USB detection, permission and SAF import acceptance remain unverified.
+- Do not mark Phase 16 complete or produce a release APK until the build blocker, security hold, documentation/version alignment and device acceptance are resolved.
