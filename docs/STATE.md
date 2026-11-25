@@ -3,7 +3,7 @@
 
 - Working branch: `feat/usb-home-entry-0141`; code/security commit: `f51074eb335c0206001a1fb61a82f9a944f37af2`.
 - Enabled generated `BuildConfig` to fix the missing symbol that caused run 45644937420 to fail during Kotlin compilation.
-- Converted routine GitHub Actions to validation-only: `clean testDebugUnitTest lintDebug`; no APK assembly, signing, upload or draft-release publication. Both workflow YAML copies now match.
+- Converted routine GitHub Actions to validation-only for the build/lint job: `clean testDebugUnitTest lintDebug`; no release APK assembly, signing, upload or draft-release publication. Both workflow YAML copies match. Removed the exposed signer from Gradle: debug/instrumentation now use Android's generated default debug signer, and release remains unsigned.
 - Default workflow token permissions are read-only. The Android job retains contents-write because the existing source-ZIP import step can commit imported files; the token is job-scoped, so it remains a follow-up hardening item to avoid exposing checkout credentials to Gradle.
 - Fresh run [45664994058](https://github.com/ysfclc/VaultOS/actions/runs/45664994058): the validation-only JVM unit-test + lint job completed successfully at 17:31:24Z. API 35 instrumentation was still running at the last check; no instrumentation pass is claimed yet.
 - Repository visibility is still public. The historical sideload keystore and static Gradle credentials remain in the repository/history. No visibility change, key rotation, history rewrite or secret provisioning was performed.

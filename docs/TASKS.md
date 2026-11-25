@@ -388,7 +388,8 @@ On-device procedure: [USB-OTG testing guide](USB-OTG-TESTING.md).
 
 ## Release security gate — GOV-001 (cross-phase blocker)
 
-- [x] Convert the normal GitHub Actions workflow to validation-only: run JVM unit tests and lint without reading the exposed signing keystore, assembling APKs, or publishing draft releases.
+- [x] Remove the exposed historical signer from Gradle build variants: debug/instrumentation use Android's generated default debug signer; release remains unsigned until key rotation is verified.
+- [x] Convert the normal GitHub Actions workflow to validation-only: run JVM unit tests and lint without reading the exposed signing keystore, assembling release APKs, or publishing draft releases; API 35 test APKs use the default debug signer.
 - [x] Reduce default workflow token permissions to read-only; retain write permission only for the Android job that imports an explicitly uploaded source ZIP into its own branch.
 - [ ] Contain public repository exposure and review Git history, forks, clones and previously downloaded source archives before declaring the repository safe.
 - [ ] Provision a replacement sideload signing key outside the repository and store it in GitHub Actions secrets; never commit the key or passwords.

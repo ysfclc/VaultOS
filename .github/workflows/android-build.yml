@@ -216,7 +216,11 @@ jobs:
           print("Theme.VaultOS base parent, inherited theme items, and API-27 navigation override verified.")
           PYTHEME
           grep -q 'tools:ignore="QueryAllPackagesPermission"' "$MANIFEST"
-          echo "All previously reported lint and resource fixes are present."
+          if grep -nE 'vaultos-stable\.keystore|vaultosStable|storePassword|keyPassword' app/build.gradle.kts; then
+            echo "Routine CI must not reference the exposed historical signing identity." >&2
+            exit 1
+          fi
+          echo "All previously reported lint, resource and signing-isolation checks are present."
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
@@ -260,7 +264,8 @@ jobs:
           {
             echo "## VaultOS Android build"
             echo "- Validation-only workflow: JVM tests and Android lint"
-            echo "- No APK is assembled, signed, uploaded or published by this workflow"
+            echo "- No release APK is assembled, signed, uploaded or published by this workflow"
+            echo "- API 35 instrumentation uses only the generated default Android debug signer for test APKs"
             echo "- Release signing remains blocked pending verified key rotation and update-lineage acceptance"
             echo "- Compile SDK: 35"
             echo "- Java: 17"
@@ -312,6 +317,15 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.9"
+
+      - name: Verify instrumentation does not use the exposed signer
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -nE 'vaultos-stable\.keystore|vaultosStable|storePassword|keyPassword' app/build.gradle.kts; then
+            echo "Instrumentation must never use the exposed historical signing identity." >&2
+            exit 1
+          fi
 
       - name: Run Android-backed persistence tests
         uses: reactivecircus/android-emulator-runner@v2

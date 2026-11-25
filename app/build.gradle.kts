@@ -16,18 +16,11 @@ android {
         versionName = "0.13.5"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
-    signingConfigs {
-        create("vaultosStable") {
-            storeFile = rootProject.file("signing/vaultos-stable.keystore")
-            storePassword = "android"
-            keyAlias = "androiddebugkey"
-            keyPassword = "android"
-        }
-    }
+    // Debug and instrumentation builds use Android's generated default debug key.
+    // The historical sideload signer is exposed and must not be used by any build variant.
+    // Release signing remains intentionally unconfigured until key rotation is verified.
     buildTypes {
-        getByName("debug") { signingConfig = signingConfigs.getByName("vaultosStable") }
         getByName("release") {
-            signingConfig = signingConfigs.getByName("vaultosStable")
             isMinifyEnabled = false
         }
     }
