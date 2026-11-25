@@ -1,11 +1,22 @@
+## Session 17 — PR #14 merged (2026-11-25)
+
+- User explicitly approved marking PR #14 ready and merging it.
+- PR #14 was marked ready for review and squash-merged into `main`.
+- Merge commit: `1819f754dd87de600fbbf70c6d69d212d99a9d77`; PR: https://github.com/ysfclc/VaultOS/pull/14
+- Post-merge source inspection on `main` confirms Gradle no longer references the exposed historical keystore/alias; the release build type has no configured signing block; the API 35 instrumentation runner is `macos-26-intel`; workflow permissions are read-only; and `scripts/vercel-build.sh` is the downloads-paused static page.
+- PR CI run 45689673413 passed unit tests, lint, signer guard and API 35 instrumentation (6 passed, 0 failed, 0 skipped).
+- GitHub's combined status on the merge commit showed Vercel pending at verification time. The PR's earlier Vercel check had hit the Hobby build quota; production aliases remain on the previously verified pause-page deployment. No APK was generated or published.
+- PR #14 is closed/merged. The repository remains public. Historical signing key material remains in the current tree/history and must be treated as compromised.
+- Next: provision replacement key outside Git, generate and verify the API 28+ v3 signing lineage, then test in-place update and app-private data preservation on physical/API-specific devices. Do not re-enable release signing or publish APKs before that gate passes.
+
 ## Session 16 — production download pause and emulator CI correction (2026-11-25)
 
 - Reassigned all three public VaultOS project aliases to the verified pause-page deployment `dpl_BDH4QumZ5EpUzBiqX7incRygociV` (source commit `aca7054a7a4ed349332775f7c9706f8633b33c6e`). Each alias returned HTTP 200 and showed the signing-migration pause page with no APK/ZIP download links.
 - The previous production deployment `dpl_DVZmVoFDqci15p7YbsUeU4xp1qu6` remains retained; only its aliases were reassigned. No release artifact was published or deleted.
-- Updated PR #14's description to record the production alias changes and CI status. PR #14 remains draft and unmerged.
+- PR #14 was subsequently marked ready and squash-merged into `main` as `1819f754dd87de600fbbf70c6d69d212d99a9d77` (see Session 17).
 - Investigated API 35 instrumentation failure from run 45668107033. The emulator exited immediately with: `Software CPU emulation (-accel off) is not supported`. Added `ANDROID_I_WANT_MY_TCG: "yes"` to the instrumentation job in both workflow YAML copies on the security branch.
 - Workflow run 45687257559 was cancelled when the state-ledger commit triggered a newer PR run. Run 45687511450 passed unit tests/lint but failed API 35 instrumentation: software TCG eventually booted the emulator after 633,724 ms, then ADB commands failed with `Broken pipe` (exit 224). The `ANDROID_I_WANT_MY_TCG` workaround is not retained.
-- Switched the instrumentation job to `macos-26-intel` to use native macOS virtualization instead of the unstable TCG fallback. The root workflow mirror and canonical workflow are kept identical. A fresh run will verify this change.
+- Switched the instrumentation job to `macos-26-intel` to use native macOS virtualization instead of the unstable TCG fallback. The root workflow mirror and canonical workflow were kept identical; run 45689673413 passed both jobs, including all six API 35 instrumentation tests.
 - Repository remains public and the historical signing identity remains exposed in Git history/current tree. No key rotation, lineage generation, history rewrite, repository-visibility change or APK publication has occurred.
 
 
