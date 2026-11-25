@@ -4,7 +4,8 @@
 - The previous production deployment `dpl_DVZmVoFDqci15p7YbsUeU4xp1qu6` remains retained; only its aliases were reassigned. No release artifact was published or deleted.
 - Updated PR #14's description to record the production alias changes and CI status. PR #14 remains draft and unmerged.
 - Investigated API 35 instrumentation failure from run 45668107033. The emulator exited immediately with: `Software CPU emulation (-accel off) is not supported`. Added `ANDROID_I_WANT_MY_TCG: "yes"` to the instrumentation job in both workflow YAML copies on the security branch.
-- New workflow run 45687257559: signer guard, unit tests and lint have passed; API 35 instrumentation is still running. Do not claim instrumentation passed until the job completes.
+- Workflow run 45687257559 was cancelled when the state-ledger commit triggered a newer PR run. Run 45687511450 passed unit tests/lint but failed API 35 instrumentation: software TCG eventually booted the emulator after 633,724 ms, then ADB commands failed with `Broken pipe` (exit 224). The `ANDROID_I_WANT_MY_TCG` workaround is not retained.
+- Switched the instrumentation job to `macos-26-intel` to use native macOS virtualization instead of the unstable TCG fallback. The root workflow mirror and canonical workflow are kept identical. A fresh run will verify this change.
 - Repository remains public and the historical signing identity remains exposed in Git history/current tree. No key rotation, lineage generation, history rewrite, repository-visibility change or APK publication has occurred.
 
 
