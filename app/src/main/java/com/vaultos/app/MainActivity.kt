@@ -269,6 +269,7 @@ private fun VaultApp(activity: MainActivity, repository: VaultRepository, resume
                             Page.Collections -> Icons.Default.Bookmarks
                             Page.Apps -> Icons.Default.Android
                             Page.Settings -> Icons.Default.Settings
+                            Page.Usb -> Icons.Default.Usb
                             Page.More -> Icons.Default.MoreHoriz
                         }
                         val selected = if (p == Page.More) page in setOf(Page.More, Page.Apps, Page.Settings) else page == p
