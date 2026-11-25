@@ -1594,7 +1594,7 @@ private fun loadAppCatalogue(activity: MainActivity, archivedItems: List<VaultIt
                 }) { Text("Scan storage now") }
             }
         }
-        Text("VaultOS 0.13.0 · Local-first · No account required", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("VaultOS ${BuildConfig.VERSION_NAME} · Local-first · No account required", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
