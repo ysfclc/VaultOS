@@ -10,7 +10,7 @@ This is the first on-device acceptance pass for the USB diagnostics and SAF impo
 
 ## Detection and permission
 1. Connect the flash drive through the OTG adapter.
-2. Open VaultOS → More → Settings & permissions → USB/OTG diagnostics.
+2. Open VaultOS Home and tap **USB / OTG drive**. The diagnostics page is also available from Settings & permissions.
 3. Tap Refresh / Detect.
 4. Confirm whether a USB host device appears. Record the device name, VID/PID, and interface count shown.
 5. Tap the permission/request action and accept Android's prompt if shown.
