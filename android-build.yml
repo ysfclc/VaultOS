@@ -69,7 +69,8 @@ jobs:
           {
             echo "## VaultOS Android validation"
             echo "- JVM unit tests and Android lint only"
-            echo "- No APK assembly, signing, upload or draft-release publication"
+            echo "- No release APK is assembled, signed, uploaded or published"
+            echo "- API 35 instrumentation builds test-only APKs with the generated default debug signer"
             echo "- Release signing is disabled pending verified replacement-key lineage"
             echo "- Compile SDK: 35"
             echo "- Java: 17"
