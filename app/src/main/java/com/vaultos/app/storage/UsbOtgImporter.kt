@@ -4,8 +4,24 @@ import android.content.Context
 import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
+import java.util.concurrent.CancellationException
 import java.util.ArrayDeque
+
+/**
+ * Converts an individual provider/import failure into a result without consuming coroutine
+ * cancellation. Cancellation must escape so lifecycle shutdown can stop the traversal.
+ */
+internal inline fun <T> runCatchingUsbImport(block: () -> T): Result<T> =
+    try {
+        Result.success(block())
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (failure: Exception) {
+        Result.failure(failure)
+    }
 
 data class UsbOtgImportResult(
     val imported: Int,
@@ -23,6 +39,7 @@ object UsbOtgImporter {
 
     suspend fun importTree(context: Context, repository: VaultRepository, treeUri: Uri): UsbOtgImportResult =
         withContext(Dispatchers.IO) {
+            val coroutineContext = currentCoroutineContext()
             val root = DocumentFile.fromTreeUri(context, treeUri)
                 ?: throw IllegalArgumentException("Android could not open the selected folder")
             if (!root.isDirectory) throw IllegalArgumentException("The selected USB location is not a folder")
@@ -36,12 +53,14 @@ object UsbOtgImporter {
             var truncated = false
 
             while (pending.isNotEmpty()) {
+                coroutineContext.ensureActive()
                 val current = pending.removeFirst()
-                val children = runCatching { current.folder.listFiles().toList() }.getOrElse {
+                val children = runCatchingUsbImport { current.folder.listFiles().toList() }.getOrElse {
                     failed++
                     emptyList()
                 }
                 for (child in children) {
+                    coroutineContext.ensureActive()
                     val name = child.name?.takeIf { it.isNotBlank() } ?: "Unnamed item"
                     val relative = if (current.relativePath.isBlank()) name else "${current.relativePath}/$name"
                     when {
@@ -55,7 +74,7 @@ object UsbOtgImporter {
                                 break
                             }
                             visitedFiles++
-                            val result = runCatching {
+                            val result = runCatchingUsbImport {
                                 repository.importUri(child.uri, "USB drive · $relative", suppliedName = name)
                             }
                             if (result.isSuccess) imported++ else failed++

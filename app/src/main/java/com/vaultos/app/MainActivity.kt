@@ -77,6 +77,7 @@ import com.vaultos.app.storage.FileOperations
 import com.vaultos.app.storage.VaultRepository
 import com.vaultos.app.storage.UsbOtgDiagnostics
 import com.vaultos.app.storage.UsbOtgImporter
+import com.vaultos.app.storage.runCatchingUsbImport
 import com.vaultos.app.storage.ClipboardHistoryRepository
 import com.vaultos.app.storage.MetadataExtractor
 import kotlinx.coroutines.CancellationException
@@ -1408,8 +1409,8 @@ private fun loadAppCatalogue(activity: MainActivity, archivedItems: List<VaultIt
         if (treeUri != null) {
             busy = true
             activity.lifecycleScope.launch {
-                val result = runCatching {
-                    com.vaultos.app.storage.UsbOtgImporter.importTree(activity, repository, treeUri)
+                val result = runCatchingUsbImport {
+                    UsbOtgImporter.importTree(activity, repository, treeUri)
                 }
                 busy = false
                 result.onSuccess {
