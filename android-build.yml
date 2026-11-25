@@ -16,17 +16,21 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: vaultos-android-${{ github.ref }}-${{ github.sha }}
+  # A newer commit on the same branch supersedes an older in-flight build.
+  group: vaultos-android-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   android:
-    name: Test, lint and build APK
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
+    name: Test and lint (no APK signing)
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    permissions:
+      contents: write
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -226,6 +230,18 @@ jobs:
         with:
           packages: platform-tools
 
+      - name: Enable hardware acceleration for Android emulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -e /dev/kvm ]; then
+            echo "GitHub runner does not expose /dev/kvm; refusing to silently fall back to unusably slow TCG emulation." >&2
+            exit 1
+          fi
+          sudo chmod 666 /dev/kvm
+          test -r /dev/kvm && test -w /dev/kvm
+          ls -l /dev/kvm
+
       - name: Install Android SDK packages
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
@@ -234,94 +250,8 @@ jobs:
         with:
           gradle-version: "8.9"
 
-      - name: Verify persistent signing key
-        shell: bash
-        run: test -s signing/vaultos-stable.keystore
-
-      - name: Run unit tests, lint and build signed APKs
-        run: gradle --no-daemon clean testDebugUnitTest lintDebug assembleDebug assembleRelease
-
-      - name: Prepare APK and checksum
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p dist
-          cp app/build/outputs/apk/debug/app-debug.apk dist/VaultOS-debug.apk
-          cp app/build/outputs/apk/release/app-release.apk dist/VaultOS-release.apk
-
-          # GitHub-hosted runners install Android Build Tools under ANDROID_HOME,
-          # but do not add the versioned build-tools directory to PATH.
-          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
-          if [ -z "$SDK_ROOT" ]; then
-            echo "ANDROID_HOME and ANDROID_SDK_ROOT are both unset; cannot locate Android SDK Build Tools." >&2
-            exit 1
-          fi
-          APKSIGNER="$SDK_ROOT/build-tools/35.0.0/apksigner"
-          if [ ! -x "$APKSIGNER" ]; then
-            echo "Expected apksigner at $APKSIGNER, but it is missing or not executable." >&2
-            echo "Installed build-tools directories:" >&2
-            find "$SDK_ROOT/build-tools" -maxdepth 2 -type f -name apksigner -print 2>/dev/null || true
-            exit 1
-          fi
-          "$APKSIGNER" verify --verbose --print-certs dist/VaultOS-debug.apk
-          "$APKSIGNER" verify --verbose --print-certs dist/VaultOS-release.apk
-          cd dist
-          sha256sum VaultOS-debug.apk VaultOS-release.apk > SHA256SUMS.txt
-          # A plain ZIP is friendlier to Android download managers than the
-          # previous temporary sandbox streaming endpoint.
-          zip -9 -j VaultOS-0.13.1.zip VaultOS-release.apk
-          unzip -t VaultOS-0.13.1.zip
-          sha256sum VaultOS-0.13.1.zip >> SHA256SUMS.txt
-          {
-            echo "VaultOS 0.13.1"
-            echo "Build: ${GITHUB_RUN_NUMBER}"
-            echo "Commit: $(git rev-parse HEAD)"
-            echo "Variants: debug and release (same persistent local sideload signing certificate)"
-            echo "Target SDK: 35"
-            echo "Minimum SDK: 28"
-          } > BUILD-INFO.txt
-
-      - name: Upload ZIP for native ChatGPT handoff
-        uses: actions/upload-artifact@v4
-        with:
-          name: VaultOS-0.13.1
-          path: dist/VaultOS-release.apk
-          if-no-files-found: error
-          compression-level: 0
-          retention-days: 7
-
-      - name: Publish signed APKs as a private draft release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          TAG="vaultos-0.13.1-build-${GITHUB_RUN_NUMBER}"
-          TITLE="VaultOS 0.13.1 · build ${GITHUB_RUN_NUMBER}"
-          NOTES="Signed VaultOS 0.13.1 APKs from commit ${GITHUB_SHA}. This is a private draft/pre-release build for in-place device testing. Install over the existing VaultOS app; do not uninstall first."
-          ASSETS=(
-            dist/VaultOS-release.apk
-            dist/VaultOS-debug.apk
-            dist/VaultOS-0.13.1.zip
-            dist/SHA256SUMS.txt
-            dist/BUILD-INFO.txt
-          )
-
-          # GitHub Actions artifact storage can be quota-limited. Release assets
-          # are the durable download path for signed APKs and are not Actions artifacts.
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" "${ASSETS[@]}" --clobber
-            gh release edit "$TAG" --draft --prerelease --title "$TITLE"
-          else
-            gh release create "$TAG" "${ASSETS[@]}" \
-              --draft --prerelease \
-              --title "$TITLE" \
-              --notes "$NOTES" \
-              --target "$GITHUB_SHA"
-          fi
-
-          RELEASE_URL="$(gh release view "$TAG" --json url --jq .url)"
-          echo "- Draft release with signed APKs: $RELEASE_URL" >> "$GITHUB_STEP_SUMMARY"
+      - name: Run unit tests and lint without signing
+        run: gradle --no-daemon clean testDebugUnitTest lintDebug
 
       - name: Add build summary
         if: always()
@@ -329,9 +259,9 @@ jobs:
         run: |
           {
             echo "## VaultOS Android build"
-            echo "- Device target: Redmi Note 12 Pro 5G / Android 13+"
-            echo "- Release: 0.13.1 (versionCode 15)"
-            echo "- Signed debug and release APKs use the persistent certificate carried forward from 0.2.0"
+            echo "- Validation-only workflow: JVM tests and Android lint"
+            echo "- No APK is assembled, signed, uploaded or published by this workflow"
+            echo "- Release signing remains blocked pending verified key rotation and update-lineage acceptance"
             echo "- Compile SDK: 35"
             echo "- Java: 17"
             echo "- Gradle: 8.9"
@@ -341,11 +271,10 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   android-instrumentation:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
     name: Android API 35 instrumentation
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    env:
-      ANDROID_I_WANT_MY_TCG: "yes"
     permissions:
       contents: read
     steps:
@@ -363,6 +292,18 @@ jobs:
         uses: android-actions/setup-android@v3
         with:
           packages: platform-tools
+
+      - name: Enable hardware acceleration for Android emulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -e /dev/kvm ]; then
+            echo "GitHub runner does not expose /dev/kvm; refusing to silently fall back to unusably slow TCG emulation." >&2
+            exit 1
+          fi
+          sudo chmod 666 /dev/kvm
+          test -r /dev/kvm && test -w /dev/kvm
+          ls -l /dev/kvm
 
       - name: Install Android SDK packages
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"

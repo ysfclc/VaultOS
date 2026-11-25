@@ -368,3 +368,32 @@ Verification status: test source and Gradle dependencies were committed and re-f
 - README and CHANGELOG still describe 0.13.0 while the development candidate declares 0.13.5 / versionCode 19.
 - Physical Redmi Note 12 Pro 5G USB detection, permission and SAF import acceptance remain unverified.
 - Do not mark Phase 16 complete or produce a release APK until the build blocker, security hold, documentation/version alignment and device acceptance are resolved.
+
+
+## Session 12 — CI signing containment and compile recovery (2026-11-25)
+
+**Working branch:** `feat/usb-home-entry-0141`.
+
+**Research → findings → decision → rationale**
+- Internal review confirmed the repository is a sideload-only product and its own key-management plan already approves API 28+ v3 signing lineage. The existing historical signer must be retained until the replacement lineage is proven.
+- Android's current `apksigner` documentation explicitly requires `--rotation-min-sdk-version 28` when rotated signing is intended for Android 12L/API 32 and lower; default v3.1 targeting is API 33+. Source: [Android Developers — apksigner](https://developer.android.com/tools/apksigner), checked 2026-11-25.
+- GitHub recommends least-privilege workflow tokens and protected access to signing secrets. Source: [GitHub Actions secure use](https://docs.github.com/en/actions/reference/security/secure-use) and [Using secrets in GitHub Actions](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets), checked 2026-11-25.
+- Decision: make routine CI validation-only. It runs JVM tests and lint, but does not read the exposed keystore, assemble APKs, upload APKs or publish draft releases. A separately gated signing workflow is deferred until the replacement key and lineage exist.
+
+**Implemented**
+- Enabled generated `BuildConfig` in `app/build.gradle.kts`, fixing the compile blocker observed in run 45644937420.
+- Changed the canonical `.github/workflows/android-build.yml` to run `clean testDebugUnitTest lintDebug` only.
+- Removed persistent-keystore verification, debug/release APK assembly, apksigner verification, APK artifact upload and draft-release publication from normal CI.
+- Default workflow token permission is now `contents: read`; only the Android source-ZIP import job retains `contents: write`. The instrumentation job remains read-only.
+- Synchronized the root `android-build.yml` mirror with the canonical workflow.
+
+**Verification boundary**
+- This commit must trigger a fresh GitHub Actions run. Tests, lint and API 35 instrumentation are not yet verified for this commit.
+- No APK is intended or produced by this validation workflow.
+- Signing-key replacement, v3 lineage generation, GitHub secret provisioning, history cleanup and physical update testing remain open. The repository remains public at last inspection; repository visibility has not been changed.
+- This is not release authorization and does not remediate copies of the exposed historical key.
+
+**Next**
+1. Confirm the validation-only CI run passes both JVM/lint and API 35 instrumentation jobs.
+2. Contain repository exposure and provision the replacement signing key outside Git.
+3. Implement and physically verify the API 28+ signing lineage before enabling release assembly again.

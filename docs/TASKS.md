@@ -384,3 +384,18 @@ On-device procedure: [USB-OTG testing guide](USB-OTG-TESTING.md).
 - [ ] Complete physical verification on Redmi Note 12 Pro 5G with the user's actual USB-C drive and adapter.
 
 **Boundary:** CI/emulator enumeration is not evidence that the user's physical flash drive is detected. No USB writes, formatting or destructive filesystem experiments are permitted.
+
+
+## Release security gate — GOV-001 (cross-phase blocker)
+
+- [x] Convert the normal GitHub Actions workflow to validation-only: run JVM unit tests and lint without reading the exposed signing keystore, assembling APKs, or publishing draft releases.
+- [x] Reduce default workflow token permissions to read-only; retain write permission only for the Android job that imports an explicitly uploaded source ZIP into its own branch.
+- [ ] Contain public repository exposure and review Git history, forks, clones and previously downloaded source archives before declaring the repository safe.
+- [ ] Provision a replacement sideload signing key outside the repository and store it in GitHub Actions secrets; never commit the key or passwords.
+- [ ] Generate a v3 signing lineage from the exposed historical signer to the replacement signer, with API 28 rotation boundary.
+- [ ] Verify old-to-new in-place update behavior and app-private data preservation on Android 9, Android 12L and Android 13+ devices.
+- [ ] Move release signing into a separately gated workflow that only runs after explicit release authorization and only uses the replacement key/lineage.
+- [ ] Remove the exposed keystore from the current tree and rewrite Git history only after the lineage is safely retained outside the repository; review detached forks and downloaded archives separately.
+- [ ] Verify no APK, ZIP, workflow artifact or release asset contains private signing material.
+
+**Boundary:** no release APK may be generated until every signing/update-continuity check above is complete. The existing signer must not be discarded before the replacement lineage is proven.
