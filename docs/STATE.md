@@ -1,3 +1,12 @@
+## Session 18 — signing rotation compatibility research (2026-11-25)
+
+- Inspected `main`: package `com.vaultos.app`, minSdk 28, target/compile SDK 35, current source version 0.13.0 / versionCode 14. Historical distributed certificate SHA-256 remains `c5b0c6c49ff6ca525558c2fecfa11dff54fba50f9083482cd869af4759e78b23`. Release signing is unconfigured; the Vercel release pause remains in place.
+- Reviewed the official Android `apksigner`, APK Signature Scheme v3 and v3.1 documentation. API 28 is the earliest supported rotation platform; Android 13+ uses v3.1. Android warns that rotation is not recommended on Android 12 and earlier, and the documented `--rotation-min-sdk-version 28` behavior must be deliberately selected when a rotated key has already been used on API 32 or lower.
+- A signature-verification command alone cannot establish update compatibility or data preservation. Required acceptance matrix is API 28, API 32, API 33+, and the actual Redmi Note 12 Pro 5G build. Test the exact last distributed APK (versionCode 14) as the installed baseline, then update in place without uninstall/data clear.
+- Updated `docs/KEY-MANAGEMENT.md` on this branch with the precise compatibility caveat, current public-repository status, secure key-provisioning constraints, a staged lineage procedure, and explicit release blockers. No key was generated, read, uploaded or exposed. No APK was built or published. No release signing or distribution setting was changed.
+- Branch: `security/signing-rotation-runbook-20261125`; documentation commit: `ab34ccf2a3a62f396c71e6f3f908a56ccf342824`.
+- Gate remains **BLOCKED** until the owner securely provisions a replacement key and the old-to-new lineage plus actual in-place update/data-preservation matrix is verified. Public downloads remain paused.
+
 ## Session 17 — PR #14 merged (2026-11-25)
 
 - User explicitly approved marking PR #14 ready and merging it.
