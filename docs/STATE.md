@@ -5,6 +5,8 @@
 - Added ADR-011 superseding ADR-005 for future releases, updated signing guidance, README, release gate and release plan. Historical ADR-005 and the 2026-11-05 governance note remain as historical records of the former API 28 decision.
 - The user's Redmi Note 12 Pro 5G running Android 14 remains within the selected support range.
 - This reduces the compatibility surface for key rotation but does not complete the security migration. No replacement key or lineage has been generated; no release signing was enabled; no APK was signed or published; the Vercel download pause remains in place. Next gates: CI/API 35 validation, secure replacement-key provisioning, v3.1 lineage, and in-place update/data preservation on Android 13+ and the actual Redmi.
+- PR validation run #544 (`45737493676`) on the current head: unit tests, lint, exposed-signer guard and Android 13 minimum-SDK guard passed. API 35 instrumentation has reached the emulator-backed test step but remains in progress; no green overall result yet. The test APKs are debug-signed and are not suitable as updates to the existing release install.
+- GitHub Actions secret names/values cannot be inspected through the available repository connection. Historical notes contain proposed replacement secret names and a proposed certificate fingerprint, but no user-confirmed evidence that those values were provisioned; treat replacement signing material as unverified until a protected workflow validates its certificate fingerprint without exposing secret contents.
 - This branch is part of draft PR #15. Do not merge or enable release signing until source/CI and migration gates are reviewed.
 
 ## Session 18 — signing rotation compatibility research (2026-11-25)
