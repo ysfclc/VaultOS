@@ -52,7 +52,7 @@
 _Last updated: 2026-11-12 by Continuity Engineer — Vercel build fallback_
 
 ## 1. Product snapshot
-VaultOS is a local-first Android file manager and personal content library for Android 9+. It combines a non-destructive index of existing shared storage with a private archive for incoming and newly detected content, a searchable/organizable Room catalogue, file operations, an optional capture keyboard, a DocumentsProvider, app/APK catalogue, and manual SAF backup/restore. “Complete” means data-safe operation, tested restore/migration compatibility, reliable everyday UX on the target Redmi Note 12 Pro 5G, and a reproducible signed release. Build success alone is not device acceptance.
+VaultOS is a local-first Android file manager and personal content library. The last distributed 0.13.0 release supports Android 9+; future releases require Android 13+ (API 33) after the signing-boundary decision recorded in Session 19. It combines a non-destructive index of existing shared storage with a private archive for incoming and newly detected content, a searchable/organizable Room catalogue, file operations, an optional capture keyboard, a DocumentsProvider, app/APK catalogue, and manual SAF backup/restore. “Complete” means data-safe operation, tested restore/migration compatibility, reliable everyday UX on the target Redmi Note 12 Pro 5G, and a reproducible signed release. Build success alone is not device acceptance.
 
 ## 2. Status board
 | Area | State | Notes |
