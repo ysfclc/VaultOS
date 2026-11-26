@@ -98,3 +98,16 @@ Append a new ADR for any later change to storage semantics, Room schema strategy
 **Privacy and limits:** Learn only after a safe editor commits a word and only while the user has enabled private typing memory. Persist counts keyed by three tokens, never sentences or full editor text. Cap each language at 1,200 contexts. Clear/reset removes the new context keys while preserving the user's learning toggle. No network or new inference dependency.
 
 **Consequences:** Existing v1 dictionaries and bigram counts remain readable. Android-backed persistence/opt-out/clear tests and device quality measurements are still required before acceptance.
+
+## ADR-011 — Android 13 minimum for signing-key rotation
+
+**Status:** Accepted — 2026-11-26; supersedes ADR-005 for future releases.
+
+**Context:** The historical release signer was exposed. Android v3.1 supports rotated signing identities from Android 13 (API 33), while its default compatibility behavior on Android 9–12L can leave the historical signer active. Android warns against relying on key rotation on Android 12 and earlier.
+
+**Decision:** Future VaultOS releases require Android 13 / API 33 or newer (`minSdk=33`). Use APK Signature Scheme v3.1 with the replacement signer and validated proof-of-rotation lineage. Do not lower the minimum without a new security and compatibility review.
+
+**Consequences:** Existing installations on Android 9–12L can continue running their currently installed version but cannot install future VaultOS releases. They must export their vault data before moving to Android 13+. The current target Redmi Note 12 Pro 5G on Android 14 remains supported. This decision does not itself authorize release signing or publication; replacement-key provisioning, lineage validation and in-place update/data-preservation acceptance remain mandatory. Last distributed versionCode 14 remains the baseline; the next release must use a greater versionCode.
+
+**Evidence:** `app/build.gradle.kts`; `docs/KEY-MANAGEMENT.md`; Android official `apksigner`, APK Signature Scheme v3 and v3.1 documentation.
+

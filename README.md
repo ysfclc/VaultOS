@@ -122,7 +122,7 @@ The 1.0.0 device acceptance checklist is in docs/RELEASE-1.0-GATE.md. Until thos
 
 ## Android compatibility
 
-VaultOS 0.7.0 requires Android 9 (API 28) or newer. Android 8 and 8.1 devices (API 26–27) are no longer supported. This is a deliberate security and signing-rotation policy decision; users on those older versions should export their VaultOS data before moving to a supported device.
+The last distributed VaultOS release (0.13.0 / versionCode 14) supports Android 9 (API 28) and newer. **Future releases will require Android 13 (API 33) or newer** to complete the signing-key rotation without retaining the compromised old signer as the active update identity on Android 9–12L. Existing users on Android 9–12L can keep using their installed version, but cannot install future VaultOS updates; export VaultOS data from the existing app before moving to an Android 13+ device. The Redmi Note 12 Pro 5G running Android 14 remains supported.
 
 ## Phase 7 — clipboard history foundation (0.7.0)
 
