@@ -9,30 +9,28 @@ The historical VaultOS signing identity at `signing/vaultos-stable.keystore` was
 Application identity and current build baseline:
 - Application ID: `com.vaultos.app`
 - Current source version: `0.13.0` / versionCode `14`
-- Minimum Android version: API 28
+- Minimum Android version for future releases: API 33 (Android 13)
 - Target/compile SDK: 35
 - Historical distributed release certificate SHA-256: `c5b0c6c49ff6ca525558c2fecfa11dff54fba50f9083482cd869af4759e78b23`
 - Release signing: disabled; no replacement signer or lineage has been provisioned.
 
 The candidate versionCode 19 was not published. Any migration build must use a versionCode higher than the last distributed release (14), and must be checked against the exact baseline APK installed by existing users.
 
-## Compatibility finding — unresolved rotation boundary decision
+## Selected compatibility and signing policy — Android 13 minimum
 
-Android APK Signature Scheme v3 supports proof-of-rotation beginning with Android 9 (API 28). Android 13 (API 33) introduced v3.1, which can target the rotated signer at API 33+ while retaining the original signer in the v3 block for older platform versions by default.
+**Selected policy:** future VaultOS releases require Android 13 (API 33) or newer. The Gradle `minSdk` is set to 33. This aligns the supported release range with APK Signature Scheme v3.1, allowing the replacement signer to be the active signer for every supported installation instead of leaving the historical signer active on Android 9–12L.
 
-**Important caveat:** Android's current documentation explicitly warns that key rotation is not recommended on Android 12 (API 31) and earlier. The `apksigner` documentation says that if a rotated signer has already been used on Android 12L (API 32) or lower, subsequent signing must explicitly use `--rotation-min-sdk-version 28` to continue using that rotated signer from API 28. The v3.1 documentation also makes clear that the default rotation boundary leaves the original signer active on API 28–32.
+What this means:
+- Android 13 and newer: eligible for future VaultOS releases and the v3.1 rotated-signer update path.
+- Android 9–12L (API 28–32): the currently installed version may continue to run, but future VaultOS APKs will not install on those devices. Those users must export their VaultOS data from the existing app before moving to an Android 13+ device.
+- The user's Redmi Note 12 Pro 5G on Android 14 remains within the supported range.
 
-This creates a product/security decision that must not be hidden inside a build flag:
+This policy avoids shipping a new release that continues using the exposed signer as the active update identity on older Android versions. It is a deliberate compatibility reduction. It does **not** by itself complete the signing migration: an old-to-new lineage, replacement key, API 33+ in-place update test and app-data preservation test are still mandatory.
 
-| Policy | Android 28–32 | Android 33+ | Consequence |
-|---|---|---|---|
-| Keep `minSdk=28`, use default v3.1 boundary | Old signer remains active | New signer | The compromised key is not retired for supported API 28–32 users. |
-| Keep `minSdk=28`, force rotation boundary 28 | Rotated signer is selected via v3 | Rotated signer via v3 | Matches the current minimum but Android warns against rotation on API 31 and earlier; requires real install/update tests and explicit acceptance of the platform caveat. |
-| Raise `minSdk=33`, use v3.1 | Unsupported; users cannot update | New signer | Cleanest boundary for retiring the old signer across all supported devices, but drops Android 9–12L and requires a migration/export plan for those users. |
+The Android documentation warns against key rotation on Android 12 and earlier. By setting the future release minimum to API 33, VaultOS does not claim to support the caveat-heavy API 28–32 rotation path. Test the actual v3.1 result with the exact Android Build Tools version selected for the release.
 
-**No policy has been selected.** The previously approved minimum is API 28; changing it to API 33 is a product compatibility decision and requires explicit owner approval. Do not silently raise `minSdk`, and do not describe the API 28 rotation path as fully safe before it has been demonstrated on-device.
+A successful `apksigner verify` only verifies APK signature validity. It does **not** prove Package Manager will accept the update, that signature permissions behave correctly, or that VaultOS data survives. The final test must update the exact last distributed APK (versionCode 14) in place without uninstalling or clearing data.
 
-A successful `apksigner verify` only verifies APK signature validity for selected platform versions. It does **not** prove Package Manager will accept the update, that signature permissions behave correctly, or that VaultOS data survives.
 
 
 Official references:
@@ -45,11 +43,11 @@ Official references:
 1. **Containment:** keep public distribution paused. Repository visibility is currently public; changing it requires a separate explicit decision. Do not rewrite history or delete the old keystore before the migration evidence and secure backups exist.
 2. **Provision replacement material:** generate a new, unique release key in a trusted local/offline environment controlled by the owner. Use a strong unique keystore and key password. Keep the keystore and password manager backup outside Git, build logs, artifacts, chat, and ordinary workspace backups. Record only the new certificate's public SHA-256 fingerprint in project documentation.
 3. **Protect CI access:** only after the owner has securely provisioned the key, transfer it into a narrowly scoped secret-backed release workflow. Never print secret values, decode them into logs, or expose them to pull-request builds from forks. The GitHub connector cannot read back or verify Actions secret values.
-4. **Select the rotation boundary:** obtain explicit owner approval for one of the three policies in the compatibility table. The existing API 28 minimum remains in force unless superseded by that decision.
+4. **Enforce the selected platform boundary:** future builds must declare `minSdk=33`. Confirm the merged source and final APK metadata both report API 33. API 28–32 devices are intentionally outside the future release/update path.
 5. **Create lineage:** use the exact Android SDK Build Tools `apksigner` version selected for release. Generate a lineage from the historical certificate to the new certificate using `apksigner rotate`. The historical key is used only to authorize this transition; do not use it as the current release signer.
-6. **Validate signing behavior:** sign disposable candidates for the selected policy. Inspect the resulting certificate(s), proof-of-rotation and signing schemes. Verify the APK separately for every API version that policy claims to support. Do not infer the correct signer ordering or flags from an untested command copied into CI.
-7. **Prove in-place update:** install the exact last distributed old-signed APK on clean test devices/emulators for each supported API boundary. Populate representative app-private data first: Room catalogue, archive payloads, clipboard history, tags/collections and keyboard settings. Install the candidate directly over it without uninstalling or clearing data. Confirm package update success, expected signing lineage, app launch, readable records and payload hashes. Test the actual Redmi separately. Record API/build/device and evidence.
-7. **Release pipeline:** only after the above succeeds, add release signing to a protected workflow. Require a versionCode greater than 14, signer-fingerprint allowlisting, lineage verification, artifact checksum, clean tests/lint/instrumentation, and a manual production-release approval. Keep PR and fork workflows unable to access signing secrets.
+6. **Validate signing behavior:** sign a disposable candidate with the replacement key and v3.1 lineage. Inspect the resulting certificate, proof-of-rotation and signing schemes. Verify on API 33, API 34 and API 35. Confirm API 32 and lower reject the future APK because of minSdk, as intended. Do not infer signer ordering or flags from an untested command copied into CI.
+7. **Prove in-place update:** install the exact last distributed old-signed APK on an Android 13+ test device/emulator. Populate representative app-private data first: Room catalogue, archive payloads, clipboard history, tags/collections and keyboard settings. Install the candidate directly over it without uninstalling or clearing data. Confirm package update success, expected v3.1 signing lineage, app launch, readable records and payload hashes. Test the actual Redmi Note 12 Pro 5G (Android 14) separately. Record API/build/device and evidence.
+7. **Release pipeline:** only after the above succeeds, add release signing to a protected workflow. Require a versionCode greater than 14 and minSdk 33, signer-fingerprint allowlisting, lineage verification, artifact checksum, clean tests/lint/instrumentation, and a manual production-release approval. Keep PR and fork workflows unable to access signing secrets.
 8. **Cleanup:** after the owner has verified and backed up the replacement key and lineage, remove the historical keystore from the current tree and rewrite exposed Git history under an explicitly approved operation. Review public forks, clones, cached archives and previously distributed APKs separately. Verify no private key material remains in source, history after rewrite, ZIPs, artifacts or deployment outputs.
 
 ## Explicit release blockers
@@ -57,8 +55,8 @@ Official references:
 - No replacement key has been provisioned or securely handed off.
 - No signing lineage has been generated or inspected.
 - No candidate release APK has been signed with the replacement identity.
-- No API 28 / API 32 / API 33+ in-place update has been executed.
-- No app-private data-preservation test has passed on an actual device.
+- No API 33+ in-place update has been executed; API 28–32 are intentionally excluded from future releases by the selected minimum SDK.
+- No app-private data-preservation test has passed on an actual Android 13+ device.
 - The repository remains public and historical key material remains in the current tree and Git history.
 - The production download page remains paused; no APK is being distributed.
 
