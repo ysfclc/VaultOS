@@ -1,3 +1,12 @@
+## Session 19 — Android 13 signing boundary selected (2026-11-26)
+
+- Owner accepted the stronger security policy after the compatibility trade-off was explained: future releases require Android 13 / API 33 or newer. Existing Android 9–12L installations may keep running their current build but cannot install future VaultOS updates; export data before moving to Android 13+.
+- Updated `app/build.gradle.kts` to `minSdk=33`. Target/compile SDK remain 35. Application ID remains `com.vaultos.app`; last distributed version remains 0.13.0 / versionCode 14. No version bump or APK publication occurred.
+- Added ADR-011 superseding ADR-005 for future releases, updated signing guidance, README, release gate and release plan. Historical ADR-005 and the 2026-11-05 governance note remain as historical records of the former API 28 decision.
+- The user's Redmi Note 12 Pro 5G running Android 14 remains within the selected support range.
+- This reduces the compatibility surface for key rotation but does not complete the security migration. No replacement key or lineage has been generated; no release signing was enabled; no APK was signed or published; the Vercel download pause remains in place. Next gates: CI/API 35 validation, secure replacement-key provisioning, v3.1 lineage, and in-place update/data preservation on Android 13+ and the actual Redmi.
+- This branch is part of draft PR #15. Do not merge or enable release signing until source/CI and migration gates are reviewed.
+
 ## Session 18 — signing rotation compatibility research (2026-11-25)
 
 - Inspected `main`: package `com.vaultos.app`, minSdk 28, target/compile SDK 35, current source version 0.13.0 / versionCode 14. Historical distributed certificate SHA-256 remains `c5b0c6c49ff6ca525558c2fecfa11dff54fba50f9083482cd869af4759e78b23`. Release signing is unconfigured; the Vercel release pause remains in place.
@@ -79,7 +88,7 @@ VaultOS is a local-first Android file manager and personal content library for A
 
 ## 5. Environment & how to run
 - JDK 17; Android SDK Platform 35; Build Tools 35.0.0; Gradle 8.9.
-- Android Gradle Plugin 8.7.3; Kotlin 2.0.21; Java/Kotlin target 17; minSdk 28; targetSdk 35.
+- Android Gradle Plugin 8.7.3; Kotlin 2.0.21; Java/Kotlin target 17; minSdk 33 for future releases (last distributed 0.13.0 remains API 28+); targetSdk 35.
 - Build/test: gradle --no-daemon clean testDebugUnitTest lintDebug assembleDebug assembleRelease.
 - Debug APK: app/build/outputs/apk/debug/app-debug.apk; release APK: app/build/outputs/apk/release/app-release.apk.
 - GitHub Actions workflow: .github/workflows/android-build.yml; root android-build.yml is its mirror. The workflow validates, tests, lints, builds, verifies signatures, and publishes APKs/checksums/build metadata on a private draft release.
