@@ -59,6 +59,15 @@ jobs:
             exit 1
           fi
 
+      - name: Enforce Android 13+ minimum SDK policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Eq '^[[:space:]]*minSdk[[:space:]]*=[[:space:]]*33([[:space:]]|$)' app/build.gradle.kts || {
+            echo "Future VaultOS releases must require Android 13 (API 33) or newer." >&2
+            exit 1
+          }
+
       - name: Run unit tests and lint without signing
         run: gradle --no-daemon clean testDebugUnitTest lintDebug
 
@@ -72,7 +81,7 @@ jobs:
             echo "- No release APK is assembled, signed, uploaded or published"
             echo "- API 35 instrumentation builds test-only APKs with the generated default debug signer"
             echo "- Release signing is disabled pending verified replacement-key lineage"
-            echo "- Compile SDK: 35"
+            echo "- Minimum supported Android for future releases: API 33+"\n            echo "- Compile SDK: 35"
             echo "- Java: 17"
             echo "- Gradle: 8.9"
           } >> "$GITHUB_STEP_SUMMARY"
