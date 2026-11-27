@@ -88,8 +88,8 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   android-instrumentation:
-    name: Android API 35 instrumentation
-    runs-on: macos-26-intel
+    name: Android API 34 instrumentation
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     permissions:
       contents: read
@@ -128,11 +128,9 @@ jobs:
 
       - name: Run Android-backed typing memory tests
         uses: reactivecircus/android-emulator-runner@v2
-        env:
-          ANDROID_I_WANT_MY_TCG: "yes"
-        with:
-          api-level: 35
-          target: default
+         with:
+          api-level: 34
+          target: google_apis
           arch: x86_64
           profile: pixel_2
           cores: 2
@@ -142,13 +140,14 @@ jobs:
           disable-animations: true
           script: |
             set +e
+            mkdir -p app/build/diagnostics
+            adb logcat -c >/dev/null 2>&1 || true
             gradle --no-daemon connectedDebugAndroidTest
             test_status=$?
-            mkdir -p app/build/diagnostics
-            adb logcat -d -b all -v threadtime > app/build/diagnostics/logcat.txt 2>&1 || true
-            adb shell dumpsys activity instrumentation > app/build/diagnostics/instrumentation.txt 2>&1 || true
-            adb shell dumpsys package com.vaultos.app > app/build/diagnostics/package.txt 2>&1 || true
-            adb shell ps -A > app/build/diagnostics/processes.txt 2>&1 || true
+            timeout 20s adb logcat -d -b all -v threadtime > app/build/diagnostics/logcat.txt 2>&1 || true
+            timeout 20s adb shell dumpsys activity instrumentation > app/build/diagnostics/instrumentation.txt 2>&1 || true
+            timeout 20s adb shell dumpsys package com.vaultos.app > app/build/diagnostics/package.txt 2>&1 || true
+            timeout 20s adb shell ps -A > app/build/diagnostics/processes.txt 2>&1 || true
             exit "$test_status"
 
       - name: Capture Android emulator boot diagnostics
@@ -157,9 +156,9 @@ jobs:
         run: |
           set +e
           mkdir -p app/build/diagnostics
-          adb devices -l > app/build/diagnostics/adb-devices.txt 2>&1 || true
-          adb -s emulator-5554 shell getprop sys.boot_completed > app/build/diagnostics/boot-completed.txt 2>&1 || true
-          adb -s emulator-5554 logcat -d -b all -v threadtime > app/build/diagnostics/boot-logcat.txt 2>&1 || true
+          timeout 20s adb devices -l > app/build/diagnostics/adb-devices.txt 2>&1 || true
+          timeout 20s adb -s emulator-5554 shell getprop sys.boot_completed > app/build/diagnostics/boot-completed.txt 2>&1 || true
+          timeout 20s adb -s emulator-5554 logcat -d -b all -v threadtime > app/build/diagnostics/boot-logcat.txt 2>&1 || true
           ps -Ao pid,ppid,stat,etime,command | grep -E '[e]mulator|[q]emu|[a]db' > app/build/diagnostics/emulator-processes.txt 2>&1 || true
           ls -la "$HOME/.android/avd" > app/build/diagnostics/avd-directory.txt 2>&1 || true
           find "$HOME/.android/avd" -type f -name config.ini -print -exec cat {} \; > app/build/diagnostics/avd-config.txt 2>&1 || true
