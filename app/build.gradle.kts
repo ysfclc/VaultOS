@@ -12,8 +12,8 @@ android {
         applicationId = "com.vaultos.app"
         minSdk = 33
         targetSdk = 35
-        versionCode = 14
-        versionName = "0.13.0"
+        versionCode = 19
+        versionName = "0.13.5"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     // Debug and instrumentation builds use Android's generated default debug key.
@@ -24,7 +24,7 @@ android {
             isMinifyEnabled = false
         }
     }
-    buildFeatures { compose = true }
+    buildFeatures { compose = true; buildConfig = true }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
