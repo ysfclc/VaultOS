@@ -81,7 +81,8 @@ jobs:
             echo "- No release APK is assembled, signed, uploaded or published"
             echo "- API 35 instrumentation builds test-only APKs with the generated default debug signer"
             echo "- Release signing is disabled pending verified replacement-key lineage"
-            echo "- Minimum supported Android for future releases: API 33+"\n            echo "- Compile SDK: 35"
+            echo "- Minimum supported Android for future releases: API 33+"
+            echo "- Compile SDK: 35"
             echo "- Java: 17"
             echo "- Gradle: 8.9"
           } >> "$GITHUB_STEP_SUMMARY"
@@ -127,6 +128,8 @@ jobs:
 
       - name: Run Android-backed typing memory tests
         uses: reactivecircus/android-emulator-runner@v2
+        env:
+          ANDROID_I_WANT_MY_TCG: "yes"
         with:
           api-level: 35
           target: default
