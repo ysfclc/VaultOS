@@ -129,9 +129,13 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
-          target: google_apis
+          target: default
           arch: x86_64
           profile: pixel_2
+          cores: 2
+          ram-size: 2048M
+          heap-size: 512M
+          emulator-boot-timeout: 600
           disable-animations: true
           script: |
             set +e
@@ -143,6 +147,19 @@ jobs:
             adb shell dumpsys package com.vaultos.app > app/build/diagnostics/package.txt 2>&1 || true
             adb shell ps -A > app/build/diagnostics/processes.txt 2>&1 || true
             exit "$test_status"
+
+      - name: Capture Android emulator boot diagnostics
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          mkdir -p app/build/diagnostics
+          adb devices -l > app/build/diagnostics/adb-devices.txt 2>&1 || true
+          adb -s emulator-5554 shell getprop sys.boot_completed > app/build/diagnostics/boot-completed.txt 2>&1 || true
+          adb -s emulator-5554 logcat -d -b all -v threadtime > app/build/diagnostics/boot-logcat.txt 2>&1 || true
+          ps -Ao pid,ppid,stat,etime,command | grep -E '[e]mulator|[q]emu|[a]db' > app/build/diagnostics/emulator-processes.txt 2>&1 || true
+          ls -la "$HOME/.android/avd" > app/build/diagnostics/avd-directory.txt 2>&1 || true
+          find "$HOME/.android/avd" -type f -name config.ini -print -exec cat {} \; > app/build/diagnostics/avd-config.txt 2>&1 || true
 
       - name: Upload Android instrumentation diagnostics
         if: always()
