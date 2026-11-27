@@ -4,8 +4,25 @@ import android.content.Context
 import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import java.util.ArrayDeque
+import java.util.concurrent.CancellationException
+
+/**
+ * Converts recoverable provider failures into a Result but never swallows coroutine
+ * cancellation. Cancellation must stop an import promptly rather than being counted
+ * as an ordinary failed file.
+ */
+internal inline fun <T> runCatchingUsbImport(block: () -> T): Result<T> =
+    try {
+        Result.success(block())
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (failure: Exception) {
+        Result.failure(failure)
+    }
 
 data class UsbOtgImportResult(
     val imported: Int,
@@ -36,12 +53,14 @@ object UsbOtgImporter {
             var truncated = false
 
             while (pending.isNotEmpty()) {
+                currentCoroutineContext().ensureActive()
                 val current = pending.removeFirst()
-                val children = runCatching { current.folder.listFiles().toList() }.getOrElse {
+                val children = runCatchingUsbImport { current.folder.listFiles().toList() }.getOrElse {
                     failed++
                     emptyList()
                 }
                 for (child in children) {
+                    currentCoroutineContext().ensureActive()
                     val name = child.name?.takeIf { it.isNotBlank() } ?: "Unnamed item"
                     val relative = if (current.relativePath.isBlank()) name else "${current.relativePath}/$name"
                     when {
@@ -55,7 +74,7 @@ object UsbOtgImporter {
                                 break
                             }
                             visitedFiles++
-                            val result = runCatching {
+                            val result = runCatchingUsbImport {
                                 repository.importUri(child.uri, "USB drive · $relative", suppliedName = name)
                             }
                             if (result.isSuccess) imported++ else failed++

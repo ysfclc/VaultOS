@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import android.webkit.MimeTypeMap
 import androidx.documentfile.provider.DocumentFile
+import androidx.room.withTransaction
 import com.vaultos.app.data.VaultDatabase
 import com.vaultos.app.data.VaultItem
 import com.vaultos.app.data.UserTag
@@ -143,6 +144,28 @@ object VaultBackupManager {
         var count = 0
         var bytes = 0L
         val restoredPaths = mutableMapOf<String, String>()
+        // Only artifacts created by this restore are eligible for rollback.
+        val createdFiles = mutableListOf<File>()
+        val createdDirectories = mutableListOf<File>()
+
+        // Parse and reject an unsupported/corrupt manifest before copying any payload
+        // into the private vault. This prevents malformed backups leaving copied files.
+        val manifestFile = backupFolder.findFile("backup-index.json")
+        val manifestJson = manifestFile?.let { file ->
+            context.contentResolver.openInputStream(file.uri)?.bufferedReader()?.use { it.readText() }
+                ?: throw IllegalStateException("Could not read backup manifest")
+        }
+        val manifestRoot = manifestJson?.takeIf { it.isNotBlank() }?.let { JSONObject(it) }
+        val manifestFormat = manifestRoot?.optString("format").orEmpty()
+        if (manifestRoot != null) {
+            require(isSupportedBackupFormat(manifestFormat)) { "Unsupported VaultOS backup format" }
+            val manifestRecords = manifestRoot.optJSONArray("records")
+                ?: throw IllegalArgumentException("Backup manifest is missing its records array")
+            validateBackupManifestRecords(manifestRecords)
+            if (manifestFormat == "vaultos-backup-v2") {
+                validateBackupManifestV2Sections(manifestRoot)
+            }
+        }
 
         fun safeName(name: String) = name.replace(Regex("[/\\\\\\u0000-\\u001f]"), "_").take(180).ifBlank { "restored-file" }
 
@@ -172,8 +195,26 @@ object VaultBackupManager {
             return digest.digest().joinToString("") { "%02x".format(it) }
         }
 
+        fun documentSha256(file: DocumentFile): String {
+            val digest = java.security.MessageDigest.getInstance("SHA-256")
+            val input = context.contentResolver.openInputStream(file.uri)
+                ?: throw IllegalStateException("Could not read backup payload ${file.name}")
+            input.buffered().use { stream ->
+                val buffer = ByteArray(128 * 1024)
+                while (true) {
+                    val read = stream.read(buffer)
+                    if (read < 0) break
+                    digest.update(buffer, 0, read)
+                }
+            }
+            return digest.digest().joinToString("") { "%02x".format(it) }
+        }
+
         fun restoreDirectory(source: DocumentFile, destination: File, sourcePrefix: String = "") {
-            destination.mkdirs()
+            if (!destination.exists()) {
+                if (!destination.mkdirs() && !destination.isDirectory) throw IllegalStateException("Could not create restore directory ${destination.name}")
+                createdDirectories += destination
+            }
             source.listFiles().forEach { child ->
                 if (sourcePrefix.isEmpty() && child.name == "backup-index.json") return@forEach
                 val name = safeName(child.name ?: "restored-file")
@@ -187,6 +228,7 @@ object VaultBackupManager {
                     restoreDirectory(child, target, sourceRelative)
                 } else {
                     val temp = File(destination, ".${java.util.UUID.randomUUID()}.restore")
+                    createdFiles += temp
                     val digest = java.security.MessageDigest.getInstance("SHA-256")
                     var copiedForItem = 0L
                     context.contentResolver.openInputStream(child.uri)?.use { input ->
@@ -212,6 +254,7 @@ object VaultBackupManager {
                             temp.delete()
                         } else {
                             target = uniqueRestoredTarget(destination, name).canonicalFile
+                            createdFiles += target
                             if (!temp.renameTo(target)) {
                                 temp.copyTo(target, overwrite = false)
                                 temp.delete()
@@ -220,6 +263,7 @@ object VaultBackupManager {
                             count++
                         }
                     } else {
+                        createdFiles += target
                         if (!temp.renameTo(target)) {
                             temp.copyTo(target, overwrite = false)
                             temp.delete()
@@ -231,16 +275,42 @@ object VaultBackupManager {
                 }
             }
         }
-        restoreDirectory(backupFolder, vault)
+        // Validate every manifest-listed archive payload before the first write into the vault.
+        // Legacy backups without a manifest remain eligible for folder-only restoration.
+        if (manifestRoot != null) {
+            val manifestRecords = manifestRoot.optJSONArray("records")
+                ?: throw IllegalStateException("Backup manifest is missing its records array")
+            for (i in 0 until manifestRecords.length()) {
+                val row = manifestRecords.optJSONObject(i)
+                    ?: throw IllegalStateException("Backup manifest contains an invalid record")
+                val relative = row.optString("relativePath").takeIf { it.isNotBlank() && it != "null" }
+                    ?: continue
+                require(isSafeBackupRelativePath(relative)) { "Backup contains an unsafe payload path" }
+                val expectedHash = row.optString("sha256").takeIf { it.isNotBlank() && it != "null" }
+                if (expectedHash != null) {
+                    require(isValidBackupSha256(expectedHash)) { "Backup contains an invalid SHA-256 value" }
+                }
+                var sourceFile: DocumentFile = backupFolder
+                for (segment in relative.split('/')) {
+                    sourceFile = sourceFile.findFile(segment)
+                        ?: throw IllegalStateException("Backup payload is missing: ${row.optString("name")}")
+                }
+                require(sourceFile.isFile) { "Backup payload is not a file: ${row.optString("name")}" }
+                if (expectedHash != null && documentSha256(sourceFile) != expectedHash.lowercase()) {
+                    throw IllegalStateException("Backup integrity check failed for ${row.optString("name")}")
+                }
+            }
+        }
 
-        val manifestFile = backupFolder.findFile("backup-index.json")
-        var records = 0
-        if (manifestFile != null) {
-            val json = context.contentResolver.openInputStream(manifestFile.uri)?.bufferedReader()?.use { it.readText() }
-            if (!json.isNullOrBlank()) {
-                val rootObject = JSONObject(json)
-                val format = rootObject.optString("format")
-                require(format == "vaultos-backup-v1" || format == "vaultos-backup-v2") { "Unsupported VaultOS backup format" }
+        try {
+            restoreDirectory(backupFolder, vault)
+
+            var records = 0
+            if (manifestRoot != null) {
+                // All catalogue and organization writes now commit or roll back together.
+                VaultDatabase.get(context).withTransaction {
+                val rootObject = manifestRoot
+                val format = manifestFormat
                 val recordArray = rootObject.optJSONArray("records") ?: JSONArray()
                 val dao = VaultDatabase.get(context).dao()
                 val repository = VaultRepository(context)
@@ -360,8 +430,13 @@ object VaultBackupManager {
                         ))
                     }
                 }
+                }
             }
+            return ResultSummary(count, bytes, records)
+        } catch (failure: Throwable) {
+            // Room cannot transact filesystem changes. Remove only artifacts created here.
+            rollbackRestoreArtifacts(createdFiles, createdDirectories)
+            throw failure
         }
-        return ResultSummary(count, bytes, records)
     }
 }
