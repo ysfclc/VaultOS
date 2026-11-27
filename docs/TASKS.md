@@ -256,7 +256,8 @@ The 0.13.0 keyboard is a functional baseline, not a complete predictive experien
 - [x] KBD-1: Run local correction ranking on one reusable worker thread using immutable vocabulary snapshots; keep IME/editor/UI operations on the main thread.
 - [x] KBD-1: Reject stale worker results with per-render generation tokens plus input-session, typed-word, language, editor-safety and candidate-row checks; clear queued work and shut down the executor with the service.
 - [x] KBD-1: Add and execute pure-engine correction limit, transposition and low-noise regression tests on Vercel (included in the 43 passing JVM tests).
-- [x] KBD-1: Add a repeatable pure-engine microbenchmark for 500 personal words (p50/p95 output; no flaky timing threshold).- [x] KBD-1: Execute the 500-word correction benchmark on Vercel; p50=105 μs / p95=160 μs on the build host (not a Redmi-device measurement).
+- [x] KBD-1: Add a repeatable pure-engine microbenchmark for 500 personal words (p50/p95 output; no flaky timing threshold).
+- [x] KBD-1: Execute the 500-word correction benchmark for 500 personal words; p50=105 μs / p95=160 μs on the build host (not a Redmi-device measurement).
 - [x] KBD-2: Add opt-in bounded trigram/context learning without changing existing word/bigram preference keys.
 - [x] KBD-2: Rank next-word candidates from a short transient two-word context, with EN/PL/TR isolation and one-word fallback.
 - [x] KBD-2: Add pure tests for EN/PL/TR context priors, unknown-context fallback, trigram precedence and candidate limits.
