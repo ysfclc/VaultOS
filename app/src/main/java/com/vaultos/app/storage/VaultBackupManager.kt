@@ -268,10 +268,15 @@ object VaultBackupManager {
                         continue
                     }
                     val relative = restoredPaths[backupRelative] ?: backupRelative
-                    val file = File(vault, relative).canonicalFile
-                    if (!file.toPath().startsWith(vault.canonicalFile.toPath()) || !file.isFile) continue
+                    val file = resolveVaultRelativePath(vault, relative)?.takeIf { it.isFile } ?: continue
                     if (hash != null && fileSha256(file) != hash) {
                         throw IllegalStateException("Backup integrity check failed for ${row.optString("name")}")
+                    }
+                    val trashOriginalRelativePath = row.optString("trashOriginalRelativePath")
+                        .takeIf { it.isNotBlank() && it != "null" }
+                    val trashOriginalPath = trashOriginalRelativePath?.let { relativePath ->
+                        resolveVaultRelativePath(vault, relativePath)?.absolutePath
+                            ?: throw IllegalStateException("Backup contains an unsafe recycle-bin restore path")
                     }
                     val item = VaultItem(
                         id = row.optString("id"), name = row.optString("name"), mimeType = row.optString("mimeType", "application/octet-stream"),
@@ -281,7 +286,7 @@ object VaultBackupManager {
                         isArchived = true, isPinned = row.optBoolean("isPinned"), textContent = preview,
                         isTrashed = row.optBoolean("isTrashed"),
                         trashedAt = if (row.isNull("trashedAt")) null else row.optLong("trashedAt"),
-                        trashOriginalPath = row.optString("trashOriginalRelativePath").takeIf { it.isNotBlank() && it != "null" }?.let { File(vault, it).absolutePath }
+                        trashOriginalPath = trashOriginalPath
                     )
                     dao.upsert(item)
                     if (item.category == "Text" || item.category == "Code") repository.reindexText(item.id, file)

@@ -64,6 +64,21 @@ class LocalTypingMemoryInstrumentedTest {
     }
 
     @Test
+    fun rankedCompletionCacheInvalidatesWhenPersonalDictionaryChanges() {
+        val memory = LocalTypingMemory(context)
+        memory.setLearningEnabled(true)
+        memory.learn("en", "hello")
+        memory.learn("en", "help")
+
+        assertEquals(listOf("hello", "help"), memory.completions("en", "he", 5))
+
+        // Explicitly pinned words receive the highest score and must be visible
+        // immediately, even if the ranked completion snapshot was already cached.
+        memory.addToDictionary("en", "heya")
+        assertEquals(listOf("heya", "hello", "help"), memory.completions("en", "he", 5))
+    }
+
+    @Test
     fun optingOutPausesNewLearningWithoutDeletingExistingData() {
         val memory = LocalTypingMemory(context)
         memory.setLearningEnabled(true)
