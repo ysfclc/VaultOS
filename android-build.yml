@@ -89,7 +89,7 @@ jobs:
 
   signing-key-audit:
     name: Audit configured VaultOS keystore (manual dispatch only)
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/product/consolidated-data-rescue-20261127')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -115,7 +115,7 @@ jobs:
             exit 1
           }
           echo "## VaultOS keystore audit" >> "$GITHUB_STEP_SUMMARY"
-          printf '%s\\n' "$listing" | awk '/^Alias name:/{alias=$0} /SHA256:/{print alias; print $0}' | tee "$RUNNER_TEMP/vaultos-public-certs.txt"
+          printf '%s\n' "$listing" | awk '/^Alias name:/{alias=$0} /SHA256:/{print alias; print $0}' | tee "$RUNNER_TEMP/vaultos-public-certs.txt"
           if ! grep -q 'SHA256:' "$RUNNER_TEMP/vaultos-public-certs.txt"; then
             echo "No certificate fingerprint was found in the keystore." >&2
             exit 1
