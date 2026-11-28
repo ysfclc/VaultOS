@@ -315,3 +315,12 @@ VaultOS is a local-first Android file manager and personal content library. The 
 - Shell syntax and the target SDK parser were checked in a Vercel Sandbox.
 - The first deployment was not created: Vercel returned HTTP 402 `api-deployments-free-per-day` because the team exceeded 100 API deployments for the day; the response specified a 24-hour retry window. A second Git push did not produce an automatic deployment. No Vercel CLI authentication was available in the sandbox for the suggested CLI fallback.
 - Therefore the pipeline is configured in the connected project but is **not yet production-verified**. Re-trigger the Vercel production deployment after the API limit resets, then verify the deployment logs and both static download files.
+## Session 20 — require checksums for every archived backup payload (2026-11-28)
+
+- Reviewed the current consolidated data-rescue candidate (product/consolidated-data-rescue-20261127) against the product north star and Phase 15 restore-integrity ledger.
+- Found that manifest validation accepted a record with an archived relativePath but no sha256. Restore then skipped both the pre-write document checksum and the post-copy file checksum for that payload. This contradicted the requirement to verify every restored archived payload.
+- Tightened manifest validation so every manifest-listed archived payload must carry a valid 64-character SHA-256 digest. Index-only device references may still omit a payload digest because their source bytes are not part of the backup.
+- Made restore preflight and post-copy verification fail closed if an archived record lacks its digest. These checks occur before catalogue/filesystem restore writes.
+- Added regression coverage for valid archived records, missing/null archived digests, and hash-optional index-only references.
+- The previous PR-head run #576 passed JVM tests and lint, but its API 34 instrumentation job executed zero tests: the emulator went offline and adb install-multiple timed out after 360 seconds. Diagnostics were captured in artifact 15257416307 from run 46127616036. Treat that as an emulator/runner failure, not an instrumentation pass or an application assertion failure.
+- Release signing remains disabled and public APK distribution remains paused pending verified replacement-key lineage and in-place update/data-preservation acceptance. No signing material was read or changed.

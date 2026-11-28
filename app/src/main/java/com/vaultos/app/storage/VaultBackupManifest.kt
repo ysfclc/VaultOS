@@ -27,8 +27,14 @@ internal fun validateBackupManifestRecords(records: org.json.JSONArray) {
             "Backup manifest contains an unsafe relative path"
         }
         val hash = row.optString("sha256").takeIf { it.isNotBlank() && it != "null" }
-        if (hash != null) require(isValidBackupSha256(hash)) {
-            "Backup manifest contains an invalid SHA-256 value"
+        if (relative != null) {
+            require(isValidBackupSha256(hash)) {
+                "Backup manifest archived payload is missing a valid SHA-256 value"
+            }
+        } else if (hash != null) {
+            require(isValidBackupSha256(hash)) {
+                "Backup manifest contains an invalid SHA-256 value"
+            }
         }
     }
 }

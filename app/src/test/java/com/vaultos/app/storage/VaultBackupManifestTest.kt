@@ -98,6 +98,33 @@ class VaultBackupManifestTest {
         expectIllegalArgument { validateBackupManifestV2Sections(nonObjectRow) }
     }
 
+    @Test
+    fun archivedPayloadsRequireSha256ButIndexOnlyReferencesMayOmitIt() {
+        val valid = org.json.JSONArray()
+            .put(org.json.JSONObject()
+                .put("id", "archived-item")
+                .put("relativePath", "documents/report.pdf")
+                .put("sha256", "a".repeat(64)))
+            .put(org.json.JSONObject().put("id", "index-only-item"))
+
+        validateBackupManifestRecords(valid)
+
+        val missingHash = org.json.JSONArray().put(
+            org.json.JSONObject()
+                .put("id", "missing-hash")
+                .put("relativePath", "documents/report.pdf")
+        )
+        expectIllegalArgument { validateBackupManifestRecords(missingHash) }
+
+        val nullHash = org.json.JSONArray().put(
+            org.json.JSONObject()
+                .put("id", "null-hash")
+                .put("relativePath", "documents/report.pdf")
+                .put("sha256", org.json.JSONObject.NULL)
+        )
+        expectIllegalArgument { validateBackupManifestRecords(nullHash) }
+    }
+
     private fun expectIllegalArgument(block: () -> Unit) {
         var caught = false
         try {

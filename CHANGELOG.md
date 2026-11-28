@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Require a valid SHA-256 digest for every archived payload in backup manifests; keep index-only device references payload-free.
+
 This changelog records product milestones. The detailed implementation ledger remains in docs/TASKS.md and docs/PROJECT-STATUS.md.
 
 ## 0.13.0 — 2026-11-06

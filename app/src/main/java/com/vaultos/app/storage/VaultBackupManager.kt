@@ -287,16 +287,15 @@ object VaultBackupManager {
                     ?: continue
                 require(isSafeBackupRelativePath(relative)) { "Backup contains an unsafe payload path" }
                 val expectedHash = row.optString("sha256").takeIf { it.isNotBlank() && it != "null" }
-                if (expectedHash != null) {
-                    require(isValidBackupSha256(expectedHash)) { "Backup contains an invalid SHA-256 value" }
-                }
+                    ?: throw IllegalStateException("Backup manifest is missing SHA-256 for ${row.optString("name")}")
+                require(isValidBackupSha256(expectedHash)) { "Backup contains an invalid SHA-256 value" }
                 var sourceFile: DocumentFile = backupFolder
                 for (segment in relative.split('/')) {
                     sourceFile = sourceFile.findFile(segment)
                         ?: throw IllegalStateException("Backup payload is missing: ${row.optString("name")}")
                 }
                 require(sourceFile.isFile) { "Backup payload is not a file: ${row.optString("name")}" }
-                if (expectedHash != null && documentSha256(sourceFile) != expectedHash.lowercase()) {
+                if (documentSha256(sourceFile) != expectedHash.lowercase()) {
                     throw IllegalStateException("Backup integrity check failed for ${row.optString("name")}")
                 }
             }
@@ -339,7 +338,9 @@ object VaultBackupManager {
                     }
                     val relative = restoredPaths[backupRelative] ?: backupRelative
                     val file = resolveVaultRelativePath(vault, relative)?.takeIf { it.isFile } ?: continue
-                    if (hash != null && fileSha256(file) != hash) {
+                    val archivedHash = hash
+                        ?: throw IllegalStateException("Backup manifest is missing SHA-256 for ${row.optString("name")}")
+                    if (fileSha256(file) != archivedHash.lowercase()) {
                         throw IllegalStateException("Backup integrity check failed for ${row.optString("name")}")
                     }
                     val trashOriginalRelativePath = row.optString("trashOriginalRelativePath")

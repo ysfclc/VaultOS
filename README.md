@@ -18,7 +18,7 @@ Start with `docs/STATE.md` for the session ledger and `docs/SPEC.md` for product
 - **File operations:** browse, open, share, archive a copy, create folders, copy, cut/move, rename and permanently delete files in accessible shared storage or the private vault.
 - **Application catalog:** list visible installed packages and archive the base APK plus any split APK components exposed by Android. This preserves the package payload but does not include another app's private data, sessions, or databases; a split package is not necessarily installable by opening one component on its own.
 - **Native DocumentsProvider:** exposes the private VaultOS archive in Android's document picker so other applications can browse and open its files.
-- **External backup/restore:** choose a SAF folder (for example, a USB drive or cloud-drive provider), copy the archive and a JSON item manifest, and restore from that backup later.
+- **External backup/restore:** choose a SAF folder (for example, a USB drive or cloud-drive provider), copy the archive and a JSON item manifest, and restore from that backup later. Restore preflights the manifest and requires a valid SHA-256 digest for every archived payload before writing into the private vault; index-only device references remain payload-free.
 - **Offline by design:** no `INTERNET` permission, account, analytics SDK, or cloud AI dependency.
 
 ## Android boundaries (important)

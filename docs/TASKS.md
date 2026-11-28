@@ -359,6 +359,7 @@ Do not mark this phase complete from unit tests alone; device acceptance is mand
 ## Phase 15 — backup and restore integrity
 
 - [x] Resolve every restored archive manifest path as a canonical path strictly beneath the private vault; reject absolute, drive-prefixed, traversal, empty-segment and symlink-escape paths.
+- [x] Require a valid SHA-256 digest for every manifest-listed archived payload before restore writes; keep index-only references hash-optional and cover both cases with regression tests.
 - [x] Reject an unsafe `trashOriginalRelativePath` instead of persisting an arbitrary filesystem destination into the Recycle Bin metadata.
 - [x] Add JVM regression tests for nested restore paths, missing-but-valid restore destinations, absolute/traversal/drive-prefixed paths, symlink-parent escapes and vault-root aliases.
 - [ ] Add fixture-based v1/v2 backup and restore round-trip tests for payload hashes, missing payloads, collision handling, trashed items, tags, collections, saved searches and metadata.
