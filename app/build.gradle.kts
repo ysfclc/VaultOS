@@ -16,10 +16,14 @@ android {
         versionName = "0.13.5"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
-    // Debug and instrumentation builds use Android's generated default debug key.
-    // The historical sideload signer is exposed and must not be used by any build variant.
-    // Release signing remains intentionally unconfigured until key rotation is verified.
+    // Preview APKs use a separate package so they can be installed alongside the
+    // existing production app without replacing it or touching its private data.
+    // They are debug-signed and are not production/update-compatible releases.
     buildTypes {
+        getByName("debug") {
+            applicationIdSuffix = ".preview"
+            versionNameSuffix = "-preview"
+        }
         getByName("release") {
             isMinifyEnabled = false
         }
