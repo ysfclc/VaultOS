@@ -1,3 +1,24 @@
+## Session 19 — Android 13 signing boundary selected (2026-11-26)
+
+- Owner accepted the stronger security policy after the compatibility trade-off was explained: future releases require Android 13 / API 33 or newer. Existing Android 9–12L installations may keep running their current build but cannot install future VaultOS updates; export data before moving to Android 13+.
+- Updated `app/build.gradle.kts` to `minSdk=33`. Target/compile SDK remain 35. Application ID remains `com.vaultos.app`; last distributed version remains 0.13.0 / versionCode 14. No version bump or APK publication occurred.
+- Added ADR-011 superseding ADR-005 for future releases, updated signing guidance, README, release gate and release plan. Historical ADR-005 and the 2026-11-05 governance note remain as historical records of the former API 28 decision.
+- The user's Redmi Note 12 Pro 5G running Android 14 remains within the selected support range.
+- This reduces the compatibility surface for key rotation but does not complete the security migration. No replacement key or lineage has been generated; no release signing was enabled; no APK was signed or published; the Vercel download pause remains in place. Next gates: CI/API 35 validation, secure replacement-key provisioning, v3.1 lineage, and in-place update/data preservation on Android 13+ and the actual Redmi.
+- PR validation run #544 (`45737493676`) on the current head: unit tests, lint, exposed-signer guard and Android 13 minimum-SDK guard passed. API 35 instrumentation has reached the emulator-backed test step but remains in progress; no green overall result yet. The test APKs are debug-signed and are not suitable as updates to the existing release install.
+- GitHub Actions secret names/values cannot be inspected through the available repository connection. Historical notes contain proposed replacement secret names and a proposed certificate fingerprint, but no user-confirmed evidence that those values were provisioned; treat replacement signing material as unverified until a protected workflow validates its certificate fingerprint without exposing secret contents.
+- This branch is part of draft PR #15. Do not merge or enable release signing until source/CI and migration gates are reviewed.
+
+## Session 18 — signing rotation compatibility research (2026-11-25)
+
+- Inspected `main`: package `com.vaultos.app`, minSdk 28, target/compile SDK 35, current source version 0.13.0 / versionCode 14. Historical distributed certificate SHA-256 remains `c5b0c6c49ff6ca525558c2fecfa11dff54fba50f9083482cd869af4759e78b23`. Release signing is unconfigured; the Vercel release pause remains in place.
+- Reviewed the official Android `apksigner`, APK Signature Scheme v3 and v3.1 documentation. API 28 is the earliest supported rotation platform; Android 13+ uses v3.1. Android warns that rotation is not recommended on Android 12 and earlier, and the documented `--rotation-min-sdk-version 28` behavior must be deliberately selected when a rotated key has already been used on API 32 or lower.
+- Identified a material unresolved policy choice: default v3.1 leaves the historical signer active on API 28–32; forcing rotation from API 28 is documented but carries Android's warning for API 31 and earlier; raising minSdk to 33 would make the rotated signer the baseline for every supported device but would drop Android 9–12L. The existing minSdk 28 decision must not be changed without explicit owner approval. Updated the runbook to present these three policies and require selection before key creation/signing.
+- A signature-verification command alone cannot establish update compatibility or data preservation. Required acceptance matrix is API 28, API 32, API 33+, and the actual Redmi Note 12 Pro 5G build. Test the exact last distributed APK (versionCode 14) as the installed baseline, then update in place without uninstall/data clear.
+- Updated `docs/KEY-MANAGEMENT.md` on this branch with the precise compatibility caveat, current public-repository status, secure key-provisioning constraints, a staged lineage procedure, and explicit release blockers. No key was generated, read, uploaded or exposed. No APK was built or published. No release signing or distribution setting was changed.
+- Branch: `security/signing-rotation-runbook-20261125`; documentation commit: `ab34ccf2a3a62f396c71e6f3f908a56ccf342824`.
+- Gate remains **BLOCKED** until the owner securely provisions a replacement key and the old-to-new lineage plus actual in-place update/data-preservation matrix is verified. Public downloads remain paused.
+
 ## Session 17 — PR #14 merged (2026-11-25)
 
 - User explicitly approved marking PR #14 ready and merging it.
@@ -33,7 +54,7 @@
 _Last updated: 2026-11-12 by Continuity Engineer — Vercel build fallback_
 
 ## 1. Product snapshot
-VaultOS is a local-first Android file manager and personal content library for Android 9+. It combines a non-destructive index of existing shared storage with a private archive for incoming and newly detected content, a searchable/organizable Room catalogue, file operations, an optional capture keyboard, a DocumentsProvider, app/APK catalogue, and manual SAF backup/restore. “Complete” means data-safe operation, tested restore/migration compatibility, reliable everyday UX on the target Redmi Note 12 Pro 5G, and a reproducible signed release. Build success alone is not device acceptance.
+VaultOS is a local-first Android file manager and personal content library. The last distributed 0.13.0 release supports Android 9+; future releases require Android 13+ (API 33) after the signing-boundary decision recorded in Session 19. It combines a non-destructive index of existing shared storage with a private archive for incoming and newly detected content, a searchable/organizable Room catalogue, file operations, an optional capture keyboard, a DocumentsProvider, app/APK catalogue, and manual SAF backup/restore. “Complete” means data-safe operation, tested restore/migration compatibility, reliable everyday UX on the target Redmi Note 12 Pro 5G, and a reproducible signed release. Build success alone is not device acceptance.
 
 ## 2. Status board
 | Area | State | Notes |
@@ -69,7 +90,7 @@ VaultOS is a local-first Android file manager and personal content library for A
 
 ## 5. Environment & how to run
 - JDK 17; Android SDK Platform 35; Build Tools 35.0.0; Gradle 8.9.
-- Android Gradle Plugin 8.7.3; Kotlin 2.0.21; Java/Kotlin target 17; minSdk 28; targetSdk 35.
+- Android Gradle Plugin 8.7.3; Kotlin 2.0.21; Java/Kotlin target 17; minSdk 33 for future releases (last distributed 0.13.0 remains API 28+); targetSdk 35.
 - Build/test: gradle --no-daemon clean testDebugUnitTest lintDebug assembleDebug assembleRelease.
 - Debug APK: app/build/outputs/apk/debug/app-debug.apk; release APK: app/build/outputs/apk/release/app-release.apk.
 - GitHub Actions workflow: .github/workflows/android-build.yml; root android-build.yml is its mirror. The workflow validates, tests, lints, builds, verifies signatures, and publishes APKs/checksums/build metadata on a private draft release.
@@ -294,3 +315,12 @@ VaultOS is a local-first Android file manager and personal content library for A
 - Shell syntax and the target SDK parser were checked in a Vercel Sandbox.
 - The first deployment was not created: Vercel returned HTTP 402 `api-deployments-free-per-day` because the team exceeded 100 API deployments for the day; the response specified a 24-hour retry window. A second Git push did not produce an automatic deployment. No Vercel CLI authentication was available in the sandbox for the suggested CLI fallback.
 - Therefore the pipeline is configured in the connected project but is **not yet production-verified**. Re-trigger the Vercel production deployment after the API limit resets, then verify the deployment logs and both static download files.
+## Session 20 — require checksums for every archived backup payload (2026-11-28)
+
+- Reviewed the current consolidated data-rescue candidate (product/consolidated-data-rescue-20261127) against the product north star and Phase 15 restore-integrity ledger.
+- Found that manifest validation accepted a record with an archived relativePath but no sha256. Restore then skipped both the pre-write document checksum and the post-copy file checksum for that payload. This contradicted the requirement to verify every restored archived payload.
+- Tightened manifest validation so every manifest-listed archived payload must carry a valid 64-character SHA-256 digest. Index-only device references may still omit a payload digest because their source bytes are not part of the backup.
+- Made restore preflight and post-copy verification fail closed if an archived record lacks its digest. These checks occur before catalogue/filesystem restore writes.
+- Added regression coverage for valid archived records, missing/null archived digests, and hash-optional index-only references.
+- The previous PR-head run #576 passed JVM tests and lint, but its API 34 instrumentation job executed zero tests: the emulator went offline and adb install-multiple timed out after 360 seconds. Diagnostics were captured in artifact 15257416307 from run 46127616036. Treat that as an emulator/runner failure, not an instrumentation pass or an application assertion failure.
+- Release signing remains disabled and public APK distribution remains paused pending verified replacement-key lineage and in-place update/data-preservation acceptance. No signing material was read or changed.

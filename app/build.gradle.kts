@@ -10,21 +10,25 @@ android {
     compileSdk = 35
     defaultConfig {
         applicationId = "com.vaultos.app"
-        minSdk = 28
+        minSdk = 33
         targetSdk = 35
-        versionCode = 14
-        versionName = "0.13.0"
+        versionCode = 19
+        versionName = "0.13.5"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
-    // Debug and instrumentation builds use Android's generated default debug key.
-    // The historical sideload signer is exposed and must not be used by any build variant.
-    // Release signing remains intentionally unconfigured until key rotation is verified.
+    // Preview APKs use a separate package so they can be installed alongside the
+    // existing production app without replacing it or touching its private data.
+    // They are debug-signed and are not production/update-compatible releases.
     buildTypes {
+        getByName("debug") {
+            applicationIdSuffix = ".preview"
+            versionNameSuffix = "-preview"
+        }
         getByName("release") {
             isMinifyEnabled = false
         }
     }
-    buildFeatures { compose = true }
+    buildFeatures { compose = true; buildConfig = true }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -55,6 +59,7 @@ dependencies {
     implementation("androidx.documentfile:documentfile:1.0.1")
     debugImplementation("androidx.compose.ui:ui-tooling")
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20240303")
     androidTestImplementation("androidx.test:core-ktx:1.6.1")
     androidTestImplementation("androidx.test.ext:junit-ktx:1.2.1")
     androidTestImplementation("androidx.test:runner:1.6.2")

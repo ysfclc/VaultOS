@@ -42,7 +42,7 @@ Signed release process, GitHub-hosted CI verification, migration/restore tests, 
 
 ## Compatibility baseline
 
-- Minimum SDK: 28 (Android 9).
+- Minimum SDK for future releases: 33 (Android 13). The last distributed 0.13.0 / versionCode 14 release remains API 28+; users on API 28–32 must export before moving to Android 13+.
 - Compile/target SDK: 35.
 - Java/Kotlin bytecode target: 17.
 - Build: Android Gradle Plugin 8.7.3, Gradle 8.9, Kotlin 2.0.21.

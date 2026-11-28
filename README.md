@@ -18,7 +18,7 @@ Start with `docs/STATE.md` for the session ledger and `docs/SPEC.md` for product
 - **File operations:** browse, open, share, archive a copy, create folders, copy, cut/move, rename and permanently delete files in accessible shared storage or the private vault.
 - **Application catalog:** list visible installed packages and archive the base APK plus any split APK components exposed by Android. This preserves the package payload but does not include another app's private data, sessions, or databases; a split package is not necessarily installable by opening one component on its own.
 - **Native DocumentsProvider:** exposes the private VaultOS archive in Android's document picker so other applications can browse and open its files.
-- **External backup/restore:** choose a SAF folder (for example, a USB drive or cloud-drive provider), copy the archive and a JSON item manifest, and restore from that backup later.
+- **External backup/restore:** choose a SAF folder (for example, a USB drive or cloud-drive provider), copy the archive and a JSON item manifest, and restore from that backup later. Restore preflights the manifest and requires a valid SHA-256 digest for every archived payload before writing into the private vault; index-only device references remain payload-free.
 - **Offline by design:** no `INTERNET` permission, account, analytics SDK, or cloud AI dependency.
 
 ## Android boundaries (important)
@@ -122,7 +122,7 @@ The 1.0.0 device acceptance checklist is in docs/RELEASE-1.0-GATE.md. Until thos
 
 ## Android compatibility
 
-VaultOS 0.7.0 requires Android 9 (API 28) or newer. Android 8 and 8.1 devices (API 26–27) are no longer supported. This is a deliberate security and signing-rotation policy decision; users on those older versions should export their VaultOS data before moving to a supported device.
+The last distributed VaultOS release (0.13.0 / versionCode 14) supports Android 9 (API 28) and newer. **Future releases will require Android 13 (API 33) or newer** to complete the signing-key rotation without retaining the compromised old signer as the active update identity on Android 9–12L. Existing users on Android 9–12L can keep using their installed version, but cannot install future VaultOS updates; export VaultOS data from the existing app before moving to an Android 13+ device. The Redmi Note 12 Pro 5G running Android 14 remains supported.
 
 ## Phase 7 — clipboard history foundation (0.7.0)
 

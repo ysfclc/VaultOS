@@ -4,7 +4,7 @@
 
 ## Current source and automated gate
 
-Current release line: 0.13.0 / versionCode 14 / application ID com.vaultos.app / minSdk 28.
+Current release line: 0.13.0 / versionCode 14 / application ID com.vaultos.app / minSdk 33 for future releases (Android 13+). The last distributed 0.13.0 / versionCode 14 artifact remains API 28+.
 
 - [x] GitHub-hosted workflow run 42261718395 completed for the 0.13.0 source.
 - [x] testDebugUnitTest passed in that run.
@@ -12,6 +12,7 @@ Current release line: 0.13.0 / versionCode 14 / application ID com.vaultos.app /
 - [x] Signed debug and release APKs assembled.
 - [x] Both APK variants passed signature verification against the retained VaultOS signing certificate.
 - [x] Checksums and build metadata were prepared; signed APKs and checksums were published to the private draft release documented in README.md and PROJECT-STATUS.md.
+- [ ] Future signed release APK reports minSdk 33 and uses the verified v3.1 replacement signer lineage; API 28–32 are intentionally unsupported by future releases.
 - [ ] Add automated Room migration regression coverage for the supported schema history.
 - [ ] Add automated backup/restore compatibility and failure-path coverage for manifest v1 and v2, including payload hash mismatch, missing/corrupt data, collision handling, and organization/trash state.
 

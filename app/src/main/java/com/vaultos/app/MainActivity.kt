@@ -1,5 +1,10 @@
 package com.vaultos.app
 
+import android.app.PendingIntent
+import android.content.BroadcastReceiver
+import android.content.IntentFilter
+import android.hardware.usb.UsbManager
+import android.widget.Toast
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -48,6 +53,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.work.ExistingPeriodicWorkPolicy
@@ -69,6 +75,8 @@ import com.vaultos.app.storage.VaultBackupManager
 import com.vaultos.app.storage.FileOperationProgress
 import com.vaultos.app.storage.FileOperations
 import com.vaultos.app.storage.VaultRepository
+import com.vaultos.app.storage.UsbOtgDiagnostics
+import com.vaultos.app.storage.UsbOtgImporter
 import com.vaultos.app.storage.ClipboardHistoryRepository
 import com.vaultos.app.storage.MetadataExtractor
 import kotlinx.coroutines.CancellationException
@@ -85,6 +93,17 @@ import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
+    private val usbPermissionAction = "com.vaultos.app.USB_PERMISSION"
+    private val usbPermissionReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action != usbPermissionAction) return
+            val granted = intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)
+            resumeRevision++
+            Toast.makeText(this@MainActivity, if (granted) "USB access granted. Interface details are now available." else "USB access was not granted.", Toast.LENGTH_SHORT).show()
+        }
+    }
+    private var usbReceiverRegistered = false
+
     lateinit var repository: VaultRepository
         private set
     var resumeRevision by mutableIntStateOf(0)
@@ -93,6 +112,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         repository = VaultRepository(this)
+        val usbFilter = IntentFilter(usbPermissionAction)
+        ContextCompat.registerReceiver(this, usbPermissionReceiver, usbFilter, ContextCompat.RECEIVER_NOT_EXPORTED)
+        usbReceiverRegistered = true
         handleIncoming(intent)
         scheduleScanner()
         setContent { VaultApp(this, repository, resumeRevision) }
@@ -111,6 +133,33 @@ class MainActivity : ComponentActivity() {
                 WorkManager.getInstance(this).enqueueUniqueWork("vaultos-storage-scan-now", ExistingWorkPolicy.KEEP, request)
             }
         }
+    }
+
+    fun requestUsbPermission(deviceName: String) {
+        val manager = getSystemService(Context.USB_SERVICE) as? UsbManager
+        val device = manager?.deviceList?.get(deviceName)
+        if (manager == null || device == null) {
+            Toast.makeText(this, "USB device is no longer connected. Refresh detection.", Toast.LENGTH_SHORT).show()
+            resumeRevision++
+            return
+        }
+        if (manager.hasPermission(device)) {
+            resumeRevision++
+            return
+        }
+        val permissionIntent = PendingIntent.getBroadcast(
+            this, deviceName.hashCode(), Intent(usbPermissionAction).setPackage(packageName),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        manager.requestPermission(device, permissionIntent)
+    }
+
+    override fun onDestroy() {
+        if (usbReceiverRegistered) {
+            unregisterReceiver(usbPermissionReceiver)
+            usbReceiverRegistered = false
+        }
+        super.onDestroy()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -155,7 +204,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private enum class Page(val label: String) { Home("Home"), Incoming("Library"), Files("Files"), Collections("Organize"), More("More"), Apps("Apps"), Settings("Settings") }
+private enum class Page(val label: String) { Home("Home"), Incoming("Library"), Files("Files"), Collections("Organize"), More("More"), Usb("USB"), Apps("Apps"), Settings("Settings") }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -220,6 +269,7 @@ private fun VaultApp(activity: MainActivity, repository: VaultRepository, resume
                             Page.Collections -> Icons.Default.Bookmarks
                             Page.Apps -> Icons.Default.Android
                             Page.Settings -> Icons.Default.Settings
+                            Page.Usb -> Icons.Default.Usb
                             Page.More -> Icons.Default.MoreHoriz
                         }
                         val selected = if (p == Page.More) page in setOf(Page.More, Page.Apps, Page.Settings) else page == p
@@ -300,7 +350,8 @@ private fun VaultApp(activity: MainActivity, repository: VaultRepository, resume
                         onItem = { showItem = it },
                         onImport = { importLauncher.launch(arrayOf("*/*")) },
                         onCapture = { captureClipboard(activity, repository) { message = it } },
-                        onGrantAccess = { openStorageSettings(activity) }
+                        onGrantAccess = { openStorageSettings(activity) },
+                        onUsb = { page = Page.Usb }
                     )
                     Page.Incoming -> ItemList(items, onItem = { showItem = it }, onPin = { item, pinned -> activity.lifecycleScope.launch { repository.setPinned(item, pinned) } })
                     Page.Files -> FilesPage(activity, repository, items.filter { it.category != "Text" }, trashItems, permissionGranted, onItem = { showItem = it }, onPermission = { openStorageSettings(activity) }, onMessage = { message = it })
@@ -316,6 +367,7 @@ private fun VaultApp(activity: MainActivity, repository: VaultRepository, resume
                     Page.More -> MorePage(onApps = { page = Page.Apps }, onSettings = { page = Page.Settings })
                     Page.Apps -> AppsPage(activity, repository, onMessage = { message = it })
                     Page.Settings -> SettingsPage(activity, repository, permissionGranted, backupLauncher, onMessage = { message = it })
+                    Page.Usb -> UsbDiagnosticsPage(activity, repository, onMessage = { message = it })
                 }
             }
         }
@@ -392,7 +444,7 @@ private fun VaultApp(activity: MainActivity, repository: VaultRepository, resume
 }
 
 @Composable
-private fun HomePage(count: Int, bytes: Long, available: Long, recent: List<VaultItem>, permissionGranted: Boolean, onPage: (Page) -> Unit, onItem: (VaultItem) -> Unit, onImport: () -> Unit, onCapture: () -> Unit, onGrantAccess: () -> Unit) {
+private fun HomePage(count: Int, bytes: Long, available: Long, recent: List<VaultItem>, permissionGranted: Boolean, onPage: (Page) -> Unit, onItem: (VaultItem) -> Unit, onImport: () -> Unit, onCapture: () -> Unit, onGrantAccess: () -> Unit, onUsb: () -> Unit) {
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Spacer(Modifier.height(4.dp))
         Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF18251F)), shape = RoundedCornerShape(22.dp)) {
@@ -410,6 +462,20 @@ private fun HomePage(count: Int, bytes: Long, available: Long, recent: List<Vaul
             QuickTile("Capture", Icons.Default.ContentPaste, Modifier.weight(1f), onCapture)
             QuickTile("Import", Icons.Default.Add, Modifier.weight(1f), onImport)
             QuickTile("Browse", Icons.Default.FolderOpen, Modifier.weight(1f)) { onPage(Page.Files) }
+        }
+        Card(
+            Modifier.fillMaxWidth().clickable(onClick = onUsb),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF18251F)),
+            shape = RoundedCornerShape(18.dp)
+        ) {
+            Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(13.dp)) {
+                Icon(Icons.Default.Usb, null, tint = Color(0xFF9AE6C1), modifier = Modifier.size(30.dp))
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text("USB / OTG drive", fontWeight = FontWeight.SemiBold)
+                    Text("Detect a connected flash drive, diagnose connection, or import a folder safely.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Icon(Icons.Default.ChevronRight, null, tint = Color(0xFF9AE6C1))
+            }
         }
         if (!permissionGranted) {
             Card(
@@ -1338,6 +1404,21 @@ private fun loadAppCatalogue(activity: MainActivity, archivedItems: List<VaultIt
     var keyboardLanguage by remember { mutableStateOf(prefs.getString(VaultKeyboardService.KEY_LANGUAGE, "en") ?: "en") }
     var busy by remember { mutableStateOf(false) }
     val backupTree = prefs.getString("backup_tree", null)
+    val usbTreeLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { treeUri ->
+        if (treeUri != null) {
+            busy = true
+            activity.lifecycleScope.launch {
+                val result = runCatching {
+                    com.vaultos.app.storage.UsbOtgImporter.importTree(activity, repository, treeUri)
+                }
+                busy = false
+                result.onSuccess {
+                    val suffix = if (it.truncated) " · stopped at the 2,000-file safety limit" else ""
+                    onMessage("USB import complete · ${it.imported} imported · ${it.failed} failed$suffix")
+                }.onFailure { onMessage(it.message ?: "USB import failed") }
+            }
+        }
+    }
     Column(
         Modifier.fillMaxSize()
             .verticalScroll(rememberScrollState())
@@ -1445,6 +1526,63 @@ private fun loadAppCatalogue(activity: MainActivity, archivedItems: List<VaultIt
                 }
             }
         }
+        var usbRefresh by remember { mutableIntStateOf(0) }
+        val usbHostSupported = remember(activity) { UsbOtgDiagnostics.hostSupported(activity) }
+        val usbDevices = remember(usbRefresh, activity.resumeRevision) { UsbOtgDiagnostics.attachedDevices(activity) }
+        Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF151A20))) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("USB / OTG diagnostics", fontWeight = FontWeight.SemiBold)
+                Text(
+                    if (!usbHostSupported) "This Android device does not advertise USB Host support. USB flash-drive access through OTG may not be available."
+                    else if (usbDevices.isEmpty()) "USB Host support is advertised, but Android exposes no connected USB device. This is not a filesystem/import failure: the phone has not enumerated the drive. Check the OTG adapter, drive, power and system OTG state."
+                    else "Android currently exposes ${usbDevices.size} USB device(s). This is detection only; VaultOS has not opened or modified the drive.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                usbDevices.forEach { device ->
+                    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text(device.productName ?: device.manufacturerName ?: device.deviceName, fontWeight = FontWeight.Medium)
+                        Text(
+                            "VID:PID %04X:%04X · %d interface(s) · permission %s".format(
+                                device.vendorId, device.productId, device.interfaceCount,
+                                if (device.hasPermission) "granted" else "not requested"
+                            ),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            "Class ${device.deviceClass} / subclass ${device.deviceSubclass} · ${device.deviceName}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        if (device.hasPermission) {
+                            device.interfaces.forEach { usbInterface ->
+                                Text(
+                                    "Interface ${usbInterface.id}: class ${usbInterface.interfaceClass}, subclass ${usbInterface.interfaceSubclass}, protocol ${usbInterface.interfaceProtocol}, ${usbInterface.endpointCount} endpoint(s)",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        } else {
+                            OutlinedButton(onClick = { activity.requestUsbPermission(device.deviceName) }) {
+                                Text("Grant access to inspect interfaces")
+                            }
+                        }
+                    }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = { usbRefresh++ }) { Text("Refresh USB detection") }
+                    Button(enabled = !busy, onClick = { usbTreeLauncher.launch(null) }) {
+                        if (busy) CircularProgressIndicator(Modifier.size(16.dp)) else Text("Browse / import USB folder")
+                    }
+                }
+                Text(
+                    "The file picker uses Android's Storage Access Framework. VaultOS copies selected files into its private library and never deletes, renames or writes to the source drive.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
         Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF151A20))) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                 Text("Automatic indexing", fontWeight = FontWeight.SemiBold)
@@ -1456,7 +1594,72 @@ private fun loadAppCatalogue(activity: MainActivity, archivedItems: List<VaultIt
                 }) { Text("Scan storage now") }
             }
         }
-        Text("VaultOS 0.13.0 · Local-first · No account required", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("VaultOS ${BuildConfig.VERSION_NAME} · Local-first · No account required", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun UsbDiagnosticsPage(activity: MainActivity, repository: VaultRepository, onMessage: (String) -> Unit) {
+    var refresh by remember { mutableIntStateOf(0) }
+    var importing by remember { mutableStateOf(false) }
+    val hostSupported = remember(activity) { UsbOtgDiagnostics.hostSupported(activity) }
+    val devices = remember(refresh, activity.resumeRevision) { UsbOtgDiagnostics.attachedDevices(activity) }
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { treeUri ->
+        if (treeUri != null) {
+            importing = true
+            activity.lifecycleScope.launch {
+                runCatching { UsbOtgImporter.importTree(activity, repository, treeUri) }
+                    .onSuccess { result ->
+                        val suffix = if (result.truncated) " · stopped at the safety limit" else ""
+                        onMessage("USB import finished · ${result.imported} imported · ${result.failed} failed$suffix")
+                    }
+                    .onFailure { onMessage(it.message ?: "USB import failed") }
+                importing = false
+            }
+        }
+    }
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 12.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Text("USB / OTG diagnostics", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Text("Connect your USB-C OTG adapter and flash drive, then refresh detection. This screen tells us whether Android can see the hardware before we investigate file access.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Card(colors = CardDefaults.cardColors(containerColor = if (devices.isEmpty()) Color(0xFF2A2117) else Color(0xFF18251F)), shape = RoundedCornerShape(18.dp)) {
+            Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(if (!hostSupported) "USB HOST NOT REPORTED" else if (devices.isEmpty()) "NO USB DEVICE DETECTED" else "${devices.size} USB DEVICE(S) DETECTED", fontWeight = FontWeight.Bold, color = if (devices.isEmpty()) Color(0xFFFFC078) else Color(0xFF9AE6C1))
+                Text(
+                    when {
+                        !hostSupported -> "Android does not report USB Host support for this phone. We need to verify the device/ROM capability."
+                        devices.isEmpty() -> "The phone advertises USB Host support, but Android has not exposed a connected USB device. VaultOS cannot read a drive the phone itself has not detected. Check OTG setting, adapter, drive and power."
+                        else -> "Android has enumerated the hardware. This confirms detection only; it does not yet confirm that the drive filesystem is readable."
+                    },
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text("USB Host support: ${if (hostSupported) "Yes" else "No"}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        devices.forEach { device ->
+            Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF151A20))) {
+                Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                    Text(device.productName ?: device.manufacturerName ?: device.deviceName, fontWeight = FontWeight.SemiBold)
+                    Text("VID:PID %04X:%04X · ${device.interfaceCount} interface(s)".format(device.vendorId, device.productId), style = MaterialTheme.typography.bodySmall)
+                    Text("Permission: ${if (device.hasPermission) "granted" else "not granted"}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (device.hasPermission) device.interfaces.forEach { usbInterface ->
+                        Text("Interface ${usbInterface.id}: class ${usbInterface.interfaceClass}, subclass ${usbInterface.interfaceSubclass}, protocol ${usbInterface.interfaceProtocol}", style = MaterialTheme.typography.labelSmall)
+                    } else OutlinedButton(onClick = { activity.requestUsbPermission(device.deviceName) }) { Text("Grant USB inspection permission") }
+                }
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            OutlinedButton(onClick = { refresh++ }, modifier = Modifier.weight(1f)) { Icon(Icons.Default.Refresh, null); Spacer(Modifier.width(6.dp)); Text("Refresh detection") }
+            Button(onClick = { picker.launch(null) }, enabled = !importing, modifier = Modifier.weight(1f)) {
+                if (importing) CircularProgressIndicator(Modifier.size(17.dp)) else Text("Browse USB folder")
+            }
+        }
+        Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF151A20))) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("What to do if nothing appears", fontWeight = FontWeight.SemiBold)
+                Text("1. Unplug the drive and adapter. Enable OTG in phone settings if that switch exists.\n2. Reconnect the adapter, then the flash drive.\n3. Tap Refresh detection.\n4. If still empty, open Android's Files app and check whether the USB drive appears there.\n5. Tell us whether Files sees it and whether the adapter/drive works on another phone or computer.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        Text("Import is read-only. VaultOS copies selected files into its private library; it does not delete, rename, format or write to the USB source.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

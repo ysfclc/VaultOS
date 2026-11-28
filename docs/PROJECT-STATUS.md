@@ -9,6 +9,7 @@
 - GitHub Actions is validation-only. Its PR run passed unit tests, lint, signer guard and API 35 instrumentation (6/6 tests).
 - The Vercel build script now emits a static downloads-paused page. All three public project aliases were reassigned to the verified pause-page deployment.
 - The historical keystore remains in repository history/current tree as migration input and is compromised. Replacement-key provisioning, v3 signing lineage, in-place update compatibility and app-private data preservation remain unverified.
+- Future VaultOS releases now require Android 13+ (API 33; `minSdk=33`) so the v3.1 replacement signer can be the active signer across the supported range. Android 9–12L users can keep their current installed version but cannot install future releases; export data before moving to Android 13+. The target Redmi Note 12 Pro 5G on Android 14 remains supported.
 - Do not generate or publish a release APK until the replacement signing and update-continuity gates are complete.
 
 **Release line:** 0.13.0 · **Application ID:** `com.vaultos.app` · **Target:** Redmi Note 12 Pro 5G

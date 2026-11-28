@@ -59,8 +59,25 @@ jobs:
             exit 1
           fi
 
-      - name: Run unit tests and lint without signing
-        run: gradle --no-daemon clean testDebugUnitTest lintDebug
+      - name: Enforce Android 13+ minimum SDK policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Eq '^[[:space:]]*minSdk[[:space:]]*=[[:space:]]*33([[:space:]]|$)' app/build.gradle.kts || {
+            echo "Future VaultOS releases must require Android 13 (API 33) or newer." >&2
+            exit 1
+          }
+
+      - name: Run unit tests, lint and build isolated preview APK
+        run: gradle --no-daemon clean testDebugUnitTest lintDebug assembleDebug
+
+      - name: Upload isolated preview APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: vaultos-preview-${{ github.run_number }}
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Add build summary
         if: always()
@@ -69,17 +86,59 @@ jobs:
           {
             echo "## VaultOS Android validation"
             echo "- JVM unit tests and Android lint only"
-            echo "- No release APK is assembled, signed, uploaded or published"
+            echo "- An isolated debug-signed preview APK is uploaded under package com.vaultos.app.preview"
+            echo "- Preview APK is side-by-side only; it cannot update the production package"
+            echo "- No production release APK is signed, uploaded or published"
             echo "- API 35 instrumentation builds test-only APKs with the generated default debug signer"
             echo "- Release signing is disabled pending verified replacement-key lineage"
+            echo "- Minimum supported Android for future releases: API 33+"
             echo "- Compile SDK: 35"
             echo "- Java: 17"
             echo "- Gradle: 8.9"
           } >> "$GITHUB_STEP_SUMMARY"
 
+  signing-key-audit:
+    name: Audit configured VaultOS keystore (manual dispatch only)
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/product/consolidated-data-rescue-20261127')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Inspect public certificate metadata without exposing key material
+        shell: bash
+        env:
+          VAULTOS_KEYSTORE_BASE64: ${{ secrets.VAULTOS_KEYSTORE_BASE64 }}
+          VAULTOS_KEYSTORE_PASSWORD: ${{ secrets.VAULTOS_KEYSTORE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$VAULTOS_KEYSTORE_BASE64" || -z "$VAULTOS_KEYSTORE_PASSWORD" ]]; then
+            echo "Required VaultOS keystore secrets are not available to this workflow run." >&2
+            exit 1
+          fi
+          keystore="$RUNNER_TEMP/vaultos-key-audit.keystore"
+          trap 'rm -f "$keystore"' EXIT
+          printf '%s' "$VAULTOS_KEYSTORE_BASE64" | base64 --decode > "$keystore"
+          chmod 600 "$keystore"
+          listing="$(keytool -list -v -keystore "$keystore" -storepass "$VAULTOS_KEYSTORE_PASSWORD" 2>&1)" || {
+            echo "Keystore could not be opened; check its encoding and password secret." >&2
+            exit 1
+          }
+          echo "## VaultOS keystore audit" >> "$GITHUB_STEP_SUMMARY"
+          printf '%s\n' "$listing" | awk '/^Alias name:/{alias=$0} /SHA256:/{print alias; print $0}' | tee "$RUNNER_TEMP/vaultos-public-certs.txt"
+          if ! grep -q 'SHA256:' "$RUNNER_TEMP/vaultos-public-certs.txt"; then
+            echo "No certificate fingerprint was found in the keystore." >&2
+            exit 1
+          fi
+          if grep 'SHA256:' "$RUNNER_TEMP/vaultos-public-certs.txt" | tr -d ':' | grep -qi 'c5b0c6c49ff6ca525558c2fecfa11dff54fba50f9083482cd869af4759e78b23'; then
+            echo "BLOCKED: this keystore contains the historically exposed release certificate." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          echo "The configured certificate differs from the historical exposed certificate. This does not prove signing lineage or authorize a release." | tee -a "$GITHUB_STEP_SUMMARY"
+
   android-instrumentation:
-    name: Android API 35 instrumentation
-    runs-on: macos-26-intel
+    name: Android API 34 instrumentation
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     permissions:
       contents: read
@@ -118,10 +177,41 @@ jobs:
 
       - name: Run Android-backed typing memory tests
         uses: reactivecircus/android-emulator-runner@v2
+        env:
+          ANDROID_I_WANT_MY_TCG: "yes"
         with:
-          api-level: 35
+          api-level: 34
           target: google_apis
           arch: x86_64
           profile: pixel_2
+          cores: 2
+          ram-size: 2048M
+          heap-size: 512M
+          emulator-boot-timeout: 600
           disable-animations: true
           script: gradle --no-daemon connectedDebugAndroidTest
+
+      - name: Capture Android emulator boot diagnostics
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          mkdir -p app/build/diagnostics
+          timeout 20s adb devices -l > app/build/diagnostics/adb-devices.txt 2>&1 || true
+          timeout 20s adb -s emulator-5554 shell getprop sys.boot_completed > app/build/diagnostics/boot-completed.txt 2>&1 || true
+          timeout 20s adb -s emulator-5554 logcat -d -b all -v threadtime > app/build/diagnostics/boot-logcat.txt 2>&1 || true
+          ps -Ao pid,ppid,stat,etime,command | grep -E '[e]mulator|[q]emu|[a]db' > app/build/diagnostics/emulator-processes.txt 2>&1 || true
+          ls -la "$HOME/.android/avd" > app/build/diagnostics/avd-directory.txt 2>&1 || true
+          find "$HOME/.android/avd" -type f -name config.ini -print -exec cat {} \; > app/build/diagnostics/avd-config.txt 2>&1 || true
+
+      - name: Upload Android instrumentation diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vaultos-instrumentation-diagnostics-${{ github.run_id }}
+          path: |
+            app/build/diagnostics/**
+            app/build/reports/androidTests/connected/debug/**
+            app/build/outputs/androidTest-results/connected/debug/**
+          if-no-files-found: warn
+          retention-days: 7
