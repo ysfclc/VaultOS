@@ -179,17 +179,7 @@ jobs:
           heap-size: 512M
           emulator-boot-timeout: 600
           disable-animations: true
-          script: |
-            set +e
-            mkdir -p app/build/diagnostics
-            adb logcat -c >/dev/null 2>&1 || true
-            gradle --no-daemon connectedDebugAndroidTest
-            test_status=$?
-            timeout 20s adb logcat -d -b all -v threadtime > app/build/diagnostics/logcat.txt 2>&1 || true
-            timeout 20s adb shell dumpsys activity instrumentation > app/build/diagnostics/instrumentation.txt 2>&1 || true
-            timeout 20s adb shell dumpsys package com.vaultos.app > app/build/diagnostics/package.txt 2>&1 || true
-            timeout 20s adb shell ps -A > app/build/diagnostics/processes.txt 2>&1 || true
-            exit "$test_status"
+          script: gradle --no-daemon connectedDebugAndroidTest
 
       - name: Capture Android emulator boot diagnostics
         if: always()
