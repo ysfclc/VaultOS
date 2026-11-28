@@ -87,6 +87,45 @@ jobs:
             echo "- Gradle: 8.9"
           } >> "$GITHUB_STEP_SUMMARY"
 
+  signing-key-audit:
+    name: Audit configured VaultOS keystore (manual dispatch only)
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Inspect public certificate metadata without exposing key material
+        shell: bash
+        env:
+          VAULTOS_KEYSTORE_BASE64: ${{ secrets.VAULTOS_KEYSTORE_BASE64 }}
+          VAULTOS_KEYSTORE_PASSWORD: ${{ secrets.VAULTOS_KEYSTORE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$VAULTOS_KEYSTORE_BASE64" || -z "$VAULTOS_KEYSTORE_PASSWORD" ]]; then
+            echo "Required VaultOS keystore secrets are not available to this workflow run." >&2
+            exit 1
+          fi
+          keystore="$RUNNER_TEMP/vaultos-key-audit.keystore"
+          trap 'rm -f "$keystore"' EXIT
+          printf '%s' "$VAULTOS_KEYSTORE_BASE64" | base64 --decode > "$keystore"
+          chmod 600 "$keystore"
+          listing="$(keytool -list -v -keystore "$keystore" -storepass "$VAULTOS_KEYSTORE_PASSWORD" 2>&1)" || {
+            echo "Keystore could not be opened; check its encoding and password secret." >&2
+            exit 1
+          }
+          echo "## VaultOS keystore audit" >> "$GITHUB_STEP_SUMMARY"
+          printf '%s\\n' "$listing" | awk '/^Alias name:/{alias=$0} /SHA256:/{print alias; print $0}' | tee "$RUNNER_TEMP/vaultos-public-certs.txt"
+          if ! grep -q 'SHA256:' "$RUNNER_TEMP/vaultos-public-certs.txt"; then
+            echo "No certificate fingerprint was found in the keystore." >&2
+            exit 1
+          fi
+          if grep 'SHA256:' "$RUNNER_TEMP/vaultos-public-certs.txt" | tr -d ':' | grep -qi 'c5b0c6c49ff6ca525558c2fecfa11dff54fba50f9083482cd869af4759e78b23'; then
+            echo "BLOCKED: this keystore contains the historically exposed release certificate." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          echo "The configured certificate differs from the historical exposed certificate. This does not prove signing lineage or authorize a release." | tee -a "$GITHUB_STEP_SUMMARY"
+
   android-instrumentation:
     name: Android API 34 instrumentation
     runs-on: ubuntu-24.04
@@ -128,6 +167,8 @@ jobs:
 
       - name: Run Android-backed typing memory tests
         uses: reactivecircus/android-emulator-runner@v2
+        env:
+          ANDROID_I_WANT_MY_TCG: "yes"
         with:
           api-level: 34
           target: google_apis
