@@ -68,8 +68,16 @@ jobs:
             exit 1
           }
 
-      - name: Run unit tests and lint without signing
-        run: gradle --no-daemon clean testDebugUnitTest lintDebug
+      - name: Run unit tests, lint and build isolated preview APK
+        run: gradle --no-daemon clean testDebugUnitTest lintDebug assembleDebug
+
+      - name: Upload isolated preview APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: vaultos-preview-${{ github.run_number }}
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Add build summary
         if: always()
@@ -78,7 +86,9 @@ jobs:
           {
             echo "## VaultOS Android validation"
             echo "- JVM unit tests and Android lint only"
-            echo "- No release APK is assembled, signed, uploaded or published"
+            echo "- An isolated debug-signed preview APK is uploaded under package com.vaultos.app.preview"
+            echo "- Preview APK is side-by-side only; it cannot update the production package"
+            echo "- No production release APK is signed, uploaded or published"
             echo "- API 35 instrumentation builds test-only APKs with the generated default debug signer"
             echo "- Release signing is disabled pending verified replacement-key lineage"
             echo "- Minimum supported Android for future releases: API 33+"
