@@ -12,7 +12,10 @@ Application identity and current build baseline:
 - Minimum Android version for future releases: API 33 (Android 13)
 - Target/compile SDK: 35
 - Historical distributed release certificate SHA-256: `c5b0c6c49ff6ca525558c2fecfa11dff54fba50f9083482cd869af4759e78b23`
-- Release signing: disabled; no replacement signer or lineage has been provisioned.
+- Replacement signing key: configured in GitHub Actions secrets `VAULTOS_KEYSTORE_BASE64` and `VAULTOS_KEYSTORE_PASSWORD`; alias `vaultos-upload`.
+- Replacement certificate SHA-256: `A8:DD:15:89:2A:1C:2D:11:A6:7E:44:FA:2D:BB:C1:4F:40:53:91:AD:82:A3:7F:E4:F1:DD:1A:E1:55:15:F3:C2` (read-only `keytool` audit completed 2026-11-28; fingerprint differs from the historical exposed certificate).
+- Signing lineage: not yet generated or verified; the fingerprint check alone does not establish update compatibility.
+- Release signing: disabled pending lineage and in-place update validation.
 
 The candidate versionCode 19 was not published. Any migration build must use a versionCode higher than the last distributed release (14), and must be checked against the exact baseline APK installed by existing users.
 
@@ -52,7 +55,7 @@ Official references:
 
 ## Explicit release blockers
 
-- No replacement key has been provisioned or securely handed off.
+- Replacement key is provisioned in Actions secrets, but the lineage has not yet been generated or validated.
 - No signing lineage has been generated or inspected.
 - No candidate release APK has been signed with the replacement identity.
 - No API 33+ in-place update has been executed; API 28–32 are intentionally excluded from future releases by the selected minimum SDK.
